@@ -1,0 +1,65 @@
+<resources>
+    <string name="app_name">Parintintin</string>
+    <string name="app_subtitle">Acervo Digital Kagwahiva</string>
+
+    <!-- Navigation -->
+    <string name="nav_encyclopedia">Enciclopédia</string>
+    <string name="nav_dictionary">Dicionário</string>
+    <string name="nav_favorites">Favoritos</string>
+    <string name="nav_archive">Acervo</string>
+    <string name="cd_back">Voltar</string>
+
+    <!-- Encyclopedia -->
+    <string name="encyclopedia_hero_badge">PATRIMÔNIO LINGUÍSTICO • AMAZÔNIA</string>
+    <string name="encyclopedia_hero_title">Língua Parintintin (Kagwahiva)</string>
+    <string name="encyclopedia_hero_subtitle">Enciclopédia aberta de documentação cultural, fonologia e memória oral do povo Kagwahiva no Rio Madeira.</string>
+    <string name="encyclopedia_search_cta">Pesquisar no dicionário Parintintin–Português</string>
+    <string name="encyclopedia_topics_title">Temas Culturais e Linguísticos</string>
+    <string name="encyclopedia_all_topics">Todos</string>
+    <string name="encyclopedia_featured_title">Acervo Vivo e Tradição Oral</string>
+    <string name="encyclopedia_featured_desc">Cada verbete reúne grafia prática, transcrição fonética e contexto comunitário para consulta offline.</string>
+
+    <!-- Dictionary -->
+    <string name="dictionary_title">Dicionário</string>
+    <string name="dictionary_search_hint">Buscar em Parintintin ou Português…</string>
+    <string name="dictionary_clear_search">Limpar busca</string>
+    <string name="dictionary_all_categories">Todas</string>
+    <string name="dictionary_empty_title">Nenhum verbete encontrado</string>
+    <string name="dictionary_empty_subtitle">Tente outro termo em Parintintin, Português ou selecione outra categoria semântica.</string>
+    <string name="dictionary_entry_count">%1$d verbetes disponíveis offline</string>
+
+    <!-- Entry Detail -->
+    <string name="entry_detail_title">Verbete</string>
+    <string name="entry_pronunciation_title">Pronúncia e Fonética</string>
+    <string name="entry_play_audio">Ouvir pronúncia</string>
+    <string name="entry_stop_audio">Parar áudio</string>
+    <string name="entry_audio_unavailable">Gravação de falante nativo aguardando sincronização no servidor do acervo. Utilize o guia fonético IPA acima.</string>
+    <string name="entry_example_title">Exemplo de Uso</string>
+    <string name="entry_cultural_note_title">Nota Linguística e Cultural</string>
+    <string name="entry_offline_ready">Disponível para consulta offline</string>
+    <string name="cd_toggle_favorite">Alternar favorito</string>
+    <string name="cd_toggle_bookmark">Alternar artigo salvo</string>
+
+    <!-- Favorites -->
+    <string name="favorites_title">Favoritos</string>
+    <string name="favorites_tab_words">Verbetes (%1$d)</string>
+    <string name="favorites_tab_articles">Artigos (%1$d)</string>
+    <string name="favorites_empty_words_title">Nenhum verbete favoritado</string>
+    <string name="favorites_empty_words_subtitle">Toque no ícone de coração nos verbetes do dicionário para montar sua lista de estudo offline.</string>
+    <string name="favorites_empty_articles_title">Nenhum artigo salvo</string>
+    <string name="favorites_empty_articles_subtitle">Salve artigos da enciclopédia para acessá-los rapidamente durante pesquisas ou estudos.</string>
+
+    <!-- Archive & Offline-First Status -->
+    <string name="archive_title">Acervo &amp; Sincronização</string>
+    <string name="archive_offline_banner_title">Arquitetura Offline-First Ativa</string>
+    <string name="archive_offline_banner_desc">Todos os verbetes e artigos são persistidos localmente em banco Room e observados reativamente via Flow.</string>
+    <string name="archive_sync_button">Sincronizar com API</string>
+    <string name="archive_syncing">Sincronizando…</string>
+    <string name="archive_stats_words">Verbetes no Room</string>
+    <string name="archive_stats_articles">Artigos no Room</string>
+    <string name="archive_stats_favorites">Favoritos salvos</string>
+    <string name="archive_architecture_title">Estrutura Clean Architecture</string>
+    <string name="archive_status_local_seed">Fonte local inicial (Room SQLite)</string>
+    <string name="archive_status_offline_fallback">Modo offline preservado — servidor remoto ainda não configurado (%1$s)</string>
+    <string name="archive_status_synced">Sincronizado com sucesso (%1$s)</string>
+</resources>

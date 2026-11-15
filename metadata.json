@@ -1,0 +1,6 @@
+{
+  "name": "Parintintin",
+  "description": "Enciclopédia e acervo digital offline-first da língua indígena Parintintin (Kagwahiva), estruturado em Clean Architecture com Jetpack Compose, Hilt, Room e Retrofit.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
