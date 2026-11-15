@@ -1,7 +1,5 @@
 package com.example.di
 
-import com.example.core.audio.AndroidAudioPlayer
-import com.example.core.audio.AudioPlayer
 import com.example.core.common.DefaultDispatcherProvider
 import com.example.core.common.DispatcherProvider
 import com.example.data.repository.ArchiveSyncRepositoryImpl
@@ -43,10 +41,4 @@ abstract class RepositoryModule {
     abstract fun bindDispatcherProvider(
         impl: DefaultDispatcherProvider
     ): DispatcherProvider
-
-    @Binds
-    @Singleton
-    abstract fun bindAudioPlayer(
-        impl: AndroidAudioPlayer
-    ): AudioPlayer
 }

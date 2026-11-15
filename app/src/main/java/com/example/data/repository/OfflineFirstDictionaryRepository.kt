@@ -3,7 +3,6 @@ package com.example.data.repository
 import com.example.core.common.AppResult
 import com.example.core.common.DispatcherProvider
 import com.example.data.local.dao.DictionaryDao
-import com.example.data.local.seed.ArchiveSeeder
 import com.example.data.mapper.toDomain
 import com.example.data.mapper.toEntity
 import com.example.data.remote.datasource.RemoteArchiveDataSource
@@ -21,7 +20,6 @@ import kotlinx.coroutines.withContext
 class OfflineFirstDictionaryRepository @Inject constructor(
     private val dictionaryDao: DictionaryDao,
     private val remoteDataSource: RemoteArchiveDataSource,
-    private val seeder: ArchiveSeeder,
     private val dispatchers: DispatcherProvider
 ) : DictionaryRepository {
 
@@ -56,7 +54,6 @@ class OfflineFirstDictionaryRepository @Inject constructor(
     }
 
     override suspend fun syncFromRemote(): AppResult<Int> = withContext(dispatchers.io) {
-        seeder.ensureSeeded()
         when (val result = remoteDataSource.fetchDictionaryEntries()) {
             is AppResult.Success -> {
                 val favoriteIds = dictionaryDao.getFavoriteIds().toSet()

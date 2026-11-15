@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "Parintintin"
+rootProject.name = "AcervoProvisorio"
 
 include(":app")

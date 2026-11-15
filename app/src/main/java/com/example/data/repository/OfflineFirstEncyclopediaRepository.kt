@@ -3,7 +3,6 @@ package com.example.data.repository
 import com.example.core.common.AppResult
 import com.example.core.common.DispatcherProvider
 import com.example.data.local.dao.EncyclopediaDao
-import com.example.data.local.seed.ArchiveSeeder
 import com.example.data.mapper.toDomain
 import com.example.data.mapper.toEntity
 import com.example.data.remote.datasource.RemoteArchiveDataSource
@@ -21,7 +20,6 @@ import kotlinx.coroutines.withContext
 class OfflineFirstEncyclopediaRepository @Inject constructor(
     private val encyclopediaDao: EncyclopediaDao,
     private val remoteDataSource: RemoteArchiveDataSource,
-    private val seeder: ArchiveSeeder,
     private val dispatchers: DispatcherProvider
 ) : EncyclopediaRepository {
 
@@ -54,7 +52,6 @@ class OfflineFirstEncyclopediaRepository @Inject constructor(
     }
 
     override suspend fun syncFromRemote(): AppResult<Int> = withContext(dispatchers.io) {
-        seeder.ensureSeeded()
         when (val result = remoteDataSource.fetchCulturalArticles()) {
             is AppResult.Success -> {
                 val bookmarkedIds = encyclopediaDao.getBookmarkedIds().toSet()
