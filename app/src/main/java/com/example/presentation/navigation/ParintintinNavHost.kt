@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -20,16 +22,40 @@ fun ParintintinAppShell(modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxSize(),
         contentWindowInsets = WindowInsets.safeDrawing
     ) { innerPadding ->
-        NavHost(
+        ParintintinNavHost(
             navController = navController,
-            startDestination = HomeRoute,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-        ) {
-            composable<HomeRoute> {
-                HomeScreen()
-            }
+        )
+    }
+}
+
+@Composable
+fun ParintintinNavHost(
+    navController: NavHostController,
+    modifier: Modifier = Modifier,
+    startDestination: AppDestination = AppDestination.Home
+) {
+    NavHost(
+        navController = navController,
+        startDestination = startDestination,
+        modifier = modifier
+    ) {
+        composable<AppDestination.Home> {
+            HomeScreen()
         }
+        // Rotas futuras preparadas em AppDestination:
+        // Encyclopedia, Dictionary, Favorites e Archive.
+    }
+}
+
+fun NavHostController.navigateSingleTopTo(destination: AppDestination) {
+    navigate(destination) {
+        popUpTo(graph.findStartDestination().id) {
+            saveState = true
+        }
+        launchSingleTop = true
+        restoreState = true
     }
 }
