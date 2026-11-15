@@ -40,4 +40,19 @@
     <!-- Descrições de acessibilidade -->
     <string name="cd_hero_illustration">Ilustração de preservação cultural e linguística amazônica</string>
     <string name="cd_archive_illustration">Ilustração representando caderno de pesquisa e preservação da oralidade</string>
+
+    <!-- Navegação Principal (Etapa 2.2) -->
+    <string name="nav_home">Início</string>
+    <string name="nav_encyclopedia">Enciclopédia</string>
+    <string name="nav_dictionary">Dicionário</string>
+    <string name="nav_favorites">Favoritos</string>
+    <string name="nav_archive">Acervo</string>
+
+    <!-- Telas Provisórias -->
+    <string name="provisional_badge">TELA PROVISÓRIA • ETAPA 2.2</string>
+    <string name="provisional_back_home">Voltar ao Início</string>
+    <string name="provisional_encyclopedia_desc">Espaço reservado para os futuros artigos culturais e linguísticos validados sobre a língua Parintintin.</string>
+    <string name="provisional_dictionary_desc">Espaço reservado para o futuro dicionário Parintintin–Português, pesquisa e registros em áudio oficiais.</string>
+    <string name="provisional_favorites_desc">Espaço reservado para reunir verbetes e conteúdos salvos para consulta rápida offline.</string>
+    <string name="provisional_archive_desc">Espaço reservado para consulta ao estado do acervo offline, fontes e futuras rotinas de sincronização.</string>
 </resources>
