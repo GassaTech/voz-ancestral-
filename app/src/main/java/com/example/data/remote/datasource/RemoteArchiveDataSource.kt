@@ -6,32 +6,33 @@ import com.example.data.remote.dto.CulturalArticleDto
 import com.example.data.remote.dto.DictionaryEntryDto
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CancellationException
 
 @Singleton
 class RemoteArchiveDataSource @Inject constructor(
     private val apiService: ParintintinApiService
 ) {
     suspend fun fetchDictionaryEntries(): AppResult<List<DictionaryEntryDto>> =
-        runCatching { apiService.getDictionaryEntries() }
-            .fold(
-                onSuccess = { AppResult.Success(it) },
-                onFailure = { error ->
-                    AppResult.Error(
-                        message = error.localizedMessage ?: "Falha ao consultar API do dicionário.",
-                        cause = error
-                    )
-                }
+        try {
+            AppResult.Success(apiService.getDictionaryEntries())
+        } catch (ce: CancellationException) {
+            throw ce
+        } catch (e: Exception) {
+            AppResult.Error(
+                message = e.localizedMessage ?: "Falha ao consultar API do dicionário.",
+                cause = e
             )
+        }
 
     suspend fun fetchCulturalArticles(): AppResult<List<CulturalArticleDto>> =
-        runCatching { apiService.getCulturalArticles() }
-            .fold(
-                onSuccess = { AppResult.Success(it) },
-                onFailure = { error ->
-                    AppResult.Error(
-                        message = error.localizedMessage ?: "Falha ao consultar API da enciclopédia.",
-                        cause = error
-                    )
-                }
+        try {
+            AppResult.Success(apiService.getCulturalArticles())
+        } catch (ce: CancellationException) {
+            throw ce
+        } catch (e: Exception) {
+            AppResult.Error(
+                message = e.localizedMessage ?: "Falha ao consultar API da enciclopédia.",
+                cause = e
             )
+        }
 }
