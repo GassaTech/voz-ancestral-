@@ -15,10 +15,17 @@ interface EncyclopediaDao {
         SELECT * FROM cultural_articles
         WHERE (:onlyBookmarked = 0 OR is_bookmarked = 1)
           AND (:topic IS NULL OR topic = :topic)
+          AND (
+            :query = ''
+            OR title LIKE '%' || :query || '%'
+            OR subtitle LIKE '%' || :query || '%'
+            OR summary LIKE '%' || :query || '%'
+          )
         ORDER BY updated_at_epoch_millis DESC
         """
     )
     fun observeArticles(
+        query: String,
         topic: String?,
         onlyBookmarked: Boolean
     ): Flow<List<CulturalArticleEntity>>

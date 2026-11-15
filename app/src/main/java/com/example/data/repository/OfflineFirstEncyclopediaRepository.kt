@@ -24,10 +24,12 @@ class OfflineFirstEncyclopediaRepository @Inject constructor(
 ) : EncyclopediaRepository {
 
     override fun observeArticles(
+        query: String,
         topic: CulturalTopic?,
         onlyBookmarked: Boolean
     ): Flow<List<CulturalArticle>> =
         encyclopediaDao.observeArticles(
+            query = query.trim(),
             topic = topic?.name,
             onlyBookmarked = onlyBookmarked
         )

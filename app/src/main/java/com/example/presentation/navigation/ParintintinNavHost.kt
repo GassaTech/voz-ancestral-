@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AutoStories
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material.icons.outlined.Storage
@@ -22,6 +21,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.R
 import com.example.presentation.components.ProvisionalDestinationScreen
+import com.example.presentation.encyclopedia.EncyclopediaScreen
 import com.example.presentation.home.HomeScreen
 
 @Composable
@@ -68,13 +68,7 @@ fun ParintintinNavHost(
             HomeScreen()
         }
         composable<AppDestination.Encyclopedia> {
-            ProvisionalDestinationScreen(
-                icon = Icons.Outlined.AutoStories,
-                title = stringResource(R.string.nav_encyclopedia),
-                description = stringResource(R.string.provisional_encyclopedia_desc),
-                tagSuffix = "encyclopedia",
-                onBackToHome = backToHome
-            )
+            EncyclopediaScreen()
         }
         composable<AppDestination.Dictionary> {
             ProvisionalDestinationScreen(

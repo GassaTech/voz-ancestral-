@@ -55,4 +55,26 @@
     <string name="provisional_dictionary_desc">Espaço reservado para o futuro dicionário Parintintin–Português, pesquisa e registros em áudio oficiais.</string>
     <string name="provisional_favorites_desc">Espaço reservado para reunir verbetes e conteúdos salvos para consulta rápida offline.</string>
     <string name="provisional_archive_desc">Espaço reservado para consulta ao estado do acervo offline, fontes e futuras rotinas de sincronização.</string>
+
+    <!-- Enciclopédia (Etapa 2.3) -->
+    <string name="encyclopedia_title">Enciclopédia</string>
+    <string name="encyclopedia_subtitle">Acervo aberto dedicado à reunião de registros linguísticos, históricos e culturais validados para consulta offline.</string>
+    <string name="encyclopedia_search_hint">Pesquisar artigos por título ou tema…</string>
+    <string name="encyclopedia_clear_search">Limpar pesquisa</string>
+    <string name="encyclopedia_categories_label">Categorias de conteúdo</string>
+    <string name="encyclopedia_all_categories">Todas</string>
+    <string name="encyclopedia_articles_section_title">Artigos disponíveis</string>
+    <string name="encyclopedia_articles_count">%1$d artigos locais</string>
+    <string name="encyclopedia_offline_badge">Consulta offline via Room</string>
+    <string name="encyclopedia_loading">Consultando acervo local…</string>
+    <string name="encyclopedia_empty_title">Nenhum artigo cadastrado ainda</string>
+    <string name="encyclopedia_empty_subtitle">Os artigos oficiais sobre a língua e a cultura Parintintin serão exibidos aqui assim que forem integrados ao banco local.</string>
+    <string name="encyclopedia_empty_filtered_title">Nenhum artigo encontrado</string>
+    <string name="encyclopedia_empty_filtered_subtitle">Não há registros que correspondam à pesquisa ou categoria selecionada.</string>
+    <string name="encyclopedia_clear_filters">Limpar filtros</string>
+    <string name="encyclopedia_error_title">Não foi possível carregar os artigos</string>
+    <string name="encyclopedia_retry">Tentar novamente</string>
+    <string name="encyclopedia_reading_time">%1$d min de leitura</string>
+    <string name="encyclopedia_source_prefix">Fonte: %1$s</string>
+    <string name="cd_toggle_article_bookmark">Salvar ou remover artigo dos favoritos</string>
 </resources>

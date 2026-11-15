@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.Flow
 
 interface EncyclopediaRepository {
     fun observeArticles(
+        query: String = "",
         topic: CulturalTopic? = null,
         onlyBookmarked: Boolean = false
     ): Flow<List<CulturalArticle>>

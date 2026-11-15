@@ -42,10 +42,15 @@ class ObserveCulturalArticlesUseCase @Inject constructor(
     private val repository: EncyclopediaRepository
 ) {
     operator fun invoke(
+        query: String = "",
         topic: CulturalTopic? = null,
         onlyBookmarked: Boolean = false
     ): Flow<List<CulturalArticle>> =
-        repository.observeArticles(topic = topic, onlyBookmarked = onlyBookmarked)
+        repository.observeArticles(
+            query = query,
+            topic = topic,
+            onlyBookmarked = onlyBookmarked
+        )
 }
 
 class ObserveCulturalArticleByIdUseCase @Inject constructor(
