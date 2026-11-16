@@ -1,8 +1,10 @@
 package com.example.data.repository
 
+import androidx.room.withTransaction
 import com.example.core.common.AppResult
 import com.example.core.common.DispatcherProvider
 import com.example.data.local.dao.EncyclopediaDao
+import com.example.data.local.database.ParintintinDatabase
 import com.example.data.mapper.toDomain
 import com.example.data.mapper.toEntity
 import com.example.data.remote.datasource.RemoteArchiveDataSource
@@ -18,6 +20,7 @@ import kotlinx.coroutines.withContext
 
 @Singleton
 class OfflineFirstEncyclopediaRepository @Inject constructor(
+    private val database: ParintintinDatabase,
     private val encyclopediaDao: EncyclopediaDao,
     private val remoteDataSource: RemoteArchiveDataSource,
     private val dispatchers: DispatcherProvider
@@ -56,14 +59,18 @@ class OfflineFirstEncyclopediaRepository @Inject constructor(
     override suspend fun syncFromRemote(): AppResult<Int> = withContext(dispatchers.io) {
         when (val result = remoteDataSource.fetchCulturalArticles()) {
             is AppResult.Success -> {
-                val bookmarkedIds = encyclopediaDao.getBookmarkedIds().toSet()
-                val entities = result.data.map { dto ->
-                    dto.toEntity(isBookmarked = bookmarkedIds.contains(dto.id))
+                if (result.data.isEmpty()) {
+                    return@withContext AppResult.Success(0)
                 }
-                if (entities.isNotEmpty()) {
+                val syncedCount = database.withTransaction {
+                    val bookmarkedIds = encyclopediaDao.getBookmarkedIds().toSet()
+                    val entities = result.data.map { dto ->
+                        dto.toEntity(isBookmarked = bookmarkedIds.contains(dto.id))
+                    }
                     encyclopediaDao.upsertAll(entities)
+                    entities.size
                 }
-                AppResult.Success(entities.size)
+                AppResult.Success(syncedCount)
             }
             is AppResult.Error -> result
         }
