@@ -7,6 +7,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,18 +20,26 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.CloudDone
+import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Storage
+import androidx.compose.material.icons.rounded.Sync
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -40,12 +50,18 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.R
 import com.example.domain.model.ArchiveStats
+import com.example.domain.model.SyncState
+import java.text.DateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 
 @Composable
 fun HeroPreservationBanner(
@@ -169,16 +185,115 @@ fun IntroNoticeCard(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun OfflineArchiveStatusCard(
     stats: ArchiveStats,
+    syncState: SyncState,
+    onManualSync: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val containerColor = when (syncState) {
+        SyncState.Loading -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
+        SyncState.Idle -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
+        SyncState.Syncing -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)
+        is SyncState.Synced -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
+        is SyncState.OfflineFallback -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.55f)
+    }
+
+    val primaryTextColor = when (syncState) {
+        SyncState.Loading -> MaterialTheme.colorScheme.onSurface
+        SyncState.Idle,
+        SyncState.Syncing,
+        is SyncState.Synced -> MaterialTheme.colorScheme.onPrimaryContainer
+        is SyncState.OfflineFallback -> MaterialTheme.colorScheme.onTertiaryContainer
+    }
+
+    val secondaryTextColor = when (syncState) {
+        SyncState.Loading -> MaterialTheme.colorScheme.onSurfaceVariant
+        SyncState.Idle,
+        SyncState.Syncing,
+        is SyncState.Synced -> MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.9f)
+        is SyncState.OfflineFallback -> MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.9f)
+    }
+
+    val accentColor = when (syncState) {
+        SyncState.Loading,
+        SyncState.Idle,
+        SyncState.Syncing,
+        is SyncState.Synced -> MaterialTheme.colorScheme.primary
+        is SyncState.OfflineFallback -> MaterialTheme.colorScheme.tertiary
+    }
+
+    val statusTitle = when (syncState) {
+        SyncState.Loading -> stringResource(R.string.home_sync_loading_title)
+        SyncState.Idle -> stringResource(R.string.home_sync_idle_title)
+        SyncState.Syncing -> stringResource(R.string.home_sync_syncing_title)
+        is SyncState.Synced -> stringResource(R.string.home_sync_synced_title)
+        is SyncState.OfflineFallback -> stringResource(R.string.home_sync_offline_title)
+    }
+
+    val locale = Locale.getDefault()
+    val timeZone = TimeZone.getDefault()
+
+    val statusBody = when (syncState) {
+        SyncState.Loading -> stringResource(R.string.home_sync_loading_body)
+        SyncState.Idle -> stringResource(R.string.home_sync_idle_body)
+        SyncState.Syncing -> stringResource(R.string.home_sync_syncing_body)
+        is SyncState.Synced -> {
+            val formattedTimestamp = remember(syncState.lastSyncedEpochMillis, locale, timeZone) {
+                formatSyncTimestamp(
+                    epochMillis = syncState.lastSyncedEpochMillis,
+                    locale = locale,
+                    timeZone = timeZone
+                )
+            }
+            stringResource(R.string.home_sync_synced_body, formattedTimestamp)
+        }
+        is SyncState.OfflineFallback -> stringResource(R.string.home_sync_offline_body)
+    }
+
+    val secondaryDetail = when (syncState) {
+        is SyncState.Synced -> {
+            if (syncState.entriesCount != null && syncState.articlesCount != null) {
+                stringResource(
+                    R.string.home_sync_synced_counts,
+                    syncState.entriesCount,
+                    syncState.articlesCount
+                )
+            } else {
+                null
+            }
+        }
+        is SyncState.OfflineFallback -> {
+            val formattedAttempt = remember(syncState.lastAttemptEpochMillis, locale, timeZone) {
+                formatSyncTimestamp(
+                    epochMillis = syncState.lastAttemptEpochMillis,
+                    locale = locale,
+                    timeZone = timeZone
+                )
+            }
+            stringResource(R.string.home_sync_offline_last_attempt, formattedAttempt)
+        }
+        else -> null
+    }
+
+    val isSyncing = syncState is SyncState.Syncing
+    val buttonLabel = when (syncState) {
+        SyncState.Syncing -> stringResource(R.string.home_sync_button_syncing)
+        is SyncState.OfflineFallback -> stringResource(R.string.home_sync_button_retry)
+        SyncState.Loading,
+        SyncState.Idle,
+        is SyncState.Synced -> stringResource(R.string.home_sync_button_now)
+    }
+    val buttonIcon = when (syncState) {
+        is SyncState.OfflineFallback -> Icons.Rounded.Refresh
+        else -> Icons.Rounded.Sync
+    }
+
     Card(
         shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
-        ),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = modifier
             .fillMaxWidth()
@@ -190,54 +305,166 @@ fun OfflineArchiveStatusCard(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Rounded.Storage,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary
-                )
+            Text(
+                text = stringResource(R.string.home_offline_status_title),
+                style = MaterialTheme.typography.labelSmall,
+                color = secondaryTextColor
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                when (syncState) {
+                    SyncState.Loading,
+                    SyncState.Syncing -> {
+                        val progressCd = stringResource(
+                            if (syncState is SyncState.Loading) {
+                                R.string.cd_home_sync_loading
+                            } else {
+                                R.string.cd_home_sync_in_progress
+                            }
+                        )
+                        CircularProgressIndicator(
+                            color = accentColor,
+                            strokeWidth = 2.dp,
+                            modifier = Modifier
+                                .size(20.dp)
+                                .semantics { contentDescription = progressCd }
+                                .testTag("home_sync_progress_indicator")
+                        )
+                    }
+                    SyncState.Idle -> {
+                        Icon(
+                            imageVector = Icons.Rounded.Storage,
+                            contentDescription = null,
+                            tint = accentColor
+                        )
+                    }
+                    is SyncState.Synced -> {
+                        Icon(
+                            imageVector = Icons.Rounded.CloudDone,
+                            contentDescription = null,
+                            tint = accentColor
+                        )
+                    }
+                    is SyncState.OfflineFallback -> {
+                        Icon(
+                            imageVector = Icons.Rounded.CloudOff,
+                            contentDescription = null,
+                            tint = accentColor
+                        )
+                    }
+                }
                 Spacer(modifier = Modifier.width(10.dp))
                 Text(
-                    text = stringResource(R.string.home_offline_status_title),
+                    text = statusTitle,
                     style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                    color = primaryTextColor,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            if (isSyncing) {
+                LinearProgressIndicator(
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.65f),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("home_sync_linear_progress")
                 )
             }
 
             Text(
-                text = stringResource(R.string.home_offline_status_ready),
+                text = statusBody,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.9f)
+                color = secondaryTextColor
             )
 
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            if (secondaryDetail != null) {
+                Text(
+                    text = secondaryDetail,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = secondaryTextColor
+                )
+            }
+
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 StatusMetricChip(
-                    label = stringResource(R.string.home_offline_entries_count, stats.totalEntries)
+                    label = stringResource(R.string.home_offline_entries_count, stats.totalEntries),
+                    accentColor = accentColor,
+                    modifier = Modifier.testTag("home_offline_entries_chip")
                 )
                 StatusMetricChip(
-                    label = stringResource(R.string.home_offline_articles_count, stats.totalArticles)
+                    label = stringResource(R.string.home_offline_articles_count, stats.totalArticles),
+                    accentColor = accentColor,
+                    modifier = Modifier.testTag("home_offline_articles_chip")
                 )
+            }
+
+            OutlinedButton(
+                onClick = onManualSync,
+                enabled = !isSyncing,
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = accentColor
+                ),
+                border = BorderStroke(
+                    width = 1.dp,
+                    color = if (isSyncing) {
+                        MaterialTheme.colorScheme.outlineVariant
+                    } else {
+                        accentColor.copy(alpha = 0.6f)
+                    }
+                ),
+                modifier = Modifier
+                    .minimumInteractiveComponentSize()
+                    .testTag("home_sync_button")
+            ) {
+                Icon(
+                    imageVector = buttonIcon,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(text = buttonLabel)
             }
         }
     }
 }
 
 @Composable
-private fun StatusMetricChip(label: String) {
+private fun StatusMetricChip(
+    label: String,
+    accentColor: Color = MaterialTheme.colorScheme.primary,
+    modifier: Modifier = Modifier
+) {
     Surface(
         color = MaterialTheme.colorScheme.surface,
         shape = MaterialTheme.shapes.small,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        modifier = modifier
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.primary,
+            color = accentColor,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
         )
     }
+}
+
+internal fun formatSyncTimestamp(
+    epochMillis: Long,
+    locale: Locale = Locale.getDefault(),
+    timeZone: TimeZone = TimeZone.getDefault()
+): String {
+    val formatter = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT, locale)
+    formatter.timeZone = timeZone
+    return formatter.format(Date(epochMillis))
 }
 
 @Composable

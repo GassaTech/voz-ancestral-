@@ -102,7 +102,11 @@ fun HomeScreen(
             }
 
             item {
-                OfflineArchiveStatusCard(stats = uiState.archiveStats)
+                OfflineArchiveStatusCard(
+                    stats = uiState.archiveStats,
+                    syncState = uiState.syncState,
+                    onManualSync = viewModel::syncManually
+                )
             }
 
             item {

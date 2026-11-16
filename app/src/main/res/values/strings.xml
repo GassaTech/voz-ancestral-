@@ -8,11 +8,28 @@
     <string name="home_intro_title">Acervo em construção</string>
     <string name="home_intro_body">Esta versão inicial estabelece a base visual e arquitetural do projeto. Nenhum dado linguístico será exibido até a validação e integração das fontes oficiais do acervo.</string>
 
-    <!-- Status Offline-First -->
+    <!-- Status Offline-First e Sincronização -->
     <string name="home_offline_status_title">Armazenamento Local (Offline-First)</string>
     <string name="home_offline_status_ready">Base Room pronta para receber verbetes, artigos e mídias oficiais</string>
     <string name="home_offline_entries_count">%1$d verbetes locais</string>
     <string name="home_offline_articles_count">%1$d artigos locais</string>
+    <string name="home_sync_loading_title">Consultando histórico local…</string>
+    <string name="home_sync_loading_body">Verificando o último estado de sincronização salvo no dispositivo.</string>
+    <string name="home_sync_idle_title">Pronto para sincronizar</string>
+    <string name="home_sync_idle_body">Base local preparada. Ainda não houve sincronização remota neste dispositivo.</string>
+    <string name="home_sync_syncing_title">Sincronizando acervo…</string>
+    <string name="home_sync_syncing_body">Atualizando o acervo remoto. Os dados locais continuam preservados.</string>
+    <string name="home_sync_synced_title">Acervo sincronizado</string>
+    <string name="home_sync_synced_body">Última sincronização em %1$s.</string>
+    <string name="home_sync_synced_counts">Sincronizados: %1$d verbetes e %2$d artigos.</string>
+    <string name="home_sync_offline_title">Modo offline ativo</string>
+    <string name="home_sync_offline_body">Não foi possível atualizar agora, mas os dados locais continuam disponíveis para consulta.</string>
+    <string name="home_sync_offline_last_attempt">Última tentativa em %1$s.</string>
+    <string name="home_sync_button_now">Sincronizar agora</string>
+    <string name="home_sync_button_syncing">Sincronizando…</string>
+    <string name="home_sync_button_retry">Tentar novamente</string>
+    <string name="cd_home_sync_loading">Consultando histórico de sincronização local</string>
+    <string name="cd_home_sync_in_progress">Sincronização remota do acervo em andamento</string>
 
     <!-- Módulos Planejados -->
     <string name="home_modules_section_title">Módulos Planejados</string>
