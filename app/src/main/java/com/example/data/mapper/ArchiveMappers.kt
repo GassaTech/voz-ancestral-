@@ -2,6 +2,7 @@ package com.example.data.mapper
 
 import com.example.data.local.entity.CulturalArticleEntity
 import com.example.data.local.entity.DictionaryEntryEntity
+import com.example.data.local.entity.SyncMetadataEntity
 import com.example.data.remote.dto.CulturalArticleDto
 import com.example.data.remote.dto.DictionaryEntryDto
 import com.example.domain.model.CulturalArticle
@@ -9,6 +10,7 @@ import com.example.domain.model.CulturalTopic
 import com.example.domain.model.DictionaryEntry
 import com.example.domain.model.GrammaticalClass
 import com.example.domain.model.SemanticCategory
+import com.example.domain.model.SyncState
 
 fun DictionaryEntryEntity.toDomain(): DictionaryEntry = DictionaryEntry(
     id = id,
@@ -68,3 +70,33 @@ fun CulturalArticleDto.toEntity(isBookmarked: Boolean): CulturalArticleEntity = 
     isBookmarked = isBookmarked,
     updatedAtEpochMillis = updatedAtEpochMillis
 )
+
+fun SyncMetadataEntity?.toDomainSyncState(defaultOfflineReason: String): SyncState {
+    if (this == null) return SyncState.Idle
+    return when (lastAttemptStatus) {
+        SyncMetadataEntity.STATUS_SYNCED -> {
+            val syncedAt = lastSuccessfulSyncEpochMillis
+            if (syncedAt != null) {
+                SyncState.Synced(
+                    lastSyncedEpochMillis = syncedAt,
+                    entriesCount = lastSuccessfulEntriesCount,
+                    articlesCount = lastSuccessfulArticlesCount
+                )
+            } else {
+                SyncState.Idle
+            }
+        }
+
+        SyncMetadataEntity.STATUS_OFFLINE_FALLBACK -> {
+            val resolvedReason = lastFailureReason
+                ?.takeIf { it.isNotBlank() }
+                ?: defaultOfflineReason
+            SyncState.OfflineFallback(
+                reason = resolvedReason,
+                lastAttemptEpochMillis = lastAttemptEpochMillis
+            )
+        }
+
+        else -> SyncState.Idle
+    }
+}

@@ -5,8 +5,8 @@ sealed interface SyncState {
     data object Syncing : SyncState
     data class Synced(
         val lastSyncedEpochMillis: Long,
-        val entriesCount: Int,
-        val articlesCount: Int
+        val entriesCount: Int? = null,
+        val articlesCount: Int? = null
     ) : SyncState
 
     data class OfflineFallback(

@@ -1,0 +1,223 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 2,
+    "identityHash": "3a377645f9f96f37c15d67c676d791e7",
+    "entities": [
+      {
+        "tableName": "dictionary_entries",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `parintintin_word` TEXT NOT NULL, `phonetic_ipa` TEXT NOT NULL, `portuguese_translation` TEXT NOT NULL, `grammatical_class` TEXT NOT NULL, `semantic_category` TEXT NOT NULL, `example_parintintin` TEXT NOT NULL, `example_portuguese` TEXT NOT NULL, `cultural_note` TEXT NOT NULL, `audio_url` TEXT, `is_favorite` INTEGER NOT NULL, `updated_at_epoch_millis` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "parintintinWord",
+            "columnName": "parintintin_word",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "phoneticIpa",
+            "columnName": "phonetic_ipa",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "portugueseTranslation",
+            "columnName": "portuguese_translation",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "grammaticalClass",
+            "columnName": "grammatical_class",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "semanticCategory",
+            "columnName": "semantic_category",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "exampleParintintin",
+            "columnName": "example_parintintin",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "examplePortuguese",
+            "columnName": "example_portuguese",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "culturalNote",
+            "columnName": "cultural_note",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "audioUrl",
+            "columnName": "audio_url",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "isFavorite",
+            "columnName": "is_favorite",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAtEpochMillis",
+            "columnName": "updated_at_epoch_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "cultural_articles",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `title` TEXT NOT NULL, `subtitle` TEXT NOT NULL, `summary` TEXT NOT NULL, `body_paragraphs` TEXT NOT NULL, `topic` TEXT NOT NULL, `reading_time_minutes` INTEGER NOT NULL, `source_reference` TEXT NOT NULL, `is_bookmarked` INTEGER NOT NULL, `updated_at_epoch_millis` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "subtitle",
+            "columnName": "subtitle",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "summary",
+            "columnName": "summary",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bodyParagraphs",
+            "columnName": "body_paragraphs",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "topic",
+            "columnName": "topic",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "readingTimeMinutes",
+            "columnName": "reading_time_minutes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourceReference",
+            "columnName": "source_reference",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isBookmarked",
+            "columnName": "is_bookmarked",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAtEpochMillis",
+            "columnName": "updated_at_epoch_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "sync_metadata",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `last_attempt_epoch_millis` INTEGER NOT NULL, `last_attempt_status` TEXT NOT NULL, `last_failure_reason` TEXT, `last_successful_sync_epoch_millis` INTEGER, `last_successful_entries_count` INTEGER, `last_successful_articles_count` INTEGER, `last_successful_remote_version` TEXT, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastAttemptEpochMillis",
+            "columnName": "last_attempt_epoch_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastAttemptStatus",
+            "columnName": "last_attempt_status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastFailureReason",
+            "columnName": "last_failure_reason",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastSuccessfulSyncEpochMillis",
+            "columnName": "last_successful_sync_epoch_millis",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lastSuccessfulEntriesCount",
+            "columnName": "last_successful_entries_count",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lastSuccessfulArticlesCount",
+            "columnName": "last_successful_articles_count",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lastSuccessfulRemoteVersion",
+            "columnName": "last_successful_remote_version",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '3a377645f9f96f37c15d67c676d791e7')"
+    ]
+  }
+}

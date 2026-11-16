@@ -26,7 +26,7 @@ object DatabaseModule {
         ParintintinDatabase::class.java,
         "parintintin_archive.db"
     )
-        .fallbackToDestructiveMigration(dropAllTables = true)
+        .addMigrations(*ParintintinDatabase.MIGRATIONS)
         .build()
 
     @Provides
