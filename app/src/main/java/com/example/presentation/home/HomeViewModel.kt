@@ -53,6 +53,12 @@ class HomeViewModel @Inject constructor(
         initialValue = HomeUiState()
     )
 
+    init {
+        viewModelScope.launch {
+            syncCoordinator.requestAutoSync()
+        }
+    }
+
     fun toggleStageDetails() {
         stageDetailsExpanded.value = !stageDetailsExpanded.value
     }

@@ -1,6 +1,8 @@
 package com.example.presentation.home
 
+import androidx.lifecycle.ViewModelStore
 import com.example.core.common.AppResult
+import com.example.data.sync.ArchiveSyncCoordinatorImpl
 import com.example.domain.model.ArchiveStats
 import com.example.domain.model.SyncState
 import com.example.domain.repository.SyncStatusRepository
@@ -14,8 +16,11 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -61,6 +66,96 @@ class HomeViewModelTest {
             ),
             viewModel.uiState.value
         )
+    }
+
+    @Test
+    fun `criacao do HomeViewModel solicita sincronizacao automatica uma vez mesmo em Loading sem acionar manual`() = runTest(testDispatcher) {
+        val fakeRepository = FakeSyncStatusRepository(initialSyncState = SyncState.Loading)
+        val fakeCoordinator = FakeArchiveSyncCoordinator()
+
+        val viewModel = createViewModel(fakeRepository, fakeCoordinator)
+        advanceUntilIdle()
+
+        assertEquals(SyncState.Loading, viewModel.uiState.value.syncState)
+        assertEquals(1, fakeCoordinator.autoSyncCallCount)
+        assertEquals(0, fakeCoordinator.manualSyncCallCount)
+    }
+
+    @Test
+    fun `coleta de uiState toggleStageDetails e syncManually nao provocam novas solicitacoes automaticas`() = runTest(testDispatcher) {
+        val fakeRepository = FakeSyncStatusRepository(initialSyncState = SyncState.Loading)
+        val fakeCoordinator = FakeArchiveSyncCoordinator()
+        val viewModel = createViewModel(fakeRepository, fakeCoordinator)
+        advanceUntilIdle()
+        assertEquals(1, fakeCoordinator.autoSyncCallCount)
+
+        val firstCollector = launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect {}
+        }
+        viewModel.toggleStageDetails()
+        viewModel.toggleStageDetails()
+        advanceUntilIdle()
+        firstCollector.cancel()
+
+        // Simula nova coleta após recomposição/retorno à tela.
+        val secondCollector = launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect {}
+        }
+        viewModel.syncManually()
+        advanceUntilIdle()
+        secondCollector.cancel()
+
+        assertEquals(1, fakeCoordinator.autoSyncCallCount)
+        assertEquals(1, fakeCoordinator.manualSyncCallCount)
+    }
+
+    @Test
+    fun `cancelamento do viewModelScope nao cancela sincronizacao automatica em andamento no ApplicationScope`() = runTest(testDispatcher) {
+        val syncStarted = CompletableDeferred<Unit>()
+        val syncGate = CompletableDeferred<AppResult<Unit>>()
+        val syncCompletedNormally = CompletableDeferred<Boolean>()
+        val fakeRepository = FakeSyncStatusRepository(
+            initialSyncState = SyncState.Loading,
+            onSyncArchive = {
+                syncStarted.complete(Unit)
+                try {
+                    val result = syncGate.await()
+                    syncCompletedNormally.complete(true)
+                    result
+                } catch (ce: CancellationException) {
+                    syncCompletedNormally.complete(false)
+                    throw ce
+                }
+            }
+        )
+        val applicationScope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler))
+        try {
+            val realCoordinator = ArchiveSyncCoordinatorImpl(
+                syncStatusRepository = fakeRepository,
+                applicationScope = applicationScope
+            )
+            val viewModel = createViewModel(fakeRepository, realCoordinator)
+
+            syncStarted.await()
+            assertEquals(1, fakeRepository.syncArchiveCallCount)
+
+            // Destrói o ViewModel (cancela viewModelScope) enquanto a sync ainda está suspensa.
+            ViewModelStore().apply {
+                put("home", viewModel)
+                clear()
+            }
+            advanceUntilIdle()
+
+            // A sincronização no ApplicationScope deve continuar ativa e concluir normalmente.
+            assertFalse(syncCompletedNormally.isCompleted)
+            syncGate.complete(AppResult.Success(Unit))
+            advanceUntilIdle()
+
+            assertTrue(syncCompletedNormally.await())
+            assertEquals(1, fakeRepository.syncArchiveCallCount)
+        } finally {
+            applicationScope.cancel()
+        }
     }
 
     @Test
@@ -168,7 +263,7 @@ class HomeViewModelTest {
         advanceUntilIdle()
 
         assertEquals(1, fakeCoordinator.manualSyncCallCount)
-        assertEquals(0, fakeCoordinator.autoSyncCallCount)
+        assertEquals(1, fakeCoordinator.autoSyncCallCount)
         assertTrue(viewModel.uiState.value.syncState is SyncState.Synced)
         collectorJob.cancel()
     }
@@ -428,21 +523,30 @@ class HomeViewModelTest {
 
     private class FakeSyncStatusRepository(
         initialStats: ArchiveStats = ArchiveStats(),
-        initialSyncState: SyncState = SyncState.Idle
+        initialSyncState: SyncState = SyncState.Idle,
+        private val onSyncArchive: (suspend () -> AppResult<Unit>)? = null
     ) : SyncStatusRepository {
         val statsFlow = MutableStateFlow(initialStats)
         val syncStateFlow = MutableStateFlow(initialSyncState)
+        var syncArchiveCallCount: Int = 0
+            private set
 
         override val syncState: StateFlow<SyncState> = syncStateFlow
 
         override fun observeArchiveStats(): Flow<ArchiveStats> = statsFlow
 
         override suspend fun syncArchive(): AppResult<Unit> {
-            throw AssertionError("syncArchive() não deve ser chamado diretamente pelo HomeViewModel")
+            val handler = onSyncArchive
+                ?: throw AssertionError("syncArchive() não deve ser chamado diretamente pelo HomeViewModel")
+            syncArchiveCallCount += 1
+            return handler()
         }
     }
 
     private class FakeArchiveSyncCoordinator(
+        private val onAutoSync: suspend () -> ArchiveSyncOutcome = {
+            ArchiveSyncOutcome.Executed(AppResult.Success(Unit))
+        },
         private val onManualSync: suspend () -> ArchiveSyncOutcome = {
             ArchiveSyncOutcome.Executed(AppResult.Success(Unit))
         }
@@ -454,7 +558,7 @@ class HomeViewModelTest {
 
         override suspend fun requestAutoSync(): ArchiveSyncOutcome {
             autoSyncCallCount += 1
-            throw AssertionError("requestAutoSync() não deve ser chamado nesta etapa")
+            return onAutoSync()
         }
 
         override suspend fun requestManualSync(): ArchiveSyncOutcome {
