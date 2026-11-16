@@ -1,6 +1,7 @@
 package com.example.domain.model
 
 sealed interface SyncState {
+    data object Loading : SyncState
     data object Idle : SyncState
     data object Syncing : SyncState
     data class Synced(

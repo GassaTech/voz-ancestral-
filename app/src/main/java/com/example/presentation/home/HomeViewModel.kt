@@ -21,7 +21,7 @@ import kotlinx.coroutines.launch
 
 data class HomeUiState(
     val archiveStats: ArchiveStats = ArchiveStats(),
-    val syncState: SyncState = SyncState.Idle,
+    val syncState: SyncState = SyncState.Loading,
     val isStageDetailsExpanded: Boolean = false
 )
 

@@ -50,13 +50,13 @@ class HomeViewModelTest {
 
     @Test
     fun `estado inicial do HomeUiState possui valores padrao esperados`() = runTest(testDispatcher) {
-        val fakeRepository = FakeSyncStatusRepository()
+        val fakeRepository = FakeSyncStatusRepository(initialSyncState = SyncState.Loading)
         val viewModel = createViewModel(fakeRepository)
 
         assertEquals(
             HomeUiState(
                 archiveStats = ArchiveStats(),
-                syncState = SyncState.Idle,
+                syncState = SyncState.Loading,
                 isStageDetailsExpanded = false
             ),
             viewModel.uiState.value
@@ -85,12 +85,19 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `atualizacao do SyncState reflete no HomeUiState`() = runTest(testDispatcher) {
-        val fakeRepository = FakeSyncStatusRepository()
+    fun `atualizacao do SyncState propaga Loading Idle Syncing Synced e OfflineFallback no HomeUiState`() = runTest(testDispatcher) {
+        val fakeRepository = FakeSyncStatusRepository(initialSyncState = SyncState.Loading)
         val viewModel = createViewModel(fakeRepository)
         val collectorJob = launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.uiState.collect {}
         }
+
+        advanceUntilIdle()
+        assertEquals(SyncState.Loading, viewModel.uiState.value.syncState)
+
+        fakeRepository.syncStateFlow.value = SyncState.Idle
+        advanceUntilIdle()
+        assertEquals(SyncState.Idle, viewModel.uiState.value.syncState)
 
         fakeRepository.syncStateFlow.value = SyncState.Syncing
         advanceUntilIdle()
@@ -208,7 +215,39 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `syncManually bloqueia execucao quando estado observado ja e SyncState Syncing`() = runTest(testDispatcher) {
+    fun `syncManually e permitida enquanto estado observado e Loading e bloqueia duplicadas com Job ativo`() = runTest(testDispatcher) {
+        val syncGate = CompletableDeferred<ArchiveSyncOutcome>()
+        val fakeRepository = FakeSyncStatusRepository(initialSyncState = SyncState.Loading)
+        val fakeCoordinator = FakeArchiveSyncCoordinator(
+            onManualSync = { syncGate.await() }
+        )
+        val viewModel = createViewModel(fakeRepository, fakeCoordinator)
+        val collectorJob = launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect {}
+        }
+
+        advanceUntilIdle()
+        assertEquals(SyncState.Loading, viewModel.uiState.value.syncState)
+
+        viewModel.syncManually()
+        viewModel.syncManually()
+        advanceUntilIdle()
+        assertEquals(1, fakeCoordinator.manualSyncCallCount)
+
+        fakeRepository.syncStateFlow.value = SyncState.Synced(
+            lastSyncedEpochMillis = 1_700_000_250_000L,
+            entriesCount = 7,
+            articlesCount = 3
+        )
+        syncGate.complete(ArchiveSyncOutcome.Executed(AppResult.Success(Unit)))
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.syncState is SyncState.Synced)
+        collectorJob.cancel()
+    }
+
+    @Test
+    fun `syncManually bloqueia apenas quando estado e Syncing ou ha Job ativo`() = runTest(testDispatcher) {
         val fakeRepository = FakeSyncStatusRepository(
             initialSyncState = SyncState.Syncing
         )
@@ -217,14 +256,25 @@ class HomeViewModelTest {
 
         viewModel.syncManually()
         advanceUntilIdle()
-
         assertEquals(0, fakeCoordinator.manualSyncCallCount)
+
+        fakeRepository.syncStateFlow.value = SyncState.Loading
+        viewModel.syncManually()
+        advanceUntilIdle()
+        assertEquals(1, fakeCoordinator.manualSyncCallCount)
 
         fakeRepository.syncStateFlow.value = SyncState.Idle
         viewModel.syncManually()
         advanceUntilIdle()
+        assertEquals(2, fakeCoordinator.manualSyncCallCount)
 
-        assertEquals(1, fakeCoordinator.manualSyncCallCount)
+        fakeRepository.syncStateFlow.value = SyncState.OfflineFallback(
+            reason = "Offline",
+            lastAttemptEpochMillis = 1_700_000_280_000L
+        )
+        viewModel.syncManually()
+        advanceUntilIdle()
+        assertEquals(3, fakeCoordinator.manualSyncCallCount)
     }
 
     @Test

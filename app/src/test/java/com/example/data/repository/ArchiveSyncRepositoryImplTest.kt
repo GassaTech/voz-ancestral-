@@ -19,16 +19,22 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -202,10 +208,31 @@ class ArchiveSyncRepositoryImplTest {
     }
 
     @Test
-    fun `recuperacao inicial com banco vazio permanece em Idle apos emissao do Flow`() = runTest {
-        val syncDao = FakeSyncMetadataDao(initialEntity = null)
+    fun `estado inicial e Loading antes da primeira emissao do Room`() = runTest {
+        val syncDao = FakeSyncMetadataDao(
+            initialEntity = null,
+            deferInitialEmission = true
+        )
         val repository = createRepository(syncDao = syncDao)
 
+        assertEquals(SyncState.Loading, repository.syncState.value)
+        advanceUntilIdle()
+        assertTrue(syncDao.observedCount > 0)
+        assertEquals(SyncState.Loading, repository.syncState.value)
+    }
+
+    @Test
+    fun `recuperacao inicial transita de Loading para Idle quando DAO emite null`() = runTest {
+        val syncDao = FakeSyncMetadataDao(
+            initialEntity = null,
+            deferInitialEmission = true
+        )
+        val repository = createRepository(syncDao = syncDao)
+
+        advanceUntilIdle()
+        assertEquals(SyncState.Loading, repository.syncState.value)
+
+        syncDao.emitInitialMetadata()
         advanceUntilIdle()
 
         assertTrue(syncDao.observedCount > 0)
@@ -213,7 +240,7 @@ class ArchiveSyncRepositoryImplTest {
     }
 
     @Test
-    fun `recuperacao inicial restaura SyncState Synced persistido no Room incluindo contadores nulos`() = runTest {
+    fun `recuperacao inicial transita de Loading para Synced incluindo contadores nulos`() = runTest {
         val persistedSynced = SyncMetadataEntity(
             lastAttemptEpochMillis = 1_700_000_010_000L,
             lastAttemptStatus = SyncMetadataEntity.STATUS_SYNCED,
@@ -223,19 +250,26 @@ class ArchiveSyncRepositoryImplTest {
             lastSuccessfulArticlesCount = null,
             lastSuccessfulRemoteVersion = ArchiveSyncRepositoryImpl.MANIFEST_VERSION_UNAVAILABLE
         )
-        val syncDao = FakeSyncMetadataDao(initialEntity = persistedSynced)
+        val syncDao = FakeSyncMetadataDao(
+            initialEntity = persistedSynced,
+            deferInitialEmission = true
+        )
         val repository = createRepository(syncDao = syncDao)
 
-        val recovered = repository.syncState.first { it !is SyncState.Idle }
+        advanceUntilIdle()
+        assertEquals(SyncState.Loading, repository.syncState.value)
 
-        val state = recovered as SyncState.Synced
+        syncDao.emitInitialMetadata()
+        advanceUntilIdle()
+
+        val state = repository.syncState.value as SyncState.Synced
         assertEquals(1_700_000_010_000L, state.lastSyncedEpochMillis)
         assertNull(state.entriesCount)
         assertNull(state.articlesCount)
     }
 
     @Test
-    fun `recuperacao inicial restaura SyncState OfflineFallback persistido no Room`() = runTest {
+    fun `recuperacao inicial transita de Loading para OfflineFallback quando ha falha persistida`() = runTest {
         val persistedFallback = SyncMetadataEntity(
             lastAttemptEpochMillis = 1_700_000_020_000L,
             lastAttemptStatus = SyncMetadataEntity.STATUS_OFFLINE_FALLBACK,
@@ -245,14 +279,82 @@ class ArchiveSyncRepositoryImplTest {
             lastSuccessfulArticlesCount = 8,
             lastSuccessfulRemoteVersion = ArchiveSyncRepositoryImpl.MANIFEST_VERSION_UNAVAILABLE
         )
-        val syncDao = FakeSyncMetadataDao(initialEntity = persistedFallback)
+        val syncDao = FakeSyncMetadataDao(
+            initialEntity = persistedFallback,
+            deferInitialEmission = true
+        )
         val repository = createRepository(syncDao = syncDao)
 
-        val recovered = repository.syncState.first { it !is SyncState.Idle }
+        advanceUntilIdle()
+        assertEquals(SyncState.Loading, repository.syncState.value)
 
-        val state = recovered as SyncState.OfflineFallback
+        syncDao.emitInitialMetadata()
+        advanceUntilIdle()
+
+        val state = repository.syncState.value as SyncState.OfflineFallback
         assertEquals("Sem conectividade na última tentativa", state.reason)
         assertEquals(1_700_000_020_000L, state.lastAttemptEpochMillis)
+    }
+
+    @Test
+    fun `apos primeira emissao do Room estado nao regride para Loading em erro cancelamento ou sucesso`() = runTest {
+        var attempt = 0
+        val syncDao = FakeSyncMetadataDao(
+            initialEntity = null,
+            deferInitialEmission = true
+        )
+        val repository = createRepository(
+            dictionaryRepository = FakeDictionaryRepository(
+                customSync = {
+                    attempt += 1
+                    when (attempt) {
+                        1 -> AppResult.Error("Sem internet")
+                        2 -> throw CancellationException("Cancelado")
+                        else -> AppResult.Success(10)
+                    }
+                }
+            ),
+            encyclopediaRepository = FakeEncyclopediaRepository(syncResult = AppResult.Success(4)),
+            syncDao = syncDao
+        )
+
+        val emittedStates = mutableListOf<SyncState>()
+        val collectorJob = launch(UnconfinedTestDispatcher(testScheduler)) {
+            repository.syncState.collect { emittedStates += it }
+        }
+
+        advanceUntilIdle()
+        assertEquals(SyncState.Loading, repository.syncState.value)
+
+        // Primeira emissão do Room: banco vazio -> Idle
+        syncDao.emitInitialMetadata()
+        advanceUntilIdle()
+        assertEquals(SyncState.Idle, repository.syncState.value)
+
+        // Tentativa 1 (erro) -> OfflineFallback
+        repository.syncArchive()
+        advanceUntilIdle()
+        assertTrue(repository.syncState.value is SyncState.OfflineFallback)
+
+        // Tentativa 2 (cancelamento) -> restaura OfflineFallback, nunca Loading
+        try {
+            repository.syncArchive()
+            fail("Era esperado relançar CancellationException")
+        } catch (_: CancellationException) {
+            advanceUntilIdle()
+        }
+        assertTrue(repository.syncState.value is SyncState.OfflineFallback)
+
+        // Tentativa 3 (sucesso) -> Synced
+        repository.syncArchive()
+        advanceUntilIdle()
+        assertTrue(repository.syncState.value is SyncState.Synced)
+
+        assertEquals(SyncState.Loading, emittedStates.first())
+        assertEquals(1, emittedStates.count { it is SyncState.Loading })
+        assertFalse(emittedStates.drop(1).any { it is SyncState.Loading })
+
+        collectorJob.cancel()
     }
 
     @Test
@@ -506,9 +608,15 @@ class ArchiveSyncRepositoryImplTest {
         private val throwOnRead: Throwable? = null,
         private val throwOnUpsert: Throwable? = null,
         private val throwOnRecordFailure: Throwable? = null,
-        private val deferFlowEmission: Boolean = false
+        private val deferFlowEmission: Boolean = false,
+        private val deferInitialEmission: Boolean = false
     ) : SyncMetadataDao {
-        private val state = MutableStateFlow(initialEntity)
+        private val immediateState = MutableStateFlow(initialEntity)
+        private val controlledState = MutableSharedFlow<SyncMetadataEntity?>(
+            replay = 1,
+            extraBufferCapacity = 1,
+            onBufferOverflow = BufferOverflow.DROP_OLDEST
+        )
         var lastSaved: SyncMetadataEntity? = initialEntity
             private set
         var observedCount: Int = 0
@@ -516,7 +624,11 @@ class ArchiveSyncRepositoryImplTest {
 
         override fun observeMetadata(id: String): Flow<SyncMetadataEntity?> {
             observedCount += 1
-            return state
+            return if (deferInitialEmission) {
+                controlledState.asSharedFlow()
+            } else {
+                immediateState
+            }
         }
 
         override suspend fun getMetadataOnce(id: String): SyncMetadataEntity? {
@@ -528,7 +640,7 @@ class ArchiveSyncRepositoryImplTest {
             throwOnUpsert?.let { throw it }
             lastSaved = metadata
             if (!deferFlowEmission) {
-                state.value = metadata
+                emitToObservers(metadata)
             }
         }
 
@@ -540,8 +652,20 @@ class ArchiveSyncRepositoryImplTest {
             super.recordAttemptFailure(attemptEpochMillis, failureReason)
         }
 
+        fun emitInitialMetadata() {
+            emitToObservers(lastSaved)
+        }
+
         fun emitLatestToObservers() {
-            state.value = lastSaved
+            emitToObservers(lastSaved)
+        }
+
+        private fun emitToObservers(metadata: SyncMetadataEntity?) {
+            if (deferInitialEmission) {
+                check(controlledState.tryEmit(metadata))
+            } else {
+                immediateState.value = metadata
+            }
         }
     }
 

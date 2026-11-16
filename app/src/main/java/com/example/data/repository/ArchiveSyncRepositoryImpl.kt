@@ -66,7 +66,7 @@ class ArchiveSyncRepositoryImpl @Inject constructor(
         .stateIn(
             scope = applicationScope,
             started = SharingStarted.Eagerly,
-            initialValue = SyncState.Idle
+            initialValue = SyncState.Loading
         )
 
     private fun resolveEffectiveState(
