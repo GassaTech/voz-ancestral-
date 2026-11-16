@@ -4,9 +4,10 @@ import com.example.core.common.AppResult
 import com.example.domain.model.ArchiveStats
 import com.example.domain.model.SyncState
 import com.example.domain.repository.SyncStatusRepository
+import com.example.domain.sync.ArchiveSyncCoordinator
+import com.example.domain.sync.ArchiveSyncOutcome
 import com.example.domain.usecase.ObserveArchiveStatsUseCase
 import com.example.domain.usecase.ObserveSyncStateUseCase
-import com.example.domain.usecase.SyncArchiveUseCase
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.CyclicBarrier
 import java.util.concurrent.Executors
@@ -138,19 +139,20 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `syncManually executa o caso de uso de sincronizacao e atualiza o estado`() = runTest(testDispatcher) {
-        val fakeRepository = FakeSyncStatusRepository(
-            onSync = { repo ->
+    fun `syncManually executa o coordenador de sincronizacao e atualiza o estado`() = runTest(testDispatcher) {
+        val fakeRepository = FakeSyncStatusRepository()
+        val fakeCoordinator = FakeArchiveSyncCoordinator(
+            onManualSync = {
                 val synced = SyncState.Synced(
                     lastSyncedEpochMillis = 1_700_000_100_000L,
                     entriesCount = 12,
                     articlesCount = 3
                 )
-                repo.syncStateFlow.value = synced
-                AppResult.Success(Unit)
+                fakeRepository.syncStateFlow.value = synced
+                ArchiveSyncOutcome.Executed(AppResult.Success(Unit))
             }
         )
-        val viewModel = createViewModel(fakeRepository)
+        val viewModel = createViewModel(fakeRepository, fakeCoordinator)
         val collectorJob = launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.uiState.collect {}
         }
@@ -158,21 +160,23 @@ class HomeViewModelTest {
         viewModel.syncManually()
         advanceUntilIdle()
 
-        assertEquals(1, fakeRepository.syncCallCount)
+        assertEquals(1, fakeCoordinator.manualSyncCallCount)
+        assertEquals(0, fakeCoordinator.autoSyncCallCount)
         assertTrue(viewModel.uiState.value.syncState is SyncState.Synced)
         collectorJob.cancel()
     }
 
     @Test
     fun `syncManually bloqueia chamadas repetidas enquanto sincronizacao anterior esta ativa`() = runTest(testDispatcher) {
-        val syncGate = CompletableDeferred<AppResult<Unit>>()
-        val fakeRepository = FakeSyncStatusRepository(
-            onSync = { repo ->
-                repo.syncStateFlow.value = SyncState.Syncing
+        val syncGate = CompletableDeferred<ArchiveSyncOutcome>()
+        val fakeRepository = FakeSyncStatusRepository()
+        val fakeCoordinator = FakeArchiveSyncCoordinator(
+            onManualSync = {
+                fakeRepository.syncStateFlow.value = SyncState.Syncing
                 syncGate.await()
             }
         )
-        val viewModel = createViewModel(fakeRepository)
+        val viewModel = createViewModel(fakeRepository, fakeCoordinator)
         val collectorJob = launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.uiState.collect {}
         }
@@ -183,23 +187,23 @@ class HomeViewModelTest {
         viewModel.syncManually()
         advanceUntilIdle()
 
-        assertEquals(1, fakeRepository.syncCallCount)
+        assertEquals(1, fakeCoordinator.manualSyncCallCount)
         assertEquals(SyncState.Syncing, viewModel.uiState.value.syncState)
 
         // Novo clique enquanto aguarda conclusão do gate.
         viewModel.syncManually()
         advanceUntilIdle()
-        assertEquals(1, fakeRepository.syncCallCount)
+        assertEquals(1, fakeCoordinator.manualSyncCallCount)
 
         fakeRepository.syncStateFlow.value = SyncState.Synced(
             lastSyncedEpochMillis = 1_700_000_200_000L,
             entriesCount = 10,
             articlesCount = 2
         )
-        syncGate.complete(AppResult.Success(Unit))
+        syncGate.complete(ArchiveSyncOutcome.Executed(AppResult.Success(Unit)))
         advanceUntilIdle()
 
-        assertEquals(1, fakeRepository.syncCallCount)
+        assertEquals(1, fakeCoordinator.manualSyncCallCount)
         collectorJob.cancel()
     }
 
@@ -208,55 +212,57 @@ class HomeViewModelTest {
         val fakeRepository = FakeSyncStatusRepository(
             initialSyncState = SyncState.Syncing
         )
-        val viewModel = createViewModel(fakeRepository)
+        val fakeCoordinator = FakeArchiveSyncCoordinator()
+        val viewModel = createViewModel(fakeRepository, fakeCoordinator)
 
         viewModel.syncManually()
         advanceUntilIdle()
 
-        assertEquals(0, fakeRepository.syncCallCount)
+        assertEquals(0, fakeCoordinator.manualSyncCallCount)
 
         fakeRepository.syncStateFlow.value = SyncState.Idle
         viewModel.syncManually()
         advanceUntilIdle()
 
-        assertEquals(1, fakeRepository.syncCallCount)
+        assertEquals(1, fakeCoordinator.manualSyncCallCount)
     }
 
     @Test
     fun `syncManually libera controle apos conclusao permitindo nova sincronizacao`() = runTest(testDispatcher) {
         var callNumber = 0
-        val fakeRepository = FakeSyncStatusRepository(
-            onSync = { repo ->
+        val fakeRepository = FakeSyncStatusRepository()
+        val fakeCoordinator = FakeArchiveSyncCoordinator(
+            onManualSync = {
                 callNumber += 1
                 if (callNumber == 1) {
-                    repo.syncStateFlow.value = SyncState.OfflineFallback(
+                    fakeRepository.syncStateFlow.value = SyncState.OfflineFallback(
                         reason = "Falha temporária",
                         lastAttemptEpochMillis = 1_700_000_300_000L
                     )
-                    AppResult.Error("Falha temporária")
+                    ArchiveSyncOutcome.Executed(AppResult.Error("Falha temporária"))
                 } else {
-                    repo.syncStateFlow.value = SyncState.Synced(
+                    fakeRepository.syncStateFlow.value = SyncState.Synced(
                         lastSyncedEpochMillis = 1_700_000_310_000L,
                         entriesCount = 15,
                         articlesCount = 4
                     )
-                    AppResult.Success(Unit)
+                    ArchiveSyncOutcome.Executed(AppResult.Success(Unit))
                 }
             }
         )
-        val viewModel = createViewModel(fakeRepository)
+        val viewModel = createViewModel(fakeRepository, fakeCoordinator)
         val collectorJob = launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.uiState.collect {}
         }
 
         viewModel.syncManually()
         advanceUntilIdle()
-        assertEquals(1, fakeRepository.syncCallCount)
+        assertEquals(1, fakeCoordinator.manualSyncCallCount)
         assertTrue(viewModel.uiState.value.syncState is SyncState.OfflineFallback)
 
         viewModel.syncManually()
         advanceUntilIdle()
-        assertEquals(2, fakeRepository.syncCallCount)
+        assertEquals(2, fakeCoordinator.manualSyncCallCount)
         assertTrue(viewModel.uiState.value.syncState is SyncState.Synced)
 
         collectorJob.cancel()
@@ -264,13 +270,14 @@ class HomeViewModelTest {
 
     @Test
     fun `syncManually libera controle e preserva viewModelScope apos cancelamento`() = runTest(testDispatcher) {
-        val firstAttemptGate = CompletableDeferred<AppResult<Unit>>()
+        val firstAttemptGate = CompletableDeferred<ArchiveSyncOutcome>()
         var attempt = 0
-        val fakeRepository = FakeSyncStatusRepository(
-            onSync = { repo ->
+        val fakeRepository = FakeSyncStatusRepository()
+        val fakeCoordinator = FakeArchiveSyncCoordinator(
+            onManualSync = {
                 attempt += 1
                 if (attempt == 1) {
-                    repo.syncStateFlow.value = SyncState.Syncing
+                    fakeRepository.syncStateFlow.value = SyncState.Syncing
                     firstAttemptGate.await()
                 } else {
                     val synced = SyncState.Synced(
@@ -278,19 +285,19 @@ class HomeViewModelTest {
                         entriesCount = 18,
                         articlesCount = 6
                     )
-                    repo.syncStateFlow.value = synced
-                    AppResult.Success(Unit)
+                    fakeRepository.syncStateFlow.value = synced
+                    ArchiveSyncOutcome.Executed(AppResult.Success(Unit))
                 }
             }
         )
-        val viewModel = createViewModel(fakeRepository)
+        val viewModel = createViewModel(fakeRepository, fakeCoordinator)
         val collectorJob = launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.uiState.collect {}
         }
 
         viewModel.syncManually()
         advanceUntilIdle()
-        assertEquals(1, fakeRepository.syncCallCount)
+        assertEquals(1, fakeCoordinator.manualSyncCallCount)
 
         // Simula cancelamento durante a sincronização e restauração do estado anterior.
         fakeRepository.syncStateFlow.value = SyncState.Idle
@@ -303,21 +310,22 @@ class HomeViewModelTest {
         viewModel.syncManually()
         advanceUntilIdle()
 
-        assertEquals(2, fakeRepository.syncCallCount)
+        assertEquals(2, fakeCoordinator.manualSyncCallCount)
         assertTrue(viewModel.uiState.value.syncState is SyncState.Synced)
         collectorJob.cancel()
     }
 
     @Test
     fun `chamadas concorrentes a syncManually em multiplas threads iniciam apenas uma sincronizacao`() = runTest(testDispatcher) {
-        val syncGate = CompletableDeferred<AppResult<Unit>>()
-        val fakeRepository = FakeSyncStatusRepository(
-            onSync = { repo ->
-                repo.syncStateFlow.value = SyncState.Syncing
+        val syncGate = CompletableDeferred<ArchiveSyncOutcome>()
+        val fakeRepository = FakeSyncStatusRepository()
+        val fakeCoordinator = FakeArchiveSyncCoordinator(
+            onManualSync = {
+                fakeRepository.syncStateFlow.value = SyncState.Syncing
                 syncGate.await()
             }
         )
-        val viewModel = createViewModel(fakeRepository)
+        val viewModel = createViewModel(fakeRepository, fakeCoordinator)
 
         val threadCount = 8
         val executor = Executors.newFixedThreadPool(threadCount)
@@ -338,52 +346,70 @@ class HomeViewModelTest {
 
             assertTrue(finishedLatch.await(5, TimeUnit.SECONDS))
             advanceUntilIdle()
-            assertEquals(1, fakeRepository.syncCallCount)
+            assertEquals(1, fakeCoordinator.manualSyncCallCount)
 
             fakeRepository.syncStateFlow.value = SyncState.Synced(
                 lastSyncedEpochMillis = 1_700_000_500_000L,
                 entriesCount = 5,
                 articlesCount = 2
             )
-            syncGate.complete(AppResult.Success(Unit))
+            syncGate.complete(ArchiveSyncOutcome.Executed(AppResult.Success(Unit)))
             advanceUntilIdle()
 
-            assertEquals(1, fakeRepository.syncCallCount)
+            assertEquals(1, fakeCoordinator.manualSyncCallCount)
 
             // Após a conclusão da única execução, uma nova chamada é permitida.
             viewModel.syncManually()
             advanceUntilIdle()
-            assertEquals(2, fakeRepository.syncCallCount)
+            assertEquals(2, fakeCoordinator.manualSyncCallCount)
         } finally {
             executor.shutdownNow()
         }
     }
 
-    private fun createViewModel(repository: SyncStatusRepository): HomeViewModel = HomeViewModel(
+    private fun createViewModel(
+        repository: SyncStatusRepository,
+        coordinator: ArchiveSyncCoordinator = FakeArchiveSyncCoordinator()
+    ): HomeViewModel = HomeViewModel(
         observeArchiveStats = ObserveArchiveStatsUseCase(repository),
         observeSyncState = ObserveSyncStateUseCase(repository),
-        syncArchive = SyncArchiveUseCase(repository)
+        syncCoordinator = coordinator
     )
 
     private class FakeSyncStatusRepository(
         initialStats: ArchiveStats = ArchiveStats(),
-        initialSyncState: SyncState = SyncState.Idle,
-        private val onSync: suspend (FakeSyncStatusRepository) -> AppResult<Unit> = {
-            AppResult.Success(Unit)
-        }
+        initialSyncState: SyncState = SyncState.Idle
     ) : SyncStatusRepository {
         val statsFlow = MutableStateFlow(initialStats)
         val syncStateFlow = MutableStateFlow(initialSyncState)
-        var syncCallCount: Int = 0
-            private set
 
         override val syncState: StateFlow<SyncState> = syncStateFlow
 
         override fun observeArchiveStats(): Flow<ArchiveStats> = statsFlow
 
         override suspend fun syncArchive(): AppResult<Unit> {
-            syncCallCount += 1
-            return onSync(this)
+            throw AssertionError("syncArchive() não deve ser chamado diretamente pelo HomeViewModel")
+        }
+    }
+
+    private class FakeArchiveSyncCoordinator(
+        private val onManualSync: suspend () -> ArchiveSyncOutcome = {
+            ArchiveSyncOutcome.Executed(AppResult.Success(Unit))
+        }
+    ) : ArchiveSyncCoordinator {
+        var autoSyncCallCount: Int = 0
+            private set
+        var manualSyncCallCount: Int = 0
+            private set
+
+        override suspend fun requestAutoSync(): ArchiveSyncOutcome {
+            autoSyncCallCount += 1
+            throw AssertionError("requestAutoSync() não deve ser chamado nesta etapa")
+        }
+
+        override suspend fun requestManualSync(): ArchiveSyncOutcome {
+            manualSyncCallCount += 1
+            return onManualSync()
         }
     }
 }

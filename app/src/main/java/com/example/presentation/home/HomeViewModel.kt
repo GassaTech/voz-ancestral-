@@ -4,9 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.domain.model.ArchiveStats
 import com.example.domain.model.SyncState
+import com.example.domain.sync.ArchiveSyncCoordinator
 import com.example.domain.usecase.ObserveArchiveStatsUseCase
 import com.example.domain.usecase.ObserveSyncStateUseCase
-import com.example.domain.usecase.SyncArchiveUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
@@ -29,7 +29,7 @@ data class HomeUiState(
 class HomeViewModel @Inject constructor(
     observeArchiveStats: ObserveArchiveStatsUseCase,
     observeSyncState: ObserveSyncStateUseCase,
-    private val syncArchive: SyncArchiveUseCase
+    private val syncCoordinator: ArchiveSyncCoordinator
 ) : ViewModel() {
 
     private val syncStateFlow: StateFlow<SyncState> = observeSyncState()
@@ -67,7 +67,7 @@ class HomeViewModel @Inject constructor(
 
             val job = viewModelScope.launch(start = CoroutineStart.LAZY) {
                 try {
-                    syncArchive()
+                    syncCoordinator.requestManualSync()
                 } catch (ce: CancellationException) {
                     throw ce
                 }
