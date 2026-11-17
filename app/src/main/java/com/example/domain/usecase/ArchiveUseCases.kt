@@ -5,6 +5,7 @@ import com.example.domain.model.ArchiveStats
 import com.example.domain.model.CulturalArticle
 import com.example.domain.model.CulturalTopic
 import com.example.domain.model.DictionaryEntry
+import com.example.domain.model.GrammaticalClass
 import com.example.domain.model.SemanticCategory
 import com.example.domain.model.SyncState
 import com.example.domain.repository.DictionaryRepository
@@ -20,9 +21,15 @@ class ObserveDictionaryEntriesUseCase @Inject constructor(
     operator fun invoke(
         query: String = "",
         category: SemanticCategory? = null,
-        onlyFavorites: Boolean = false
+        onlyFavorites: Boolean = false,
+        grammaticalClass: GrammaticalClass? = null
     ): Flow<List<DictionaryEntry>> =
-        repository.observeEntries(query = query, category = category, onlyFavorites = onlyFavorites)
+        repository.observeEntries(
+            query = query,
+            category = category,
+            onlyFavorites = onlyFavorites,
+            grammaticalClass = grammaticalClass
+        )
 }
 
 class ObserveDictionaryEntryByIdUseCase @Inject constructor(

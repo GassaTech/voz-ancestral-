@@ -15,6 +15,7 @@ interface DictionaryDao {
         SELECT * FROM dictionary_entries
         WHERE (:onlyFavorites = 0 OR is_favorite = 1)
           AND (:category IS NULL OR semantic_category = :category)
+          AND (:grammaticalClass IS NULL OR grammatical_class = :grammaticalClass)
           AND (
             :query = ''
             OR parintintin_word LIKE '%' || :query || '%'
@@ -27,7 +28,8 @@ interface DictionaryDao {
     fun observeEntries(
         query: String,
         category: String?,
-        onlyFavorites: Boolean
+        onlyFavorites: Boolean,
+        grammaticalClass: String? = null
     ): Flow<List<DictionaryEntryEntity>>
 
     @Query("SELECT * FROM dictionary_entries WHERE id = :entryId LIMIT 1")

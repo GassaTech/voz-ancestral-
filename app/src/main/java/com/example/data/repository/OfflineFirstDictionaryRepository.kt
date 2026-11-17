@@ -9,6 +9,7 @@ import com.example.data.mapper.toDomain
 import com.example.data.mapper.toEntity
 import com.example.data.remote.datasource.RemoteArchiveDataSource
 import com.example.domain.model.DictionaryEntry
+import com.example.domain.model.GrammaticalClass
 import com.example.domain.model.SemanticCategory
 import com.example.domain.repository.DictionaryRepository
 import javax.inject.Inject
@@ -29,12 +30,14 @@ class OfflineFirstDictionaryRepository @Inject constructor(
     override fun observeEntries(
         query: String,
         category: SemanticCategory?,
-        onlyFavorites: Boolean
+        onlyFavorites: Boolean,
+        grammaticalClass: GrammaticalClass?
     ): Flow<List<DictionaryEntry>> =
         dictionaryDao.observeEntries(
             query = query.trim(),
             category = category?.name,
-            onlyFavorites = onlyFavorites
+            onlyFavorites = onlyFavorites,
+            grammaticalClass = grammaticalClass?.name
         )
             .map { entities -> entities.map { it.toDomain() } }
             .flowOn(dispatchers.io)

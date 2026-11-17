@@ -7,6 +7,7 @@ import com.example.data.local.entity.SyncMetadataEntity
 import com.example.domain.model.CulturalArticle
 import com.example.domain.model.CulturalTopic
 import com.example.domain.model.DictionaryEntry
+import com.example.domain.model.GrammaticalClass
 import com.example.domain.model.SemanticCategory
 import com.example.domain.model.SyncState
 import com.example.domain.repository.DictionaryRepository
@@ -702,7 +703,8 @@ class ArchiveSyncRepositoryImplTest {
         override fun observeEntries(
             query: String,
             category: SemanticCategory?,
-            onlyFavorites: Boolean
+            onlyFavorites: Boolean,
+            grammaticalClass: GrammaticalClass?
         ): Flow<List<DictionaryEntry>> = flowOf(emptyList())
 
         override fun observeEntryById(entryId: String): Flow<DictionaryEntry?> = flowOf(null)

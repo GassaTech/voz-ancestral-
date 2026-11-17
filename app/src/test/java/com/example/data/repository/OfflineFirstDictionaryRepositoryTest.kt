@@ -13,6 +13,8 @@ import com.example.data.remote.datasource.RemoteArchiveDataSource
 import com.example.data.remote.dto.ArchiveManifestDto
 import com.example.data.remote.dto.CulturalArticleDto
 import com.example.data.remote.dto.DictionaryEntryDto
+import com.example.domain.model.GrammaticalClass
+import com.example.domain.model.SemanticCategory
 import java.io.IOException
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CompletableDeferred
@@ -293,11 +295,115 @@ class OfflineFirstDictionaryRepositoryTest {
         }
     }
 
+    @Test
+    fun `observeEntries filtra por classe gramatical individualmente e mantem ordenacao alfabetica`() = runBlocking {
+        database.dictionaryDao().upsertAll(
+            listOf(
+                sampleEntity(
+                    id = "dict_1",
+                    word = "Ywy",
+                    grammaticalClass = "NOUN",
+                    isFavorite = false
+                ),
+                sampleEntity(
+                    id = "dict_2",
+                    word = "pyhyk",
+                    grammaticalClass = "VERB",
+                    isFavorite = false
+                ),
+                sampleEntity(
+                    id = "dict_3",
+                    word = "Awa",
+                    grammaticalClass = "VERB",
+                    isFavorite = false
+                ),
+                sampleEntity(
+                    id = "dict_4",
+                    word = "Porang",
+                    grammaticalClass = "ADJECTIVE",
+                    isFavorite = false
+                )
+            )
+        )
+
+        val verbs = repository.observeEntries(grammaticalClass = GrammaticalClass.VERB).first()
+        val nouns = repository.observeEntries(grammaticalClass = GrammaticalClass.NOUN).first()
+        val all = repository.observeEntries(grammaticalClass = null).first()
+
+        assertEquals(listOf("dict_3", "dict_2"), verbs.map { it.id })
+        assertTrue(verbs.all { it.grammaticalClass == GrammaticalClass.VERB })
+        assertEquals(listOf("dict_1"), nouns.map { it.id })
+        assertEquals(4, all.size)
+    }
+
+    @Test
+    fun `observeEntries combina classe gramatical com busca textual categoria semantica e favoritos`() = runBlocking {
+        database.dictionaryDao().upsertAll(
+            listOf(
+                sampleEntity(
+                    id = "dict_1",
+                    word = "Kaa",
+                    translation = "Mata verde",
+                    grammaticalClass = "NOUN",
+                    semanticCategory = "NATURE",
+                    isFavorite = true
+                ),
+                sampleEntity(
+                    id = "dict_2",
+                    word = "Kaa-ete",
+                    translation = "Floresta alta",
+                    grammaticalClass = "ADJECTIVE",
+                    semanticCategory = "NATURE",
+                    isFavorite = true
+                ),
+                sampleEntity(
+                    id = "dict_3",
+                    word = "Pira",
+                    translation = "Peixe de rio",
+                    grammaticalClass = "NOUN",
+                    semanticCategory = "ANIMALS",
+                    isFavorite = true
+                ),
+                sampleEntity(
+                    id = "dict_4",
+                    word = "Ywy",
+                    translation = "Terra de mata",
+                    grammaticalClass = "NOUN",
+                    semanticCategory = "NATURE",
+                    isFavorite = false
+                )
+            )
+        )
+
+        val byCategoryAndClass = repository.observeEntries(
+            category = SemanticCategory.NATURE,
+            grammaticalClass = GrammaticalClass.NOUN
+        ).first()
+        assertEquals(listOf("dict_1", "dict_4"), byCategoryAndClass.map { it.id })
+
+        val byAllFilters = repository.observeEntries(
+            query = "  mata  ",
+            category = SemanticCategory.NATURE,
+            onlyFavorites = true,
+            grammaticalClass = GrammaticalClass.NOUN
+        ).first()
+        assertEquals(listOf("dict_1"), byAllFilters.map { it.id })
+
+        val withoutMatches = repository.observeEntries(
+            query = "mata",
+            category = SemanticCategory.ANIMALS,
+            grammaticalClass = GrammaticalClass.VERB
+        ).first()
+        assertTrue(withoutMatches.isEmpty())
+    }
+
     private fun sampleEntity(
         id: String,
         word: String,
         translation: String = "Tradução $id",
         culturalNote: String = "Nota $id",
+        grammaticalClass: String = "NOUN",
+        semanticCategory: String = "NATURE",
         isFavorite: Boolean,
         updatedAt: Long = 1_000L
     ): DictionaryEntryEntity = DictionaryEntryEntity(
@@ -305,8 +411,8 @@ class OfflineFirstDictionaryRepositoryTest {
         parintintinWord = word,
         phoneticIpa = "/$id/",
         portugueseTranslation = translation,
-        grammaticalClass = "NOUN",
-        semanticCategory = "NATURE",
+        grammaticalClass = grammaticalClass,
+        semanticCategory = semanticCategory,
         exampleParintintin = "Exemplo $word",
         examplePortuguese = "Exemplo $translation",
         culturalNote = culturalNote,
