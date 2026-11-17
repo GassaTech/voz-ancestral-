@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -21,6 +20,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.R
 import com.example.presentation.components.ProvisionalDestinationScreen
+import com.example.presentation.dictionary.DictionaryScreen
 import com.example.presentation.encyclopedia.EncyclopediaScreen
 import com.example.presentation.home.HomeScreen
 
@@ -71,13 +71,7 @@ fun ParintintinNavHost(
             EncyclopediaScreen()
         }
         composable<AppDestination.Dictionary> {
-            ProvisionalDestinationScreen(
-                icon = Icons.Outlined.MenuBook,
-                title = stringResource(R.string.nav_dictionary),
-                description = stringResource(R.string.provisional_dictionary_desc),
-                tagSuffix = "dictionary",
-                onBackToHome = backToHome
-            )
+            DictionaryScreen()
         }
         composable<AppDestination.Favorites> {
             ProvisionalDestinationScreen(
