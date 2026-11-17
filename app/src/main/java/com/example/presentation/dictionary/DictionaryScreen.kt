@@ -112,9 +112,7 @@ fun DictionaryContent(
         ) {
             item {
                 DictionaryHeaderCard(
-                    entryCount = (uiState.contentState as? DictionaryEntriesState.Success)
-                        ?.entries
-                        ?.size ?: 0
+                    totalLocalEntriesCount = uiState.totalLocalEntriesCount
                 )
             }
 
@@ -193,8 +191,13 @@ fun DictionaryContent(
                     ) {
                         if (uiState.contentState is DictionaryEntriesState.Success) {
                             val count = uiState.contentState.entries.size
+                            val countText = if (hasActiveFilter) {
+                                stringResource(R.string.dictionary_filtered_results_count, count)
+                            } else {
+                                stringResource(R.string.dictionary_entries_count, count)
+                            }
                             Text(
-                                text = stringResource(R.string.dictionary_entries_count, count),
+                                text = countText,
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.testTag("dictionary_entries_count")
@@ -307,7 +310,7 @@ fun DictionaryContent(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun DictionaryHeaderCard(entryCount: Int) {
+private fun DictionaryHeaderCard(totalLocalEntriesCount: Int) {
     Card(
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(
@@ -355,9 +358,13 @@ private fun DictionaryHeaderCard(entryCount: Int) {
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = stringResource(R.string.dictionary_entries_count, entryCount),
+                            text = stringResource(
+                                R.string.dictionary_entries_count,
+                                totalLocalEntriesCount
+                            ),
                             style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.testTag("dictionary_total_entries_count")
                         )
                     }
                 }

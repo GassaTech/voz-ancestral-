@@ -107,6 +107,7 @@
     <string name="dictionary_all_grammatical_classes">Todas</string>
     <string name="dictionary_entries_section_title">Verbetes disponíveis</string>
     <string name="dictionary_entries_count">%1$d verbetes locais</string>
+    <string name="dictionary_filtered_results_count">%1$d encontrados</string>
     <string name="dictionary_loading">Consultando verbetes locais…</string>
     <string name="cd_dictionary_loading">Carregando verbetes do dicionário local</string>
     <string name="dictionary_empty_title">Nenhum verbete cadastrado ainda</string>

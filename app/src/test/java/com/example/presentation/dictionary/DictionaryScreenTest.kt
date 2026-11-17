@@ -481,6 +481,90 @@ class DictionaryScreenTest {
         assertEquals(firstBounds.top, secondBounds.top, 2f)
     }
 
+    @Test
+    fun `cabecalho exibe zero verbetes locais quando banco esta vazio`() {
+        composeTestRule.setContent {
+            ParintintinTheme {
+                DictionaryContent(
+                    uiState = DictionaryUiState(
+                        totalLocalEntriesCount = 0,
+                        contentState = DictionaryEntriesState.Empty(hasActiveFilter = false)
+                    ),
+                    onQueryChange = {},
+                    onSelectCategory = {},
+                    onSelectGrammaticalClass = {},
+                    onClearFilters = {},
+                    onRetry = {}
+                )
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithTag("dictionary_total_entries_count")
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("0 verbetes locais").assertIsDisplayed()
+    }
+
+    @Test
+    fun `cabecalho mantem total local quando pesquisa nao encontra resultados`() {
+        composeTestRule.setContent {
+            ParintintinTheme {
+                DictionaryContent(
+                    uiState = DictionaryUiState(
+                        query = "TERMO_INEXISTENTE",
+                        totalLocalEntriesCount = 12,
+                        contentState = DictionaryEntriesState.Empty(hasActiveFilter = true)
+                    ),
+                    onQueryChange = {},
+                    onSelectCategory = {},
+                    onSelectGrammaticalClass = {},
+                    onClearFilters = {},
+                    onRetry = {}
+                )
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithTag("dictionary_total_entries_count")
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("12 verbetes locais").assertIsDisplayed()
+        scrollListToTag("dictionary_empty_state")
+        composeTestRule.onNodeWithText("Nenhum verbete encontrado").assertIsDisplayed()
+    }
+
+    @Test
+    fun `cabecalho exibe total local separado da contagem de resultados filtrados`() {
+        val filteredEntries = listOf(
+            sampleEntry(id = "f1", word = "VERBETE_1"),
+            sampleEntry(id = "f2", word = "VERBETE_2")
+        )
+
+        composeTestRule.setContent {
+            ParintintinTheme {
+                DictionaryContent(
+                    uiState = DictionaryUiState(
+                        selectedCategory = SemanticCategory.NATURE,
+                        totalLocalEntriesCount = 15,
+                        contentState = DictionaryEntriesState.Success(filteredEntries)
+                    ),
+                    onQueryChange = {},
+                    onSelectCategory = {},
+                    onSelectGrammaticalClass = {},
+                    onClearFilters = {},
+                    onRetry = {}
+                )
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithTag("dictionary_total_entries_count")
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("15 verbetes locais").assertIsDisplayed()
+        scrollListToTag("dictionary_entries_count")
+        composeTestRule.onNodeWithTag("dictionary_entries_count").assertIsDisplayed()
+        composeTestRule.onNodeWithText("2 encontrados").assertIsDisplayed()
+    }
+
     private fun scrollListToTag(tag: String) {
         composeTestRule.onNodeWithTag("dictionary_list")
             .performScrollToNode(hasTestTag(tag))

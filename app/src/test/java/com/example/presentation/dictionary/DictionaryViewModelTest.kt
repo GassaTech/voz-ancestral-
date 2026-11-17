@@ -1,10 +1,14 @@
 package com.example.presentation.dictionary
 
 import com.example.core.common.AppResult
+import com.example.domain.model.ArchiveStats
 import com.example.domain.model.DictionaryEntry
 import com.example.domain.model.GrammaticalClass
 import com.example.domain.model.SemanticCategory
+import com.example.domain.model.SyncState
 import com.example.domain.repository.DictionaryRepository
+import com.example.domain.repository.SyncStatusRepository
+import com.example.domain.usecase.ObserveArchiveStatsUseCase
 import com.example.domain.usecase.ObserveDictionaryEntriesUseCase
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -12,6 +16,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
@@ -58,6 +63,7 @@ class DictionaryViewModelTest {
                 query = "",
                 selectedCategory = null,
                 selectedGrammaticalClass = null,
+                totalLocalEntriesCount = 0,
                 contentState = DictionaryEntriesState.Loading
             ),
             viewModel.uiState.value
@@ -520,8 +526,187 @@ class DictionaryViewModelTest {
         assertEquals(3, cancelledFlows)
     }
 
+    @Test
+    fun `14 - banco vazio e banco populado expoem totalLocalEntriesCount correto`() = runTest(testDispatcher) {
+        val emptyRepository = FakeDictionaryRepository(initialEntries = emptyList())
+        val emptyViewModel = createViewModel(emptyRepository)
+        val emptyCollector = launch(UnconfinedTestDispatcher(testScheduler)) {
+            emptyViewModel.uiState.collect {}
+        }
+        advanceUntilIdle()
+
+        assertEquals(0, emptyViewModel.uiState.value.totalLocalEntriesCount)
+        assertEquals(
+            DictionaryEntriesState.Empty(hasActiveFilter = false),
+            emptyViewModel.uiState.value.contentState
+        )
+        emptyCollector.cancel()
+
+        val entries = listOf(
+            sampleEntry(id = "e1", word = "TERMO_1"),
+            sampleEntry(id = "e2", word = "TERMO_2"),
+            sampleEntry(id = "e3", word = "TERMO_3")
+        )
+        val populatedRepository = FakeDictionaryRepository(initialEntries = entries)
+        val populatedViewModel = createViewModel(populatedRepository)
+        val populatedCollector = launch(UnconfinedTestDispatcher(testScheduler)) {
+            populatedViewModel.uiState.collect {}
+        }
+        advanceUntilIdle()
+
+        assertEquals(3, populatedViewModel.uiState.value.totalLocalEntriesCount)
+        assertEquals(
+            DictionaryEntriesState.Success(entries),
+            populatedViewModel.uiState.value.contentState
+        )
+        populatedCollector.cancel()
+    }
+
+    @Test
+    fun `15 - pesquisa com e sem resultados preserva totalLocalEntriesCount real do banco`() = runTest(testDispatcher) {
+        val first = sampleEntry(id = "e1", word = "TERMO_ALPHA")
+        val second = sampleEntry(id = "e2", word = "TERMO_BETA")
+        val third = sampleEntry(id = "e3", word = "TERMO_ALPHA_DOIS")
+        val fakeRepository = FakeDictionaryRepository(initialEntries = listOf(first, second, third))
+        val viewModel = createViewModel(fakeRepository)
+
+        val collectorJob = launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect {}
+        }
+        advanceUntilIdle()
+        assertEquals(3, viewModel.uiState.value.totalLocalEntriesCount)
+
+        // Pesquisa com resultados (2 de 3)
+        viewModel.onQueryChange("ALPHA")
+        advanceUntilIdle()
+        assertEquals(3, viewModel.uiState.value.totalLocalEntriesCount)
+        assertEquals(
+            DictionaryEntriesState.Success(listOf(first, third)),
+            viewModel.uiState.value.contentState
+        )
+
+        // Pesquisa sem resultados (0 de 3)
+        viewModel.onQueryChange("SEM_CORRESPONDENCIA")
+        advanceUntilIdle()
+        assertEquals(3, viewModel.uiState.value.totalLocalEntriesCount)
+        assertEquals(
+            DictionaryEntriesState.Empty(hasActiveFilter = true),
+            viewModel.uiState.value.contentState
+        )
+
+        collectorJob.cancel()
+    }
+
+    @Test
+    fun `16 - aplicacao de filtros semanticos e gramaticais mantem totalLocalEntriesCount separado`() = runTest(testDispatcher) {
+        val entries = listOf(
+            sampleEntry(
+                id = "e1",
+                word = "TERMO_1",
+                category = SemanticCategory.NATURE,
+                grammaticalClass = GrammaticalClass.NOUN
+            ),
+            sampleEntry(
+                id = "e2",
+                word = "TERMO_2",
+                category = SemanticCategory.FOOD,
+                grammaticalClass = GrammaticalClass.VERB
+            ),
+            sampleEntry(
+                id = "e3",
+                word = "TERMO_3",
+                category = SemanticCategory.ANIMALS,
+                grammaticalClass = GrammaticalClass.ADJECTIVE
+            ),
+            sampleEntry(
+                id = "e4",
+                word = "TERMO_4",
+                category = SemanticCategory.EVERYDAY,
+                grammaticalClass = GrammaticalClass.EXPRESSION
+            )
+        )
+        val fakeRepository = FakeDictionaryRepository(initialEntries = entries)
+        val viewModel = createViewModel(fakeRepository)
+
+        val collectorJob = launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect {}
+        }
+        advanceUntilIdle()
+
+        viewModel.onSelectCategory(SemanticCategory.FOOD)
+        advanceUntilIdle()
+        assertEquals(4, viewModel.uiState.value.totalLocalEntriesCount)
+        assertEquals(
+            DictionaryEntriesState.Success(listOf(entries[1])),
+            viewModel.uiState.value.contentState
+        )
+
+        viewModel.onSelectGrammaticalClass(GrammaticalClass.TOPONYM)
+        advanceUntilIdle()
+        assertEquals(4, viewModel.uiState.value.totalLocalEntriesCount)
+        assertEquals(
+            DictionaryEntriesState.Empty(hasActiveFilter = true),
+            viewModel.uiState.value.contentState
+        )
+
+        collectorJob.cancel()
+    }
+
+    @Test
+    fun `17 - insercao reativa de novos registros atualiza totalLocalEntriesCount automaticamente`() = runTest(testDispatcher) {
+        val fakeRepository = FakeDictionaryRepository(initialEntries = emptyList())
+        val viewModel = createViewModel(fakeRepository)
+
+        val collectorJob = launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect {}
+        }
+        advanceUntilIdle()
+        assertEquals(0, viewModel.uiState.value.totalLocalEntriesCount)
+        assertEquals(
+            DictionaryEntriesState.Empty(hasActiveFilter = false),
+            viewModel.uiState.value.contentState
+        )
+
+        val initialEntries = listOf(
+            sampleEntry(id = "e1", word = "TERMO_INICIAL_1"),
+            sampleEntry(id = "e2", word = "TERMO_INICIAL_2")
+        )
+        fakeRepository.replaceEntries(initialEntries)
+        advanceUntilIdle()
+
+        assertEquals(2, viewModel.uiState.value.totalLocalEntriesCount)
+        assertEquals(
+            DictionaryEntriesState.Success(initialEntries),
+            viewModel.uiState.value.contentState
+        )
+
+        // Mesmo com filtro sem resultado ativo, inserção de novo registro atualiza o total real
+        viewModel.onQueryChange("INEXISTENTE")
+        advanceUntilIdle()
+        assertEquals(2, viewModel.uiState.value.totalLocalEntriesCount)
+        assertEquals(
+            DictionaryEntriesState.Empty(hasActiveFilter = true),
+            viewModel.uiState.value.contentState
+        )
+
+        val updatedEntries = initialEntries + sampleEntry(id = "e3", word = "TERMO_NOVO_3")
+        fakeRepository.replaceEntries(updatedEntries)
+        advanceUntilIdle()
+
+        assertEquals(3, viewModel.uiState.value.totalLocalEntriesCount)
+        assertEquals(
+            DictionaryEntriesState.Empty(hasActiveFilter = true),
+            viewModel.uiState.value.contentState
+        )
+
+        collectorJob.cancel()
+    }
+
     private fun createViewModel(repository: DictionaryRepository): DictionaryViewModel =
-        DictionaryViewModel(ObserveDictionaryEntriesUseCase(repository))
+        DictionaryViewModel(
+            observeDictionaryEntries = ObserveDictionaryEntriesUseCase(repository),
+            observeArchiveStats = ObserveArchiveStatsUseCase(FakeSyncStatusRepository(repository))
+        )
 
     private fun sampleEntry(
         id: String,
@@ -587,10 +772,27 @@ class DictionaryViewModelTest {
             }
         }
 
+        fun replaceEntries(entries: List<DictionaryEntry>) {
+            entriesFlow.value = entries
+        }
+
         override fun observeEntryById(entryId: String): Flow<DictionaryEntry?> = flowOf(null)
         override fun observeTotalCount(): Flow<Int> = entriesFlow.map { it.size }
         override fun observeFavoriteCount(): Flow<Int> = flowOf(0)
         override suspend fun toggleFavorite(entryId: String) = Unit
         override suspend fun syncFromRemote(): AppResult<Int> = AppResult.Success(0)
+    }
+
+    private class FakeSyncStatusRepository(
+        private val dictionaryRepository: DictionaryRepository
+    ) : SyncStatusRepository {
+        override val syncState: StateFlow<SyncState> = MutableStateFlow(SyncState.Idle)
+
+        override fun observeArchiveStats(): Flow<ArchiveStats> =
+            dictionaryRepository.observeTotalCount().map { totalEntries ->
+                ArchiveStats(totalEntries = totalEntries)
+            }
+
+        override suspend fun syncArchive(): AppResult<Unit> = AppResult.Success(Unit)
     }
 }

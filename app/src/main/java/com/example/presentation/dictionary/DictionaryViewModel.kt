@@ -5,18 +5,21 @@ import androidx.lifecycle.viewModelScope
 import com.example.domain.model.DictionaryEntry
 import com.example.domain.model.GrammaticalClass
 import com.example.domain.model.SemanticCategory
+import com.example.domain.usecase.ObserveArchiveStatsUseCase
 import com.example.domain.usecase.ObserveDictionaryEntriesUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
@@ -33,12 +36,14 @@ data class DictionaryUiState(
     val query: String = "",
     val selectedCategory: SemanticCategory? = null,
     val selectedGrammaticalClass: GrammaticalClass? = null,
+    val totalLocalEntriesCount: Int = 0,
     val contentState: DictionaryEntriesState = DictionaryEntriesState.Loading
 )
 
 @HiltViewModel
 class DictionaryViewModel @Inject constructor(
-    private val observeDictionaryEntries: ObserveDictionaryEntriesUseCase
+    private val observeDictionaryEntries: ObserveDictionaryEntriesUseCase,
+    private val observeArchiveStats: ObserveArchiveStatsUseCase
 ) : ViewModel() {
 
     private data class DictionaryQueryCriteria(
@@ -52,6 +57,21 @@ class DictionaryViewModel @Inject constructor(
     private val selectedCategory = MutableStateFlow<SemanticCategory?>(null)
     private val selectedGrammaticalClass = MutableStateFlow<GrammaticalClass?>(null)
     private val retryTrigger = MutableStateFlow(0)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val totalLocalEntriesFlow: Flow<Int> = retryTrigger
+        .flatMapLatest {
+            observeArchiveStats()
+                .map { stats -> stats.totalEntries }
+                .catch { throwable ->
+                    if (throwable is CancellationException) {
+                        throw throwable
+                    }
+                    emit(0)
+                }
+        }
+        .onStart { emit(0) }
+        .distinctUntilChanged()
 
     @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
     private val entriesStateFlow = combine(
@@ -102,12 +122,14 @@ class DictionaryViewModel @Inject constructor(
         searchQuery,
         selectedCategory,
         selectedGrammaticalClass,
+        totalLocalEntriesFlow,
         entriesStateFlow
-    ) { query, category, grammaticalClass, contentState ->
+    ) { query, category, grammaticalClass, totalLocalEntriesCount, contentState ->
         DictionaryUiState(
             query = query,
             selectedCategory = category,
             selectedGrammaticalClass = grammaticalClass,
+            totalLocalEntriesCount = totalLocalEntriesCount,
             contentState = contentState
         )
     }.stateIn(
