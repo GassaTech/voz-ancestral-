@@ -15,8 +15,6 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -138,19 +136,15 @@ class ArchiveSyncRepositoryImpl @Inject constructor(
             transientOverride.value = TransientSyncOverride.Syncing
 
             try {
-                val (entriesResult, articlesResult) = coroutineScope {
-                    val entriesDeferred = async { dictionaryRepository.syncFromRemote() }
-                    val articlesDeferred = async { encyclopediaRepository.syncFromRemote() }
-                    entriesDeferred.await() to articlesDeferred.await()
-                }
+                val entriesResult = dictionaryRepository.syncFromRemote()
                 val now = nextAttemptEpochMillis()
 
-                when {
-                    entriesResult is AppResult.Success && articlesResult is AppResult.Success -> {
+                when (entriesResult) {
+                    is AppResult.Success -> {
                         val syncedState = SyncState.Synced(
                             lastSyncedEpochMillis = now,
                             entriesCount = entriesResult.data,
-                            articlesCount = articlesResult.data
+                            articlesCount = null
                         )
                         syncMetadataDao.upsert(
                             SyncMetadataEntity(
@@ -160,7 +154,9 @@ class ArchiveSyncRepositoryImpl @Inject constructor(
                                 lastFailureReason = null,
                                 lastSuccessfulSyncEpochMillis = now,
                                 lastSuccessfulEntriesCount = entriesResult.data,
-                                lastSuccessfulArticlesCount = articlesResult.data,
+                                // Na versão 1.0 a enciclopédia não participa da sincronização;
+                                // mantém null em vez de registrar contagem fictícia (ex.: 0).
+                                lastSuccessfulArticlesCount = null,
                                 // Limitação conhecida: versão real do manifesto ainda não integrada.
                                 lastSuccessfulRemoteVersion = MANIFEST_VERSION_UNAVAILABLE
                             )
@@ -173,14 +169,16 @@ class ArchiveSyncRepositoryImpl @Inject constructor(
                         AppResult.Success(Unit)
                     }
 
-                    else -> {
-                        val reason = buildFailureReason(entriesResult, articlesResult)
+                    is AppResult.Error -> {
+                        val reason = entriesResult.message
+                            .takeIf { it.isNotBlank() }
+                            ?: DEFAULT_OFFLINE_REASON
                         persistOfflineFallback(
                             now = now,
                             reason = reason,
                             restoreOnCancel = restoreOnCancel
                         )
-                        AppResult.Error(reason)
+                        AppResult.Error(message = reason, cause = entriesResult.cause)
                     }
                 }
             } catch (ce: CancellationException) {
@@ -284,21 +282,6 @@ class ArchiveSyncRepositoryImpl @Inject constructor(
         } catch (_: Exception) {
             // Se o registro no Room falhar, mantém o erro em memória sem parecer Syncing ou Synced.
             transientOverride.value = TransientSyncOverride.InMemoryFallback(offlineState)
-        }
-    }
-
-    private fun buildFailureReason(
-        entriesResult: AppResult<Int>,
-        articlesResult: AppResult<Int>
-    ): String {
-        val errors = listOfNotNull(
-            (entriesResult as? AppResult.Error)?.message?.takeIf { it.isNotBlank() },
-            (articlesResult as? AppResult.Error)?.message?.takeIf { it.isNotBlank() }
-        ).distinct()
-        return if (errors.isEmpty()) {
-            DEFAULT_OFFLINE_REASON
-        } else {
-            errors.joinToString(" | ")
         }
     }
 

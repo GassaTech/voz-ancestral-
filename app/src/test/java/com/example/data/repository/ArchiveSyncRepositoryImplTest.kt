@@ -55,11 +55,12 @@ class ArchiveSyncRepositoryImplTest {
     @Test
     fun `1 - cancelamento durante a sincronizacao restaura estado anterior e relanca CancellationException`() = runTest {
         val syncDao = FakeSyncMetadataDao()
+        val encyclopediaRepository = FakeEncyclopediaRepository(syncResult = AppResult.Success(0))
         val repository = createRepository(
             dictionaryRepository = FakeDictionaryRepository(
                 throwOnSync = CancellationException("Cancelado durante sincronização")
             ),
-            encyclopediaRepository = FakeEncyclopediaRepository(syncResult = AppResult.Success(0)),
+            encyclopediaRepository = encyclopediaRepository,
             syncDao = syncDao
         )
         advanceUntilIdle()
@@ -70,6 +71,7 @@ class ArchiveSyncRepositoryImplTest {
         } catch (_: CancellationException) {
             advanceUntilIdle()
             assertEquals(SyncState.Idle, repository.syncState.value)
+            assertEquals(0, encyclopediaRepository.syncCallCount)
         }
     }
 
@@ -78,11 +80,12 @@ class ArchiveSyncRepositoryImplTest {
         val syncDao = FakeSyncMetadataDao(
             throwOnRecordFailure = CancellationException("Cancelado ao gravar fallback")
         )
+        val encyclopediaRepository = FakeEncyclopediaRepository(syncResult = AppResult.Success(0))
         val repository = createRepository(
             dictionaryRepository = FakeDictionaryRepository(
                 throwOnSync = IllegalStateException("Erro inesperado de rede")
             ),
-            encyclopediaRepository = FakeEncyclopediaRepository(syncResult = AppResult.Success(0)),
+            encyclopediaRepository = encyclopediaRepository,
             syncDao = syncDao
         )
         advanceUntilIdle()
@@ -93,17 +96,19 @@ class ArchiveSyncRepositoryImplTest {
         } catch (_: CancellationException) {
             advanceUntilIdle()
             assertEquals(SyncState.Idle, repository.syncState.value)
+            assertEquals(0, encyclopediaRepository.syncCallCount)
         }
     }
 
     @Test
     fun `3 - falha inesperada durante a sincronizacao registra OfflineFallback e preserva dados locais`() = runTest {
         val syncDao = FakeSyncMetadataDao()
+        val encyclopediaRepository = FakeEncyclopediaRepository(syncResult = AppResult.Success(2))
         val repository = createRepository(
             dictionaryRepository = FakeDictionaryRepository(
                 throwOnSync = IllegalStateException("Falha inesperada ao ler resposta")
             ),
-            encyclopediaRepository = FakeEncyclopediaRepository(syncResult = AppResult.Success(2)),
+            encyclopediaRepository = encyclopediaRepository,
             syncDao = syncDao
         )
         advanceUntilIdle()
@@ -112,6 +117,7 @@ class ArchiveSyncRepositoryImplTest {
         advanceUntilIdle()
 
         assertTrue(result is AppResult.Error)
+        assertEquals(0, encyclopediaRepository.syncCallCount)
         val state = repository.syncState.value as SyncState.OfflineFallback
         assertEquals("Falha inesperada ao ler resposta", state.reason)
         assertEquals(SyncMetadataEntity.STATUS_OFFLINE_FALLBACK, syncDao.lastSaved?.lastAttemptStatus)
@@ -120,11 +126,14 @@ class ArchiveSyncRepositoryImplTest {
     }
 
     @Test
-    fun `4 - sucesso das duas sincronizacoes atualiza estado para Synced`() = runTest {
+    fun `4 - sucesso da sincronizacao do dicionario atualiza estado para Synced sem executar enciclopedia e com articlesCount null`() = runTest {
         val syncDao = FakeSyncMetadataDao()
+        val encyclopediaRepository = FakeEncyclopediaRepository(
+            throwOnSync = AssertionError("Enciclopédia não deve ser sincronizada na versão 1.0")
+        )
         val repository = createRepository(
             dictionaryRepository = FakeDictionaryRepository(syncResult = AppResult.Success(12)),
-            encyclopediaRepository = FakeEncyclopediaRepository(syncResult = AppResult.Success(4)),
+            encyclopediaRepository = encyclopediaRepository,
             syncDao = syncDao
         )
         advanceUntilIdle()
@@ -135,12 +144,13 @@ class ArchiveSyncRepositoryImplTest {
         advanceUntilIdle()
 
         assertTrue(result is AppResult.Success)
+        assertEquals(0, encyclopediaRepository.syncCallCount)
         val state = repository.syncState.value as SyncState.Synced
         assertEquals(12, state.entriesCount)
-        assertEquals(4, state.articlesCount)
+        assertNull(state.articlesCount)
         assertEquals(SyncMetadataEntity.STATUS_SYNCED, syncDao.lastSaved?.lastAttemptStatus)
         assertEquals(12, syncDao.lastSaved?.lastSuccessfulEntriesCount)
-        assertEquals(4, syncDao.lastSaved?.lastSuccessfulArticlesCount)
+        assertNull(syncDao.lastSaved?.lastSuccessfulArticlesCount)
         assertEquals(
             ArchiveSyncRepositoryImpl.MANIFEST_VERSION_UNAVAILABLE,
             syncDao.lastSaved?.lastSuccessfulRemoteVersion
@@ -148,13 +158,15 @@ class ArchiveSyncRepositoryImplTest {
     }
 
     @Test
-    fun `5 - falha de apenas um dos repositorios atualiza estado para OfflineFallback`() = runTest {
+    fun `5 - falha do dicionario atualiza estado para OfflineFallback e preserva causa estruturada`() = runTest {
         val syncDao = FakeSyncMetadataDao()
+        val cause = IllegalStateException("Timeout na rede")
+        val encyclopediaRepository = FakeEncyclopediaRepository(syncResult = AppResult.Success(4))
         val repository = createRepository(
-            dictionaryRepository = FakeDictionaryRepository(syncResult = AppResult.Success(5)),
-            encyclopediaRepository = FakeEncyclopediaRepository(
-                syncResult = AppResult.Error("Falha ao consultar API da enciclopédia.")
+            dictionaryRepository = FakeDictionaryRepository(
+                syncResult = AppResult.Error(message = "Erro no dicionário", cause = cause)
             ),
+            encyclopediaRepository = encyclopediaRepository,
             syncDao = syncDao
         )
         advanceUntilIdle()
@@ -163,21 +175,23 @@ class ArchiveSyncRepositoryImplTest {
         advanceUntilIdle()
 
         assertTrue(result is AppResult.Error)
+        assertEquals("Erro no dicionário", (result as AppResult.Error).message)
+        assertEquals(cause, result.cause)
+        assertEquals(0, encyclopediaRepository.syncCallCount)
         val state = repository.syncState.value as SyncState.OfflineFallback
-        assertEquals("Falha ao consultar API da enciclopédia.", state.reason)
+        assertEquals("Erro no dicionário", state.reason)
         assertEquals(SyncMetadataEntity.STATUS_OFFLINE_FALLBACK, syncDao.lastSaved?.lastAttemptStatus)
     }
 
     @Test
-    fun `6 - falha das duas fontes combina motivos distintos em OfflineFallback`() = runTest {
+    fun `6 - falha ou indisponibilidade da enciclopedia nao impede Synced do dicionario nem chama syncFromRemote`() = runTest {
         val syncDao = FakeSyncMetadataDao()
+        val encyclopediaRepository = FakeEncyclopediaRepository(
+            syncResult = AppResult.Error("Falha ao consultar API da enciclopédia.")
+        )
         val repository = createRepository(
-            dictionaryRepository = FakeDictionaryRepository(
-                syncResult = AppResult.Error("Erro no dicionário")
-            ),
-            encyclopediaRepository = FakeEncyclopediaRepository(
-                syncResult = AppResult.Error("Erro na enciclopédia")
-            ),
+            dictionaryRepository = FakeDictionaryRepository(syncResult = AppResult.Success(5)),
+            encyclopediaRepository = encyclopediaRepository,
             syncDao = syncDao
         )
         advanceUntilIdle()
@@ -185,10 +199,14 @@ class ArchiveSyncRepositoryImplTest {
         val result = repository.syncArchive()
         advanceUntilIdle()
 
-        assertTrue(result is AppResult.Error)
-        val state = repository.syncState.value as SyncState.OfflineFallback
-        assertEquals("Erro no dicionário | Erro na enciclopédia", state.reason)
-        assertEquals(SyncMetadataEntity.STATUS_OFFLINE_FALLBACK, syncDao.lastSaved?.lastAttemptStatus)
+        assertTrue(result is AppResult.Success)
+        assertEquals(0, encyclopediaRepository.syncCallCount)
+        val state = repository.syncState.value as SyncState.Synced
+        assertEquals(5, state.entriesCount)
+        assertNull(state.articlesCount)
+        assertEquals(SyncMetadataEntity.STATUS_SYNCED, syncDao.lastSaved?.lastAttemptStatus)
+        assertEquals(5, syncDao.lastSaved?.lastSuccessfulEntriesCount)
+        assertNull(syncDao.lastSaved?.lastSuccessfulArticlesCount)
     }
 
     @Test
@@ -369,11 +387,12 @@ class ArchiveSyncRepositoryImplTest {
             lastSuccessfulRemoteVersion = "v1.2.3"
         )
         val syncDao = FakeSyncMetadataDao(initialEntity = initialSynced)
+        val encyclopediaRepository = FakeEncyclopediaRepository(syncResult = AppResult.Success(9))
         val repository = createRepository(
             dictionaryRepository = FakeDictionaryRepository(
                 syncResult = AppResult.Error("Tempo limite excedido")
             ),
-            encyclopediaRepository = FakeEncyclopediaRepository(syncResult = AppResult.Success(9)),
+            encyclopediaRepository = encyclopediaRepository,
             syncDao = syncDao
         )
 
@@ -384,6 +403,7 @@ class ArchiveSyncRepositoryImplTest {
         advanceUntilIdle()
 
         assertTrue(result is AppResult.Error)
+        assertEquals(0, encyclopediaRepository.syncCallCount)
         val currentState = repository.syncState.value as SyncState.OfflineFallback
         assertEquals("Tempo limite excedido", currentState.reason)
 
@@ -539,9 +559,10 @@ class ArchiveSyncRepositoryImplTest {
                 if (syncCallCount == 1) firstGate.await() else secondGate.await()
             }
         )
+        val encyclopediaRepository = FakeEncyclopediaRepository(syncResult = AppResult.Success(5))
         val repository = createRepository(
             dictionaryRepository = dictionaryRepository,
-            encyclopediaRepository = FakeEncyclopediaRepository(syncResult = AppResult.Success(5)),
+            encyclopediaRepository = encyclopediaRepository,
             syncDao = syncDao
         )
         advanceUntilIdle()
@@ -557,6 +578,7 @@ class ArchiveSyncRepositoryImplTest {
         // Mesmo antes de o Flow do Room emitir, PendingRoomEmission já expõe Synced.
         val resolvedBeforeRoomEmit = repository.syncState.value as SyncState.Synced
         assertEquals(15, resolvedBeforeRoomEmit.entriesCount)
+        assertNull(resolvedBeforeRoomEmit.articlesCount)
 
         // Inicia segunda sincronização antes da emissão atrasada do Room da primeira tentativa.
         val secondJob = async { repository.syncArchive() }
@@ -575,7 +597,8 @@ class ArchiveSyncRepositoryImplTest {
 
         val finalState = repository.syncState.value as SyncState.Synced
         assertEquals(22, finalState.entriesCount)
-        assertEquals(5, finalState.articlesCount)
+        assertNull(finalState.articlesCount)
+        assertEquals(0, encyclopediaRepository.syncCallCount)
     }
 
     private fun TestScope.createRepository(
@@ -696,8 +719,12 @@ class ArchiveSyncRepositoryImplTest {
     private class FakeEncyclopediaRepository(
         private val total: Int = 0,
         private val bookmarked: Int = 0,
-        private val syncResult: AppResult<Int> = AppResult.Success(0)
+        private val syncResult: AppResult<Int> = AppResult.Success(0),
+        private val throwOnSync: Throwable? = null
     ) : EncyclopediaRepository {
+        var syncCallCount: Int = 0
+            private set
+
         override fun observeArticles(
             query: String,
             topic: CulturalTopic?,
@@ -708,6 +735,10 @@ class ArchiveSyncRepositoryImplTest {
         override fun observeTotalCount(): Flow<Int> = flowOf(total)
         override fun observeBookmarkedCount(): Flow<Int> = flowOf(bookmarked)
         override suspend fun toggleBookmark(articleId: String) = Unit
-        override suspend fun syncFromRemote(): AppResult<Int> = syncResult
+        override suspend fun syncFromRemote(): AppResult<Int> {
+            syncCallCount += 1
+            throwOnSync?.let { throw it }
+            return syncResult
+        }
     }
 }
