@@ -2,6 +2,8 @@ package com.example.di
 
 import com.example.core.common.DefaultDispatcherProvider
 import com.example.core.common.DispatcherProvider
+import com.example.data.local.seed.AssetDictionarySeedImporter
+import com.example.data.local.seed.DictionarySeedImporter
 import com.example.data.repository.ArchiveSyncRepositoryImpl
 import com.example.data.repository.OfflineFirstDictionaryRepository
 import com.example.data.repository.OfflineFirstEncyclopediaRepository
@@ -23,6 +25,12 @@ abstract class RepositoryModule {
     abstract fun bindDictionaryRepository(
         impl: OfflineFirstDictionaryRepository
     ): DictionaryRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindDictionarySeedImporter(
+        impl: AssetDictionarySeedImporter
+    ): DictionarySeedImporter
 
     @Binds
     @Singleton

@@ -4,6 +4,7 @@ import com.example.core.common.AppResult
 import com.example.core.common.DispatcherProvider
 import com.example.data.local.dao.SyncMetadataDao
 import com.example.data.local.entity.SyncMetadataEntity
+import com.example.data.local.seed.DictionarySeedImporter
 import com.example.domain.model.CulturalArticle
 import com.example.domain.model.CulturalTopic
 import com.example.domain.model.DictionaryEntry
@@ -602,10 +603,124 @@ class ArchiveSyncRepositoryImplTest {
         assertEquals(0, encyclopediaRepository.syncCallCount)
     }
 
+    @Test
+    fun `15 - falha de importacao do seed nao impede tentativa de sincronizacao remota`() = runTest {
+        val callOrder = mutableListOf<String>()
+        val syncDao = FakeSyncMetadataDao()
+        val errorResultRepository = createRepository(
+            dictionaryRepository = FakeDictionaryRepository(
+                customSync = {
+                    callOrder += "remote"
+                    AppResult.Success(7)
+                }
+            ),
+            syncDao = syncDao,
+            dictionarySeedImporter = FakeDictionarySeedImporter(
+                customImport = {
+                    callOrder += "seed"
+                    AppResult.Error("JSON local malformado")
+                }
+            )
+        )
+        advanceUntilIdle()
+
+        val result = errorResultRepository.syncArchive()
+        advanceUntilIdle()
+
+        assertTrue(result is AppResult.Success)
+        assertEquals(listOf("seed", "remote"), callOrder)
+        val synced = errorResultRepository.syncState.value as SyncState.Synced
+        assertEquals(7, synced.entriesCount)
+
+        // Também não deve bloquear caso o importador lance exceção inesperada não-cancelamento
+        val exceptionCallOrder = mutableListOf<String>()
+        val throwingSeederRepository = createRepository(
+            dictionaryRepository = FakeDictionaryRepository(
+                customSync = {
+                    exceptionCallOrder += "remote"
+                    AppResult.Error("Sem internet")
+                }
+            ),
+            syncDao = FakeSyncMetadataDao(),
+            dictionarySeedImporter = FakeDictionarySeedImporter(
+                customImport = {
+                    exceptionCallOrder += "seed"
+                    throw IllegalStateException("Erro inesperado no asset")
+                }
+            )
+        )
+        advanceUntilIdle()
+
+        val fallbackResult = throwingSeederRepository.syncArchive()
+        advanceUntilIdle()
+
+        assertTrue(fallbackResult is AppResult.Error)
+        assertEquals(listOf("seed", "remote"), exceptionCallOrder)
+        assertTrue(throwingSeederRepository.syncState.value is SyncState.OfflineFallback)
+    }
+
+    @Test
+    fun `seed local importado com sucesso nao registra STATUS_SYNCED quando chamada remota falha`() = runTest {
+        val syncDao = FakeSyncMetadataDao()
+        val callOrder = mutableListOf<String>()
+        val repository = createRepository(
+            dictionaryRepository = FakeDictionaryRepository(
+                customSync = {
+                    callOrder += "remote"
+                    AppResult.Error("Backend indisponível")
+                }
+            ),
+            syncDao = syncDao,
+            dictionarySeedImporter = FakeDictionarySeedImporter(
+                customImport = {
+                    callOrder += "seed"
+                    AppResult.Success(10)
+                }
+            )
+        )
+        advanceUntilIdle()
+
+        val result = repository.syncArchive()
+        advanceUntilIdle()
+
+        assertTrue(result is AppResult.Error)
+        assertEquals(listOf("seed", "remote"), callOrder)
+        assertEquals(
+            SyncMetadataEntity.STATUS_OFFLINE_FALLBACK,
+            syncDao.lastSaved?.lastAttemptStatus
+        )
+        assertNull(syncDao.lastSaved?.lastSuccessfulSyncEpochMillis)
+        assertTrue(repository.syncState.value is SyncState.OfflineFallback)
+    }
+
+    @Test
+    fun `cancelamento durante importacao do seed restaura estado anterior e relanca CancellationException`() = runTest {
+        val syncDao = FakeSyncMetadataDao()
+        val repository = createRepository(
+            dictionaryRepository = FakeDictionaryRepository(syncResult = AppResult.Success(3)),
+            syncDao = syncDao,
+            dictionarySeedImporter = FakeDictionarySeedImporter(
+                customImport = {
+                    throw CancellationException("Cancelado durante seed")
+                }
+            )
+        )
+        advanceUntilIdle()
+
+        try {
+            repository.syncArchive()
+            fail("Era esperado relançar CancellationException")
+        } catch (_: CancellationException) {
+            advanceUntilIdle()
+            assertEquals(SyncState.Idle, repository.syncState.value)
+        }
+    }
+
     private fun TestScope.createRepository(
         dictionaryRepository: DictionaryRepository = FakeDictionaryRepository(),
         encyclopediaRepository: EncyclopediaRepository = FakeEncyclopediaRepository(),
-        syncDao: SyncMetadataDao = FakeSyncMetadataDao()
+        syncDao: SyncMetadataDao = FakeSyncMetadataDao(),
+        dictionarySeedImporter: DictionarySeedImporter = FakeDictionarySeedImporter()
     ): ArchiveSyncRepositoryImpl {
         val testDispatcher = StandardTestDispatcher(testScheduler)
         val applicationScope = CoroutineScope(SupervisorJob() + testDispatcher)
@@ -614,6 +729,7 @@ class ArchiveSyncRepositoryImplTest {
             dictionaryRepository = dictionaryRepository,
             encyclopediaRepository = encyclopediaRepository,
             syncMetadataDao = syncDao,
+            dictionarySeedImporter = dictionarySeedImporter,
             dispatchers = TestDispatcherProvider(testDispatcher),
             applicationScope = applicationScope
         )
@@ -741,6 +857,16 @@ class ArchiveSyncRepositoryImplTest {
             syncCallCount += 1
             throwOnSync?.let { throw it }
             return syncResult
+        }
+    }
+
+    private class FakeDictionarySeedImporter(
+        private val importResult: AppResult<Int> = AppResult.Success(0),
+        private val customImport: (suspend () -> AppResult<Int>)? = null
+    ) : DictionarySeedImporter {
+        override suspend fun importIfEmpty(): AppResult<Int> {
+            customImport?.let { return it() }
+            return importResult
         }
     }
 }

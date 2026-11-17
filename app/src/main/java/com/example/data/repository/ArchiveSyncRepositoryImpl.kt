@@ -4,6 +4,7 @@ import com.example.core.common.AppResult
 import com.example.core.common.DispatcherProvider
 import com.example.data.local.dao.SyncMetadataDao
 import com.example.data.local.entity.SyncMetadataEntity
+import com.example.data.local.seed.DictionarySeedImporter
 import com.example.data.mapper.toDomainSyncState
 import com.example.di.ApplicationScope
 import com.example.domain.model.ArchiveStats
@@ -31,6 +32,7 @@ class ArchiveSyncRepositoryImpl @Inject constructor(
     private val dictionaryRepository: DictionaryRepository,
     private val encyclopediaRepository: EncyclopediaRepository,
     private val syncMetadataDao: SyncMetadataDao,
+    private val dictionarySeedImporter: DictionarySeedImporter,
     private val dispatchers: DispatcherProvider,
     @ApplicationScope private val applicationScope: CoroutineScope
 ) : SyncStatusRepository {
@@ -136,6 +138,7 @@ class ArchiveSyncRepositoryImpl @Inject constructor(
             transientOverride.value = TransientSyncOverride.Syncing
 
             try {
+                runSeedImportSafely()
                 val entriesResult = dictionaryRepository.syncFromRemote()
                 val now = nextAttemptEpochMillis()
 
@@ -194,6 +197,16 @@ class ArchiveSyncRepositoryImpl @Inject constructor(
                     restoreOnCancel = restoreOnCancel
                 )
             }
+        }
+    }
+
+    private suspend fun runSeedImportSafely() {
+        try {
+            dictionarySeedImporter.importIfEmpty()
+        } catch (ce: CancellationException) {
+            throw ce
+        } catch (_: Exception) {
+            // Falha na importação local inicial não deve impedir a tentativa de sincronização remota.
         }
     }
 
