@@ -5,8 +5,10 @@ import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.example.MainActivity
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -19,6 +21,25 @@ class ParintintinNavHostTest {
 
     @get:Rule
     val composeTestRule = createAndroidComposeRule<MainActivity>()
+
+    @Test
+    fun `navegacao principal apresenta somente Home e Dictionary na barra inferior`() {
+        composeTestRule.waitForIdle()
+
+        assertEquals(
+            listOf(AppDestination.Home, AppDestination.Dictionary),
+            AppDestination.primaryDestinations
+        )
+
+        composeTestRule.onNodeWithTag("bottom_nav_home").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Início").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("bottom_nav_dictionary").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Dicionário").assertIsDisplayed()
+
+        composeTestRule.onNodeWithTag("bottom_nav_encyclopedia").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("bottom_nav_favorites").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("bottom_nav_archive").assertDoesNotExist()
+    }
 
     @Test
     fun `navegacao alterna entre Home e Dictionary exibindo DictionaryScreen sem placeholder`() {

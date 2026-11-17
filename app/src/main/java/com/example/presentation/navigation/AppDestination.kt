@@ -3,8 +3,9 @@ package com.example.presentation.navigation
 import kotlinx.serialization.Serializable
 
 /**
- * Definições tipadas das rotas principais do aplicativo.
- * Apenas [Home] possui tela funcional nesta etapa.
+ * Definições tipadas das rotas do aplicativo.
+ * Na versão 1.0, a navegação principal expõe [Home] e [Dictionary];
+ * os demais destinos permanecem preservados para evoluções futuras.
  */
 @Serializable
 sealed interface AppDestination {
@@ -27,10 +28,7 @@ sealed interface AppDestination {
     companion object {
         val primaryDestinations: List<AppDestination> = listOf(
             Home,
-            Encyclopedia,
-            Dictionary,
-            Favorites,
-            Archive
+            Dictionary
         )
     }
 }
