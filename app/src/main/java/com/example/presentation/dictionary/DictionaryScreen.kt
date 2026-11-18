@@ -1,6 +1,8 @@
 package com.example.presentation.dictionary
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -80,7 +82,7 @@ fun DictionaryScreen(
     )
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun DictionaryContent(
     uiState: DictionaryUiState,
@@ -108,12 +110,13 @@ fun DictionaryContent(
                 .fillMaxSize()
                 .widthIn(max = 840.dp)
                 .testTag("dictionary_list"),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
                 DictionaryHeaderCard(
-                    totalLocalEntriesCount = uiState.totalLocalEntriesCount
+                    totalLocalEntriesCount = uiState.totalLocalEntriesCount,
+                    modifier = Modifier.padding(top = 16.dp)
                 )
             }
 
@@ -171,8 +174,20 @@ fun DictionaryContent(
                 )
             }
 
-            item {
-                DemonstrativeModeNoticeCard()
+            stickyHeader(key = "dictionary_demo_notice") {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.background)
+                        .testTag("dictionary_sticky_demo_notice_container")
+                ) {
+                    DemonstrativeModeNoticeCard(
+                        modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)
+                    )
+                    HorizontalDivider(
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f)
+                    )
+                }
             }
 
             item {
@@ -315,14 +330,17 @@ fun DictionaryContent(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun DictionaryHeaderCard(totalLocalEntriesCount: Int) {
+private fun DictionaryHeaderCard(
+    totalLocalEntriesCount: Int,
+    modifier: Modifier = Modifier
+) {
     Card(
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
         ),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .testTag("dictionary_header_card")
     ) {

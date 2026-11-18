@@ -8,6 +8,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
@@ -655,6 +656,133 @@ class DictionaryScreenTest {
         composeTestRule.onNodeWithTag("demo_mode_notice_title").assertIsDisplayed()
 
         assertEquals(listOf("DEMO-001"), recordedQueries)
+        assertEquals(listOf(SemanticCategory.NATURE), recordedCategories)
+        assertEquals(listOf(GrammaticalClass.NOUN), recordedClasses)
+    }
+
+    @Test
+    @Config(sdk = [36], qualifiers = "w412dp-h732dp")
+    fun `aviso MODO DEMONSTRATIVO permanece fixado no topo ao rolar lista extensa de verbetes`() {
+        val twentyEntries = (1..20).map { index ->
+            val id = "DEMO-${index.toString().padStart(3, '0')}"
+            sampleEntry(
+                id = id,
+                word = id,
+                translation = "Elemento fictício de demonstração ${index.toString().padStart(2, '0')}"
+            )
+        }
+
+        composeTestRule.setContent {
+            ParintintinTheme {
+                DictionaryContent(
+                    uiState = DictionaryUiState(
+                        totalLocalEntriesCount = 20,
+                        contentState = DictionaryEntriesState.Success(twentyEntries)
+                    ),
+                    onQueryChange = {},
+                    onSelectCategory = {},
+                    onSelectGrammaticalClass = {},
+                    onClearFilters = {},
+                    onRetry = {}
+                )
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        // Estado inicial antes da rolagem
+        composeTestRule.onNodeWithTag("dictionary_header_card").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("demo_mode_notice_card").assertIsDisplayed()
+
+        // Rola até os últimos verbetes da lista
+        scrollListToTag("dictionary_entry_card_DEMO-020")
+
+        // Cabeçalho inicial saiu da área visível, mas o aviso fixo permanece visível no topo
+        composeTestRule.onNodeWithTag("dictionary_header_card").assertIsNotDisplayed()
+        composeTestRule.onNodeWithTag("dictionary_sticky_demo_notice_container").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("demo_mode_notice_card").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("demo_mode_notice_title")
+            .assertIsDisplayed()
+            .assertTextEquals("MODO DEMONSTRATIVO")
+        composeTestRule.onNodeWithTag("demo_mode_notice_body")
+            .assertIsDisplayed()
+            .assertTextEquals(
+                "Este aplicativo utiliza registros fictícios para demonstrar suas funcionalidades. " +
+                    "As palavras e traduções exibidas não representam vocabulário autêntico da língua Parintintin."
+            )
+
+        // O último cartão exibido não fica encoberto pelo aviso fixo
+        composeTestRule.onNodeWithTag("dictionary_entry_card_DEMO-020").assertIsDisplayed()
+        val rootBounds = composeTestRule.onNodeWithTag("dictionary_screen_root")
+            .fetchSemanticsNode().boundsInRoot
+        val stickyBounds = composeTestRule.onNodeWithTag("dictionary_sticky_demo_notice_container")
+            .fetchSemanticsNode().boundsInRoot
+        val lastCardBounds = composeTestRule.onNodeWithTag("dictionary_entry_card_DEMO-020")
+            .fetchSemanticsNode().boundsInRoot
+
+        assertEquals(rootBounds.top, stickyBounds.top, 2f)
+        assertTrue(lastCardBounds.top >= stickyBounds.bottom - 1f)
+    }
+
+    @Test
+    fun `aviso fixo permanece visivel durante rolagem em tela estreita e busca e filtros continuam operando`() {
+        val recordedQueries = mutableListOf<String>()
+        val recordedCategories = mutableListOf<SemanticCategory?>()
+        val recordedClasses = mutableListOf<GrammaticalClass?>()
+        var currentQuery by mutableStateOf("")
+        val entries = (1..12).map { index ->
+            val id = "DEMO-${index.toString().padStart(3, '0')}"
+            sampleEntry(id = id, word = id)
+        }
+
+        composeTestRule.setContent {
+            ParintintinTheme {
+                Box(modifier = Modifier.width(280.dp)) {
+                    DictionaryContent(
+                        uiState = DictionaryUiState(
+                            query = currentQuery,
+                            totalLocalEntriesCount = 12,
+                            contentState = DictionaryEntriesState.Success(entries)
+                        ),
+                        onQueryChange = { newValue ->
+                            recordedQueries += newValue
+                            currentQuery = newValue
+                        },
+                        onSelectCategory = { recordedCategories += it },
+                        onSelectGrammaticalClass = { recordedClasses += it },
+                        onClearFilters = {},
+                        onRetry = {}
+                    )
+                }
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        // Rola para baixo até o 12º verbete em largura de 280dp
+        scrollListToTag("dictionary_entry_card_DEMO-012")
+        composeTestRule.onNodeWithTag("demo_mode_notice_card").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("dictionary_entry_card_DEMO-012").assertIsDisplayed()
+
+        val rootBounds = composeTestRule.onNodeWithTag("dictionary_screen_root")
+            .fetchSemanticsNode().boundsInRoot
+        val noticeBounds = composeTestRule.onNodeWithTag("demo_mode_notice_card")
+            .fetchSemanticsNode().boundsInRoot
+        assertTrue(noticeBounds.right <= rootBounds.right)
+
+        // Volta ao topo e valida que busca e filtros continuam funcionando normalmente
+        scrollListToTag("dictionary_search_input")
+        composeTestRule.onNodeWithTag("dictionary_search_input")
+            .assertIsDisplayed()
+            .performTextInput("DEMO")
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithTag("dictionary_category_${SemanticCategory.NATURE.name}")
+            .performScrollTo()
+            .performClick()
+        composeTestRule.onNodeWithTag("dictionary_grammatical_class_${GrammaticalClass.NOUN.name}")
+            .performScrollTo()
+            .performClick()
+
+        assertEquals(listOf("DEMO"), recordedQueries)
         assertEquals(listOf(SemanticCategory.NATURE), recordedCategories)
         assertEquals(listOf(GrammaticalClass.NOUN), recordedClasses)
     }
