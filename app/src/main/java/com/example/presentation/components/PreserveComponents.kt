@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -49,6 +51,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -84,17 +87,17 @@ fun HeroPreservationBanner(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(232.dp)
+                .heightIn(min = 232.dp)
         ) {
             Image(
                 painter = painterResource(id = R.drawable.img_hero_amazon),
                 contentDescription = stringResource(R.string.cd_hero_illustration),
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.matchParentSize()
             )
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .matchParentSize()
                     .background(
                         Brush.verticalGradient(
                             colors = listOf(
@@ -107,7 +110,8 @@ fun HeroPreservationBanner(
             )
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .fillMaxWidth()
+                    .heightIn(min = 232.dp)
                     .padding(20.dp),
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
@@ -119,21 +123,28 @@ fun HeroPreservationBanner(
                         text = badgeText,
                         style = MaterialTheme.typography.labelSmall,
                         color = Color(0xFFFBE2AF),
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                        modifier = Modifier
+                            .padding(horizontal = 10.dp, vertical = 5.dp)
+                            .testTag("home_hero_badge")
                     )
                 }
+
+                Spacer(modifier = Modifier.height(16.dp))
 
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
                         text = title,
                         style = MaterialTheme.typography.headlineMedium,
                         color = Color.White,
-                        modifier = Modifier.semantics { heading() }
+                        modifier = Modifier
+                            .semantics { heading() }
+                            .testTag("home_hero_title")
                     )
                     Text(
                         text = subtitle,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFFE9F2EC)
+                        color = Color(0xFFE9F2EC),
+                        modifier = Modifier.testTag("home_hero_subtitle")
                     )
                 }
             }
@@ -147,44 +158,98 @@ fun IntroNoticeCard(
     body: String,
     modifier: Modifier = Modifier
 ) {
+    val fontScale = LocalDensity.current.fontScale
+
     Card(
         shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.45f)
         ),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        modifier = modifier.fillMaxWidth()
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag("intro_notice_card")
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Image(
-                painter = painterResource(id = R.drawable.img_cultural_oral),
-                contentDescription = stringResource(R.string.cd_archive_illustration),
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .size(72.dp)
-                    .clip(MaterialTheme.shapes.small)
-            )
-            Spacer(modifier = Modifier.width(14.dp))
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                    modifier = Modifier.semantics { heading() }
-                )
-                Text(
-                    text = body,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.9f)
-                )
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            val useStackedBody = maxWidth < 305.dp || (maxWidth < 350.dp && fontScale >= 1.3f)
+
+            if (useStackedBody) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.img_cultural_oral),
+                            contentDescription = stringResource(R.string.cd_archive_illustration),
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(52.dp)
+                                .clip(MaterialTheme.shapes.small)
+                                .testTag("intro_notice_image")
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier
+                                .weight(1f)
+                                .semantics { heading() }
+                                .testTag("intro_notice_title")
+                        )
+                    }
+                    Text(
+                        text = body,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.9f),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("intro_notice_body")
+                    )
+                }
+            } else {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.img_cultural_oral),
+                        contentDescription = stringResource(R.string.cd_archive_illustration),
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(72.dp)
+                            .clip(MaterialTheme.shapes.small)
+                            .testTag("intro_notice_image")
+                    )
+                    Spacer(modifier = Modifier.width(14.dp))
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier
+                                .semantics { heading() }
+                                .testTag("intro_notice_title")
+                        )
+                        Text(
+                            text = body,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.9f),
+                            modifier = Modifier.testTag("intro_notice_body")
+                        )
+                    }
+                }
             }
         }
     }
