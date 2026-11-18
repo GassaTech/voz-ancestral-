@@ -60,6 +60,7 @@ import com.example.R
 import com.example.domain.model.DictionaryEntry
 import com.example.domain.model.GrammaticalClass
 import com.example.domain.model.SemanticCategory
+import com.example.presentation.components.DemonstrativeModeNoticeCard
 
 @Composable
 fun DictionaryScreen(
@@ -168,6 +169,10 @@ fun DictionaryContent(
                     selectedGrammaticalClass = uiState.selectedGrammaticalClass,
                     onSelectGrammaticalClass = onSelectGrammaticalClass
                 )
+            }
+
+            item {
+                DemonstrativeModeNoticeCard()
             }
 
             item {

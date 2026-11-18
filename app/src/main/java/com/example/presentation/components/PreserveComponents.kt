@@ -27,6 +27,7 @@ import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Storage
 import androidx.compose.material.icons.rounded.Sync
+import androidx.compose.material.icons.rounded.WarningAmber
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -179,6 +180,62 @@ fun IntroNoticeCard(
                     text = body,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.9f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun DemonstrativeModeNoticeCard(
+    modifier: Modifier = Modifier,
+    testTagPrefix: String = "demo_mode_notice"
+) {
+    val containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.7f)
+    val contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+    val accentColor = MaterialTheme.colorScheme.tertiary
+
+    Card(
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        border = BorderStroke(1.dp, accentColor.copy(alpha = 0.55f)),
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag("${testTagPrefix}_card")
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.WarningAmber,
+                contentDescription = null,
+                tint = accentColor,
+                modifier = Modifier
+                    .padding(top = 2.dp)
+                    .size(20.dp)
+            )
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.demo_mode_notice_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = contentColor,
+                    modifier = Modifier
+                        .semantics { heading() }
+                        .testTag("${testTagPrefix}_title")
+                )
+                Text(
+                    text = stringResource(R.string.demo_mode_notice_body),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = contentColor.copy(alpha = 0.92f),
+                    modifier = Modifier.testTag("${testTagPrefix}_body")
                 )
             }
         }

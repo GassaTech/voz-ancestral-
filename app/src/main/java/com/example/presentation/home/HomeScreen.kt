@@ -19,11 +19,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.R
+import com.example.presentation.components.DemonstrativeModeNoticeCard
 import com.example.presentation.components.ExpandableStageDetailsCard
 import com.example.presentation.components.HeroPreservationBanner
 import com.example.presentation.components.IntroNoticeCard
@@ -71,10 +73,28 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    HomeContent(
+        uiState = uiState,
+        onManualSync = viewModel::syncManually,
+        onToggleStageDetails = viewModel::toggleStageDetails,
+        modifier = modifier
+    )
+}
+
+@Composable
+fun HomeContent(
+    uiState: HomeUiState,
+    onManualSync: () -> Unit,
+    onToggleStageDetails: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     val statusLabel = stringResource(R.string.module_status_planned)
 
     BoxWithConstraints(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxSize()
+            .testTag("home_screen_root"),
         contentAlignment = Alignment.TopCenter
     ) {
         val useTwoColumns = maxWidth >= 600.dp
@@ -82,7 +102,8 @@ fun HomeScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .widthIn(max = 840.dp),
+                .widthIn(max = 840.dp)
+                .testTag("home_list"),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
@@ -92,6 +113,10 @@ fun HomeScreen(
                     title = stringResource(R.string.home_hero_title),
                     subtitle = stringResource(R.string.home_hero_subtitle)
                 )
+            }
+
+            item {
+                DemonstrativeModeNoticeCard()
             }
 
             item {
@@ -105,7 +130,7 @@ fun HomeScreen(
                 OfflineArchiveStatusCard(
                     stats = uiState.archiveStats,
                     syncState = uiState.syncState,
-                    onManualSync = viewModel::syncManually
+                    onManualSync = onManualSync
                 )
             }
 
@@ -156,7 +181,7 @@ fun HomeScreen(
                     title = stringResource(R.string.home_stage_details_title),
                     body = stringResource(R.string.home_stage_details_body),
                     expanded = uiState.isStageDetailsExpanded,
-                    onToggle = viewModel::toggleStageDetails
+                    onToggle = onToggleStageDetails
                 )
             }
         }

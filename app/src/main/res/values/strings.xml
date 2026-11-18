@@ -8,6 +8,10 @@
     <string name="home_intro_title">Acervo em construção</string>
     <string name="home_intro_body">Esta versão inicial estabelece a base visual e arquitetural do projeto. Nenhum dado linguístico será exibido até a validação e integração das fontes oficiais do acervo.</string>
 
+    <!-- Aviso de Modo Demonstrativo -->
+    <string name="demo_mode_notice_title">MODO DEMONSTRATIVO</string>
+    <string name="demo_mode_notice_body">Este aplicativo utiliza registros fictícios para demonstrar suas funcionalidades. As palavras e traduções exibidas não representam vocabulário autêntico da língua Parintintin.</string>
+
     <!-- Status Offline-First e Sincronização -->
     <string name="home_offline_status_title">Armazenamento Local (Offline-First)</string>
     <string name="home_offline_status_ready">Base Room pronta para receber verbetes, artigos e mídias oficiais</string>

@@ -10,6 +10,7 @@ import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
@@ -563,6 +564,99 @@ class DictionaryScreenTest {
         scrollListToTag("dictionary_entries_count")
         composeTestRule.onNodeWithTag("dictionary_entries_count").assertIsDisplayed()
         composeTestRule.onNodeWithText("2 encontrados").assertIsDisplayed()
+    }
+
+    @Test
+    @Config(sdk = [36], qualifiers = "w412dp-h915dp")
+    fun `aviso MODO DEMONSTRATIVO aparece na DictionaryScreen e esclarece ausencia de vocabulario autentico`() {
+        composeTestRule.setContent {
+            ParintintinTheme {
+                DictionaryContent(
+                    uiState = DictionaryUiState(
+                        totalLocalEntriesCount = 20,
+                        contentState = DictionaryEntriesState.Success(
+                            listOf(sampleEntry(id = "DEMO-001", word = "DEMO-001"))
+                        )
+                    ),
+                    onQueryChange = {},
+                    onSelectCategory = {},
+                    onSelectGrammaticalClass = {},
+                    onClearFilters = {},
+                    onRetry = {}
+                )
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithTag("dictionary_header_card").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("demo_mode_notice_card").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("demo_mode_notice_title")
+            .assertIsDisplayed()
+            .assertTextEquals("MODO DEMONSTRATIVO")
+        composeTestRule.onNodeWithTag("demo_mode_notice_body")
+            .assertIsDisplayed()
+            .assertTextEquals(
+                "Este aplicativo utiliza registros fictícios para demonstrar suas funcionalidades. " +
+                    "As palavras e traduções exibidas não representam vocabulário autêntico da língua Parintintin."
+            )
+        composeTestRule.onNodeWithText("registros fictícios", substring = true).assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "não representam vocabulário autêntico da língua Parintintin",
+            substring = true
+        ).assertIsDisplayed()
+    }
+
+    @Test
+    fun `busca e filtros continuam funcionando com o aviso de modo demonstrativo visivel`() {
+        val recordedQueries = mutableListOf<String>()
+        val recordedCategories = mutableListOf<SemanticCategory?>()
+        val recordedClasses = mutableListOf<GrammaticalClass?>()
+        var currentQuery by mutableStateOf("")
+
+        composeTestRule.setContent {
+            ParintintinTheme {
+                DictionaryContent(
+                    uiState = DictionaryUiState(
+                        query = currentQuery,
+                        totalLocalEntriesCount = 20,
+                        contentState = DictionaryEntriesState.Success(
+                            listOf(sampleEntry(id = "DEMO-001", word = "DEMO-001"))
+                        )
+                    ),
+                    onQueryChange = { newValue ->
+                        recordedQueries += newValue
+                        currentQuery = newValue
+                    },
+                    onSelectCategory = { recordedCategories += it },
+                    onSelectGrammaticalClass = { recordedClasses += it },
+                    onClearFilters = {},
+                    onRetry = {}
+                )
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithTag("dictionary_total_entries_count").assertIsDisplayed()
+
+        composeTestRule.onNodeWithTag("dictionary_search_input")
+            .assertIsDisplayed()
+            .performTextInput("DEMO-001")
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithTag("dictionary_category_${SemanticCategory.NATURE.name}")
+            .performScrollTo()
+            .performClick()
+        composeTestRule.onNodeWithTag("dictionary_grammatical_class_${GrammaticalClass.NOUN.name}")
+            .performScrollTo()
+            .performClick()
+
+        scrollListToTag("demo_mode_notice_card")
+        composeTestRule.onNodeWithTag("demo_mode_notice_card").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("demo_mode_notice_title").assertIsDisplayed()
+
+        assertEquals(listOf("DEMO-001"), recordedQueries)
+        assertEquals(listOf(SemanticCategory.NATURE), recordedCategories)
+        assertEquals(listOf(GrammaticalClass.NOUN), recordedClasses)
     }
 
     private fun scrollListToTag(tag: String) {
