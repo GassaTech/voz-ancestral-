@@ -103,10 +103,10 @@
 
     <!-- Dicionário (Versão 1.0) -->
     <string name="dictionary_title">Dicionário</string>
-    <string name="dictionary_subtitle">Consulta bilíngue Parintintin–Português com filtros por categoria semântica e classe gramatical.</string>
+    <string name="dictionary_subtitle">Consulta de termos demonstrativos em português, inspirados na natureza amazônica.</string>
     <string name="dictionary_offline_badge">Consulta offline via Room</string>
     <string name="dictionary_search_label">Pesquisar verbetes</string>
-    <string name="dictionary_search_hint">Pesquisar por palavra, tradução ou nota cultural…</string>
+    <string name="dictionary_search_hint">Pesquisar por termo, significado ou observação…</string>
     <string name="dictionary_clear_search">Limpar pesquisa</string>
     <string name="dictionary_categories_label">Categorias semânticas</string>
     <string name="dictionary_grammatical_classes_label">Classes gramaticais</string>
@@ -127,5 +127,7 @@
     <string name="dictionary_error_title">Não foi possível carregar os verbetes</string>
     <string name="dictionary_retry">Tentar novamente</string>
     <string name="dictionary_example_label">Exemplo de uso</string>
+    <string name="dictionary_demo_entry_badge">Termo demonstrativo</string>
+    <string name="dictionary_demo_note_label">Nota demonstrativa</string>
     <string name="dictionary_cultural_note_label">Nota cultural</string>
 </resources>

@@ -8,6 +8,8 @@ import com.example.core.common.DispatcherProvider
 import com.example.data.local.dao.DictionaryDao
 import com.example.data.local.database.ParintintinDatabase
 import com.example.data.local.entity.DictionaryEntryEntity
+import com.example.domain.model.GrammaticalClass
+import com.example.domain.model.SemanticCategory
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import java.io.ByteArrayInputStream
@@ -107,15 +109,69 @@ class DictionarySeedImporterTest {
         assertEquals(1, spyDao.upsertCallCount)
         assertEquals(20, database.dictionaryDao().countOnce())
 
-        val expectedIds = (1..20)
-            .map { index -> "DEMO-${index.toString().padStart(3, '0')}" }
-            .toSet()
+        data class ExpectedSeedRecord(
+            val id: String,
+            val word: String,
+            val translation: String,
+            val grammaticalClass: GrammaticalClass,
+            val semanticCategory: SemanticCategory
+        )
+
+        val expectedRecords = listOf(
+            ExpectedSeedRecord("DEMO-001", "Riolume", "brilho refletido na superfície de um rio.", GrammaticalClass.NOUN, SemanticCategory.NATURE),
+            ExpectedSeedRecord("DEMO-002", "Folhaverde", "folha nova após a chuva.", GrammaticalClass.NOUN, SemanticCategory.NATURE),
+            ExpectedSeedRecord("DEMO-003", "Brisamata", "vento leve entre as árvores.", GrammaticalClass.NOUN, SemanticCategory.NATURE),
+            ExpectedSeedRecord("DEMO-004", "Chuvafina", "chuva suave sobre a floresta.", GrammaticalClass.NOUN, SemanticCategory.NATURE),
+            ExpectedSeedRecord("DEMO-005", "Raizforte", "raízes que sustentam o solo.", GrammaticalClass.NOUN, SemanticCategory.NATURE),
+            ExpectedSeedRecord("DEMO-006", "Orvaluz", "gota de orvalho iluminada.", GrammaticalClass.NOUN, SemanticCategory.NATURE),
+            ExpectedSeedRecord("DEMO-007", "Ventocopa", "movimento do vento nas copas das árvores.", GrammaticalClass.NOUN, SemanticCategory.NATURE),
+            ExpectedSeedRecord("DEMO-008", "Pedralisa", "pedra suavizada pela água.", GrammaticalClass.NOUN, SemanticCategory.NATURE),
+            ExpectedSeedRecord("DEMO-009", "Nuvemrio", "nuvem refletida na água.", GrammaticalClass.NOUN, SemanticCategory.NATURE),
+            ExpectedSeedRecord("DEMO-010", "Solnascente", "primeira luz da manhã.", GrammaticalClass.NOUN, SemanticCategory.NATURE),
+            ExpectedSeedRecord("DEMO-011", "Flor d'água", "flor que cresce em ambiente aquático.", GrammaticalClass.NOUN, SemanticCategory.NATURE),
+            ExpectedSeedRecord("DEMO-012", "Sementeluz", "semente que representa renovação.", GrammaticalClass.NOUN, SemanticCategory.NATURE),
+            ExpectedSeedRecord("DEMO-013", "Águaclara", "água transparente de um igarapé.", GrammaticalClass.NOUN, SemanticCategory.NATURE),
+            ExpectedSeedRecord("DEMO-014", "Sombramata", "sombra formada pelas árvores.", GrammaticalClass.NOUN, SemanticCategory.NATURE),
+            ExpectedSeedRecord("DEMO-015", "Frutaviva", "fruto encontrado na floresta.", GrammaticalClass.NOUN, SemanticCategory.FOOD),
+            ExpectedSeedRecord("DEMO-016", "Cantodamata", "sons dos animais e da floresta.", GrammaticalClass.NOUN, SemanticCategory.ANIMALS),
+            ExpectedSeedRecord("DEMO-017", "Barrovermelho", "solo avermelhado da região amazônica.", GrammaticalClass.NOUN, SemanticCategory.NATURE),
+            ExpectedSeedRecord("DEMO-018", "Trilhaverde", "caminho entre a vegetação.", GrammaticalClass.NOUN, SemanticCategory.NATURE),
+            ExpectedSeedRecord("DEMO-019", "Céuespelhado", "reflexo do céu na superfície da água.", GrammaticalClass.NOUN, SemanticCategory.NATURE),
+            ExpectedSeedRecord("DEMO-020", "Noitedegrilo", "sons dos grilos durante a noite.", GrammaticalClass.NOUN, SemanticCategory.ANIMALS)
+        )
+
+        val validGrammaticalClasses = GrammaticalClass.entries.map { it.name }.toSet()
+        val validSemanticCategories = SemanticCategory.entries.map { it.name }.toSet()
+
         val persistedEntries = database.dictionaryDao()
             .observeEntries(query = "", category = null, onlyFavorites = false)
             .first()
         assertEquals(20, persistedEntries.size)
-        assertEquals(expectedIds, persistedEntries.map { it.id }.toSet())
-        assertTrue(persistedEntries.none { it.isFavorite })
+        assertEquals(expectedRecords.map { it.id }.toSet(), persistedEntries.map { it.id }.toSet())
+
+        val entriesById = persistedEntries.associateBy { it.id }
+        expectedRecords.forEach { expected ->
+            val actual = entriesById.getValue(expected.id)
+            assertEquals(expected.word, actual.parintintinWord)
+            assertEquals(expected.translation, actual.portugueseTranslation)
+            assertTrue(actual.grammaticalClass in validGrammaticalClasses)
+            assertTrue(actual.semanticCategory in validSemanticCategories)
+            assertEquals(expected.grammaticalClass.name, actual.grammaticalClass)
+            assertEquals(expected.semanticCategory.name, actual.semanticCategory)
+            assertEquals("", actual.phoneticIpa)
+            assertEquals("", actual.exampleParintintin)
+            assertEquals("", actual.examplePortuguese)
+            assertNull(actual.audioUrl)
+            assertTrue(
+                "Esperada menção explícita a conteúdo fictício em ${expected.id}",
+                actual.culturalNote.contains("fictício", ignoreCase = true)
+            )
+            assertTrue(
+                "Esperada menção explícita a demonstração em ${expected.id}",
+                actual.culturalNote.contains("demonstração", ignoreCase = true)
+            )
+            assertFalse(actual.isFavorite)
+        }
     }
 
     @Test

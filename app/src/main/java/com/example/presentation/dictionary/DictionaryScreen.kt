@@ -649,6 +649,7 @@ private fun DictionaryEntryCard(
     entry: DictionaryEntry,
     modifier: Modifier = Modifier
 ) {
+    val isDemonstrativeEntry = entry.id.startsWith("DEMO-")
     val hasExample = entry.exampleParintintin.isNotBlank() || entry.examplePortuguese.isNotBlank()
     val hasCulturalNote = entry.culturalNote.isNotBlank()
 
@@ -668,6 +669,27 @@ private fun DictionaryEntryCard(
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                if (isDemonstrativeEntry) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.tertiaryContainer,
+                        shape = MaterialTheme.shapes.small,
+                        border = BorderStroke(
+                            1.dp,
+                            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.45f)
+                        ),
+                        modifier = Modifier
+                            .semantics(mergeDescendants = true) {}
+                            .testTag("dictionary_demo_entry_badge_${entry.id}")
+                    ) {
+                        Text(
+                            text = stringResource(R.string.dictionary_demo_entry_badge),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+
                 Text(
                     text = entry.parintintinWord,
                     style = MaterialTheme.typography.headlineSmall,
@@ -770,6 +792,13 @@ private fun DictionaryEntryCard(
             }
 
             if (hasCulturalNote) {
+                val noteTitle = stringResource(
+                    if (isDemonstrativeEntry) {
+                        R.string.dictionary_demo_note_label
+                    } else {
+                        R.string.dictionary_cultural_note_label
+                    }
+                )
                 Surface(
                     color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.35f),
                     shape = MaterialTheme.shapes.small,
@@ -780,7 +809,7 @@ private fun DictionaryEntryCard(
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Text(
-                            text = stringResource(R.string.dictionary_cultural_note_label),
+                            text = noteTitle,
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.secondary
                         )

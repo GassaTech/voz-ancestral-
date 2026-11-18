@@ -8,6 +8,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertContentDescriptionEquals
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
@@ -912,6 +913,125 @@ class DictionaryScreenTest {
         composeTestRule.onNodeWithTag("dictionary_total_entries_count").assert(isHeading().not())
         composeTestRule.onNodeWithText("Consulta offline via Room").assert(isHeading().not())
         composeTestRule.onNodeWithTag("demo_mode_notice_body").assert(isHeading().not())
+    }
+
+    @Test
+    fun `registros DEMO exibem selo Termo demonstrativo sem duplicacao semantica e Nota demonstrativa enquanto outros preservam Nota cultural`() {
+        val demoEntry = sampleEntry(
+            id = "DEMO-001",
+            word = "Riolume",
+            phoneticIpa = "",
+            translation = "brilho refletido na superfície de um rio.",
+            grammaticalClass = GrammaticalClass.NOUN,
+            semanticCategory = SemanticCategory.NATURE,
+            culturalNote = "Neologismo fictício em português utilizado exclusivamente para demonstração do aplicativo."
+        )
+        val nonDemoEntry = sampleEntry(
+            id = "auth_1",
+            word = "VERBETE_AUTENTICO",
+            phoneticIpa = "[ipa.auth]",
+            translation = "Significado ilustrativo",
+            grammaticalClass = GrammaticalClass.NOUN,
+            semanticCategory = SemanticCategory.NATURE,
+            culturalNote = "Nota cultural ilustrativa"
+        )
+
+        composeTestRule.setContent {
+            ParintintinTheme {
+                DictionaryContent(
+                    uiState = DictionaryUiState(
+                        totalLocalEntriesCount = 2,
+                        contentState = DictionaryEntriesState.Success(
+                            listOf(demoEntry, nonDemoEntry)
+                        )
+                    ),
+                    onQueryChange = {},
+                    onSelectCategory = {},
+                    onSelectGrammaticalClass = {},
+                    onClearFilters = {},
+                    onRetry = {}
+                )
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        scrollListToTag("dictionary_entry_card_DEMO-001")
+        composeTestRule.onNodeWithTag("dictionary_demo_entry_badge_DEMO-001")
+            .assertIsDisplayed()
+            .assertTextEquals("Termo demonstrativo")
+        composeTestRule.onAllNodes(
+            hasText("Termo demonstrativo") and
+                hasAnyAncestor(hasTestTag("dictionary_entry_card_DEMO-001"))
+        ).assertCountEquals(1)
+        composeTestRule.onNodeWithText("Riolume").assertIsDisplayed()
+        composeTestRule.onNodeWithText("brilho refletido na superfície de um rio.").assertIsDisplayed()
+        composeTestRule.onNode(
+            hasText("Nota demonstrativa") and
+                hasAnyAncestor(hasTestTag("dictionary_entry_card_DEMO-001"))
+        ).assertIsDisplayed()
+        composeTestRule.onNode(
+            hasText("Nota cultural") and
+                hasAnyAncestor(hasTestTag("dictionary_entry_card_DEMO-001"))
+        ).assertDoesNotExist()
+
+        scrollListToTag("dictionary_entry_card_auth_1")
+        composeTestRule.onNodeWithTag("dictionary_demo_entry_badge_auth_1").assertDoesNotExist()
+        composeTestRule.onNode(
+            hasText("Termo demonstrativo") and
+                hasAnyAncestor(hasTestTag("dictionary_entry_card_auth_1"))
+        ).assertDoesNotExist()
+        composeTestRule.onNode(
+            hasText("Nota cultural") and
+                hasAnyAncestor(hasTestTag("dictionary_entry_card_auth_1"))
+        ).assertIsDisplayed()
+        composeTestRule.onNode(
+            hasText("Nota demonstrativa") and
+                hasAnyAncestor(hasTestTag("dictionary_entry_card_auth_1"))
+        ).assertDoesNotExist()
+    }
+
+    @Test
+    fun `cabecalho e busca exibem subtitulo e placeholder atualizados sem afirmar vocabulario Parintintin`() {
+        val recordedQueries = mutableListOf<String>()
+        var currentQuery by mutableStateOf("")
+
+        composeTestRule.setContent {
+            ParintintinTheme {
+                DictionaryContent(
+                    uiState = DictionaryUiState(
+                        query = currentQuery,
+                        totalLocalEntriesCount = 20,
+                        contentState = DictionaryEntriesState.Success(emptyList())
+                    ),
+                    onQueryChange = { newValue ->
+                        recordedQueries += newValue
+                        currentQuery = newValue
+                    },
+                    onSelectCategory = {},
+                    onSelectGrammaticalClass = {},
+                    onClearFilters = {},
+                    onRetry = {}
+                )
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText(
+            "Consulta de termos demonstrativos em português, inspirados na natureza amazônica."
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithTag("dictionary_search_input")
+            .assert(hasText("Pesquisar verbetes"))
+            .performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText(
+            "Pesquisar por termo, significado ou observação…",
+            useUnmergedTree = true
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithTag("dictionary_search_input")
+            .performTextInput("Riolume")
+        composeTestRule.waitForIdle()
+
+        assertEquals(listOf("Riolume"), recordedQueries)
     }
 
     private fun scrollListToTag(tag: String) {
