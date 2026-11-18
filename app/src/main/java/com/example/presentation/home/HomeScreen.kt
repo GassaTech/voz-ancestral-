@@ -13,7 +13,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.AutoStories
 import androidx.compose.material.icons.rounded.Bookmarks
-import androidx.compose.material.icons.rounded.MenuBook
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -41,12 +40,6 @@ private data class PlannedModuleItem(
 )
 
 private val plannedModules = listOf(
-    PlannedModuleItem(
-        id = "dictionary",
-        icon = Icons.Rounded.MenuBook,
-        titleRes = R.string.module_dictionary_title,
-        descRes = R.string.module_dictionary_desc
-    ),
     PlannedModuleItem(
         id = "encyclopedia",
         icon = Icons.Rounded.AutoStories,

@@ -1,12 +1,12 @@
 <resources>
     <string name="app_name">Acervo Provisório</string>
 
-    <!-- Tela Inicial (Etapa 1) -->
-    <string name="home_provisional_badge">NOME PROVISÓRIO • ETAPA 1</string>
+    <!-- Tela Inicial (Versão 1.0 Demonstrativa) -->
+    <string name="home_provisional_badge">VERSÃO 1.0 • DEMONSTRATIVA</string>
     <string name="home_hero_title">Preservação da Língua Parintintin</string>
     <string name="home_hero_subtitle">Acervo digital aberto para documentação linguística, memória cultural e consulta offline.</string>
     <string name="home_intro_title">Acervo em construção</string>
-    <string name="home_intro_body">Esta versão inicial estabelece a base visual e arquitetural do projeto. Nenhum dado linguístico será exibido até a validação e integração das fontes oficiais do acervo.</string>
+    <string name="home_intro_body">O acervo linguístico autêntico ainda está em preparação. Esta versão utiliza exclusivamente registros fictícios para demonstrar o funcionamento do aplicativo, e a inclusão de conteúdo autêntico depende de validação e autorização adequadas.</string>
 
     <!-- Aviso de Modo Demonstrativo -->
     <string name="demo_mode_notice_title">MODO DEMONSTRATIVO</string>
