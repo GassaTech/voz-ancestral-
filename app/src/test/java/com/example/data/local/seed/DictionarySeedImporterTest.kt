@@ -99,12 +99,23 @@ class DictionarySeedImporterTest {
     }
 
     @Test
-    fun `3 - leitura do asset real dictionary_seed json retorna sucesso zero sem erro`() = runBlocking {
+    fun `3 - leitura do asset real dictionary_seed json importa 20 registros demonstrativos sem erro`() = runBlocking {
         val result = importer.importIfEmpty()
 
-        assertEquals(AppResult.Success(0), result)
-        assertEquals(0, spyDao.upsertCallCount)
-        assertEquals(0, database.dictionaryDao().countOnce())
+        assertTrue(result is AppResult.Success)
+        assertEquals(AppResult.Success(20), result)
+        assertEquals(1, spyDao.upsertCallCount)
+        assertEquals(20, database.dictionaryDao().countOnce())
+
+        val expectedIds = (1..20)
+            .map { index -> "DEMO-${index.toString().padStart(3, '0')}" }
+            .toSet()
+        val persistedEntries = database.dictionaryDao()
+            .observeEntries(query = "", category = null, onlyFavorites = false)
+            .first()
+        assertEquals(20, persistedEntries.size)
+        assertEquals(expectedIds, persistedEntries.map { it.id }.toSet())
+        assertTrue(persistedEntries.none { it.isFavorite })
     }
 
     @Test
