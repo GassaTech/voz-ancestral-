@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.example.data.local.dao.DictionaryDao
 import com.example.data.local.dao.EncyclopediaDao
+import com.example.data.local.dao.SeedMetadataDao
 import com.example.data.local.dao.SyncMetadataDao
 import com.example.data.local.database.ParintintinDatabase
 import dagger.Module
@@ -27,6 +28,7 @@ object DatabaseModule {
         "parintintin_archive.db"
     )
         .addMigrations(*ParintintinDatabase.MIGRATIONS)
+        .addCallback(ParintintinDatabase.SEED_INITIALIZATION_CALLBACK)
         .build()
 
     @Provides
@@ -40,4 +42,8 @@ object DatabaseModule {
     @Provides
     fun provideSyncMetadataDao(database: ParintintinDatabase): SyncMetadataDao =
         database.syncMetadataDao()
+
+    @Provides
+    fun provideSeedMetadataDao(database: ParintintinDatabase): SeedMetadataDao =
+        database.seedMetadataDao()
 }

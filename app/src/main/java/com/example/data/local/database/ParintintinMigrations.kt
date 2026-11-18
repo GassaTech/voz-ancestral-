@@ -2,7 +2,10 @@ package com.example.data.local.database
 
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.example.data.local.entity.SeedMetadataEntity
 import com.example.data.local.entity.SyncMetadataEntity
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 val MIGRATION_1_2: Migration = object : Migration(1, 2) {
     override fun migrate(db: SupportSQLiteDatabase) {
@@ -55,5 +58,57 @@ val MIGRATION_1_2: Migration = object : Migration(1, 2) {
 
         db.execSQL("DROP TABLE `sync_metadata`")
         db.execSQL("ALTER TABLE `sync_metadata_new` RENAME TO `sync_metadata`")
+    }
+}
+
+val MIGRATION_2_3: Migration = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `seed_metadata` (
+                `id` TEXT NOT NULL,
+                `applied_seed_version` INTEGER NOT NULL,
+                `applied_seed_hash` TEXT,
+                `applied_seed_ids_json` TEXT,
+                `updated_at_epoch_millis` INTEGER NOT NULL,
+                PRIMARY KEY(`id`)
+            )
+            """.trimIndent()
+        )
+
+        val legacyDemoIds = mutableListOf<String>()
+        db.query(
+            "SELECT `id` FROM `dictionary_entries` WHERE SUBSTR(`id`, 1, 5) = 'DEMO-' ORDER BY `id` ASC"
+        ).use { cursor ->
+            val idIndex = cursor.getColumnIndexOrThrow("id")
+            while (cursor.moveToNext()) {
+                legacyDemoIds += cursor.getString(idIndex)
+            }
+        }
+
+        val legacyDemoIdsJson: String? = if (legacyDemoIds.isNotEmpty()) {
+            Json.encodeToString(legacyDemoIds)
+        } else {
+            null
+        }
+
+        db.execSQL(
+            """
+            INSERT OR REPLACE INTO `seed_metadata` (
+                `id`,
+                `applied_seed_version`,
+                `applied_seed_hash`,
+                `applied_seed_ids_json`,
+                `updated_at_epoch_millis`
+            ) VALUES (?, ?, ?, ?, ?)
+            """.trimIndent(),
+            arrayOf<Any?>(
+                SeedMetadataEntity.SINGLETON_ID,
+                SeedMetadataEntity.INITIAL_SEED_VERSION,
+                null,
+                legacyDemoIdsJson,
+                0L
+            )
+        )
     }
 }
