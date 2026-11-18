@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
@@ -13,8 +14,10 @@ import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -785,6 +788,130 @@ class DictionaryScreenTest {
         assertEquals(listOf("DEMO"), recordedQueries)
         assertEquals(listOf(SemanticCategory.NATURE), recordedCategories)
         assertEquals(listOf(GrammaticalClass.NOUN), recordedClasses)
+    }
+
+    @Test
+    fun `campo de pesquisa possui label persistente mesmo apos digitacao`() {
+        var currentQuery by mutableStateOf("")
+        val recordedQueries = mutableListOf<String>()
+
+        composeTestRule.setContent {
+            ParintintinTheme {
+                DictionaryContent(
+                    uiState = DictionaryUiState(
+                        query = currentQuery,
+                        totalLocalEntriesCount = 20,
+                        contentState = DictionaryEntriesState.Success(emptyList())
+                    ),
+                    onQueryChange = { newValue ->
+                        recordedQueries += newValue
+                        currentQuery = newValue
+                    },
+                    onSelectCategory = {},
+                    onSelectGrammaticalClass = {},
+                    onClearFilters = {},
+                    onRetry = {}
+                )
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Pesquisar verbetes").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("dictionary_search_input")
+            .assert(hasText("Pesquisar verbetes"))
+            .performTextInput("DEMO-001")
+        composeTestRule.waitForIdle()
+
+        assertEquals(listOf("DEMO-001"), recordedQueries)
+        composeTestRule.onNodeWithText("Pesquisar verbetes").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("dictionary_search_input")
+            .assert(hasText("Pesquisar verbetes"))
+            .assert(hasText("DEMO-001"))
+    }
+
+    @Test
+    fun `chips de classificacao e filtros fornecem contexto semantico sem anuncios duplicados`() {
+        val entry = sampleEntry(
+            id = "sem_1",
+            word = "DEMO-001",
+            grammaticalClass = GrammaticalClass.NOUN,
+            semanticCategory = SemanticCategory.NATURE
+        )
+
+        composeTestRule.setContent {
+            ParintintinTheme {
+                DictionaryContent(
+                    uiState = DictionaryUiState(
+                        totalLocalEntriesCount = 1,
+                        contentState = DictionaryEntriesState.Success(listOf(entry))
+                    ),
+                    onQueryChange = {},
+                    onSelectCategory = {},
+                    onSelectGrammaticalClass = {},
+                    onClearFilters = {},
+                    onRetry = {}
+                )
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        // FilterChips possuem contentDescription contextualizada
+        composeTestRule.onNodeWithTag("dictionary_category_all")
+            .assertContentDescriptionEquals("Categoria semântica: Todas")
+        composeTestRule.onNodeWithTag("dictionary_category_${SemanticCategory.NATURE.name}")
+            .performScrollTo()
+            .assertContentDescriptionEquals("Categoria semântica: Natureza e Território")
+        composeTestRule.onNodeWithTag("dictionary_grammatical_class_all")
+            .assertContentDescriptionEquals("Classe gramatical: Todas")
+        composeTestRule.onNodeWithTag("dictionary_grammatical_class_${GrammaticalClass.NOUN.name}")
+            .performScrollTo()
+            .assertContentDescriptionEquals("Classe gramatical: Substantivo")
+
+        // Chips do DictionaryEntryCard preservam o texto visual e expõem descrição contextualizada
+        scrollListToTag("dictionary_entry_card_sem_1")
+        composeTestRule.onNode(
+            hasText("Substantivo") and
+                hasContentDescription("Classe gramatical: Substantivo") and
+                hasAnyAncestor(hasTestTag("dictionary_entry_card_sem_1"))
+        ).assertIsDisplayed()
+        composeTestRule.onNode(
+            hasText("Natureza e Território") and
+                hasContentDescription("Categoria semântica: Natureza e Território") and
+                hasAnyAncestor(hasTestTag("dictionary_entry_card_sem_1"))
+        ).assertIsDisplayed()
+    }
+
+    @Test
+    @Config(sdk = [36], qualifiers = "w412dp-h915dp")
+    fun `titulos estruturais do DictionaryScreen possuem semantica de heading e textos comuns nao`() {
+        composeTestRule.setContent {
+            ParintintinTheme {
+                DictionaryContent(
+                    uiState = DictionaryUiState(
+                        query = "INEXISTENTE",
+                        totalLocalEntriesCount = 20,
+                        contentState = DictionaryEntriesState.Empty(hasActiveFilter = true)
+                    ),
+                    onQueryChange = {},
+                    onSelectCategory = {},
+                    onSelectGrammaticalClass = {},
+                    onClearFilters = {},
+                    onRetry = {}
+                )
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Dicionário").assert(isHeading())
+        composeTestRule.onNodeWithText("Categorias semânticas").assert(isHeading())
+        composeTestRule.onNodeWithText("Classes gramaticais").assert(isHeading())
+        composeTestRule.onNodeWithText("MODO DEMONSTRATIVO").assert(isHeading())
+        composeTestRule.onNodeWithText("Verbetes disponíveis").assert(isHeading())
+        composeTestRule.onNodeWithText("Nenhum verbete encontrado").assert(isHeading())
+
+        composeTestRule.onNodeWithTag("dictionary_total_entries_count").assert(isHeading().not())
+        composeTestRule.onNodeWithText("Consulta offline via Room").assert(isHeading().not())
+        composeTestRule.onNodeWithTag("demo_mode_notice_body").assert(isHeading().not())
     }
 
     private fun scrollListToTag(tag: String) {

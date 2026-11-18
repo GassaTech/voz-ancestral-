@@ -56,6 +56,8 @@
     <string name="home_stage_details_title">Detalhes da Etapa Inicial</string>
     <string name="home_stage_details_expand">Mostrar detalhes</string>
     <string name="home_stage_details_collapse">Ocultar detalhes</string>
+    <string name="home_stage_details_state_expanded">Expandido</string>
+    <string name="home_stage_details_state_collapsed">Recolhido</string>
     <string name="home_stage_details_body">Estrutura organizada em Clean Architecture (Presentation, Domain e Data), com Jetpack Compose, Navigation Compose, Hilt, Coroutines/Flow, Retrofit e Room preparados para integração futura com a API oficial e sincronização offline.</string>
 
     <!-- Descrições de acessibilidade -->
@@ -103,12 +105,15 @@
     <string name="dictionary_title">Dicionário</string>
     <string name="dictionary_subtitle">Consulta bilíngue Parintintin–Português com filtros por categoria semântica e classe gramatical.</string>
     <string name="dictionary_offline_badge">Consulta offline via Room</string>
+    <string name="dictionary_search_label">Pesquisar verbetes</string>
     <string name="dictionary_search_hint">Pesquisar por palavra, tradução ou nota cultural…</string>
     <string name="dictionary_clear_search">Limpar pesquisa</string>
     <string name="dictionary_categories_label">Categorias semânticas</string>
     <string name="dictionary_grammatical_classes_label">Classes gramaticais</string>
     <string name="dictionary_all_categories">Todas</string>
     <string name="dictionary_all_grammatical_classes">Todas</string>
+    <string name="cd_dictionary_grammatical_class_chip">Classe gramatical: %1$s</string>
+    <string name="cd_dictionary_semantic_category_chip">Categoria semântica: %1$s</string>
     <string name="dictionary_entries_section_title">Verbetes disponíveis</string>
     <string name="dictionary_entries_count">%1$d verbetes locais</string>
     <string name="dictionary_filtered_results_count">%1$d encontrados</string>

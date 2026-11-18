@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -51,9 +52,11 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.R
@@ -174,7 +177,8 @@ fun IntroNoticeCard(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.semantics { heading() }
                 )
                 Text(
                     text = body,
@@ -365,7 +369,8 @@ fun OfflineArchiveStatusCard(
             Text(
                 text = stringResource(R.string.home_offline_status_title),
                 style = MaterialTheme.typography.labelSmall,
-                color = secondaryTextColor
+                color = secondaryTextColor,
+                modifier = Modifier.semantics { heading() }
             )
 
             Row(
@@ -625,8 +630,22 @@ fun ExpandableStageDetailsCard(
     onToggle: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val stateLabel = stringResource(
+        if (expanded) {
+            R.string.home_stage_details_state_expanded
+        } else {
+            R.string.home_stage_details_state_collapsed
+        }
+    )
+    val actionLabel = stringResource(
+        if (expanded) {
+            R.string.home_stage_details_collapse
+        } else {
+            R.string.home_stage_details_expand
+        }
+    )
+
     Card(
-        onClick = onToggle,
         shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
@@ -635,6 +654,15 @@ fun ExpandableStageDetailsCard(
         modifier = modifier
             .fillMaxWidth()
             .minimumInteractiveComponentSize()
+            .clip(MaterialTheme.shapes.medium)
+            .clickable(
+                onClickLabel = actionLabel,
+                role = Role.Button,
+                onClick = onToggle
+            )
+            .semantics {
+                stateDescription = stateLabel
+            }
             .testTag("stage_details_toggle")
     ) {
         Column(
@@ -655,9 +683,7 @@ fun ExpandableStageDetailsCard(
                 )
                 Icon(
                     imageVector = if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
-                    contentDescription = stringResource(
-                        if (expanded) R.string.home_stage_details_collapse else R.string.home_stage_details_expand
-                    ),
+                    contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary
                 )
             }

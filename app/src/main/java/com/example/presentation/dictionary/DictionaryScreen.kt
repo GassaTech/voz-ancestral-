@@ -124,6 +124,9 @@ fun DictionaryContent(
                 OutlinedTextField(
                     value = uiState.query,
                     onValueChange = onQueryChange,
+                    label = {
+                        Text(text = stringResource(R.string.dictionary_search_label))
+                    },
                     placeholder = {
                         Text(text = stringResource(R.string.dictionary_search_hint))
                     },
@@ -426,16 +429,22 @@ private fun SemanticCategoryFilterSection(
             modifier = Modifier.testTag("dictionary_category_filters")
         ) {
             item {
+                val allCategoriesLabel = stringResource(R.string.dictionary_all_categories)
+                val allCategoriesCd = stringResource(
+                    R.string.cd_dictionary_semantic_category_chip,
+                    allCategoriesLabel
+                )
                 FilterChip(
                     selected = selectedCategory == null,
                     onClick = { onSelectCategory(null) },
-                    label = { Text(stringResource(R.string.dictionary_all_categories)) },
+                    label = { Text(allCategoriesLabel) },
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = MaterialTheme.colorScheme.primary,
                         selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                     ),
                     modifier = Modifier
                         .minimumInteractiveComponentSize()
+                        .semantics { contentDescription = allCategoriesCd }
                         .testTag("dictionary_category_all")
                 )
             }
@@ -444,6 +453,10 @@ private fun SemanticCategoryFilterSection(
                 key = { it.name }
             ) { category ->
                 val isSelected = selectedCategory == category
+                val categoryCd = stringResource(
+                    R.string.cd_dictionary_semantic_category_chip,
+                    category.labelPt
+                )
                 FilterChip(
                     selected = isSelected,
                     onClick = { onSelectCategory(if (isSelected) null else category) },
@@ -454,6 +467,7 @@ private fun SemanticCategoryFilterSection(
                     ),
                     modifier = Modifier
                         .minimumInteractiveComponentSize()
+                        .semantics { contentDescription = categoryCd }
                         .testTag("dictionary_category_${category.name}")
                 )
             }
@@ -479,16 +493,22 @@ private fun GrammaticalClassFilterSection(
             modifier = Modifier.testTag("dictionary_grammatical_class_filters")
         ) {
             item {
+                val allClassesLabel = stringResource(R.string.dictionary_all_grammatical_classes)
+                val allClassesCd = stringResource(
+                    R.string.cd_dictionary_grammatical_class_chip,
+                    allClassesLabel
+                )
                 FilterChip(
                     selected = selectedGrammaticalClass == null,
                     onClick = { onSelectGrammaticalClass(null) },
-                    label = { Text(stringResource(R.string.dictionary_all_grammatical_classes)) },
+                    label = { Text(allClassesLabel) },
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = MaterialTheme.colorScheme.primary,
                         selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                     ),
                     modifier = Modifier
                         .minimumInteractiveComponentSize()
+                        .semantics { contentDescription = allClassesCd }
                         .testTag("dictionary_grammatical_class_all")
                 )
             }
@@ -497,6 +517,10 @@ private fun GrammaticalClassFilterSection(
                 key = { it.name }
             ) { grammaticalClass ->
                 val isSelected = selectedGrammaticalClass == grammaticalClass
+                val classCd = stringResource(
+                    R.string.cd_dictionary_grammatical_class_chip,
+                    grammaticalClass.labelPt
+                )
                 FilterChip(
                     selected = isSelected,
                     onClick = {
@@ -509,6 +533,7 @@ private fun GrammaticalClassFilterSection(
                     ),
                     modifier = Modifier
                         .minimumInteractiveComponentSize()
+                        .semantics { contentDescription = classCd }
                         .testTag("dictionary_grammatical_class_${grammaticalClass.name}")
                 )
             }
@@ -592,7 +617,8 @@ private fun DictionaryFeedbackCard(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface,
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
+                modifier = Modifier.semantics { heading() }
             )
 
             Text(
@@ -663,6 +689,15 @@ private fun DictionaryEntryCard(
                 color = MaterialTheme.colorScheme.secondary
             )
 
+            val grammaticalClassCd = stringResource(
+                R.string.cd_dictionary_grammatical_class_chip,
+                entry.grammaticalClass.labelPt
+            )
+            val semanticCategoryCd = stringResource(
+                R.string.cd_dictionary_semantic_category_chip,
+                entry.semanticCategory.labelPt
+            )
+
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -676,7 +711,9 @@ private fun DictionaryEntryCard(
                         text = entry.grammaticalClass.labelPt,
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                        modifier = Modifier
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                            .semantics { contentDescription = grammaticalClassCd }
                     )
                 }
 
@@ -688,7 +725,9 @@ private fun DictionaryEntryCard(
                         text = entry.semanticCategory.labelPt,
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onTertiaryContainer,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                        modifier = Modifier
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                            .semantics { contentDescription = semanticCategoryCd }
                     )
                 }
             }

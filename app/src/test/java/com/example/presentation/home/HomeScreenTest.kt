@@ -2,19 +2,31 @@ package com.example.presentation.home
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.unit.dp
 import com.example.domain.model.ArchiveStats
 import com.example.domain.model.SyncState
 import com.example.ui.theme.ParintintinTheme
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -167,5 +179,108 @@ class HomeScreenTest {
         composeTestRule.onNodeWithText("Pesquisa e Favoritos").assertIsDisplayed()
 
         composeTestRule.onNodeWithText("Dicionário Parintintin–Português").assertDoesNotExist()
+    }
+
+    @Test
+    fun `cartao expansivel anuncia estado recolhido e atualiza semantica ao expandir e recolher`() {
+        var expanded by mutableStateOf(false)
+
+        composeTestRule.setContent {
+            ParintintinTheme {
+                HomeContent(
+                    uiState = HomeUiState(
+                        archiveStats = ArchiveStats(totalEntries = 20, totalArticles = 0),
+                        syncState = SyncState.Idle,
+                        isStageDetailsExpanded = expanded
+                    ),
+                    onManualSync = {},
+                    onToggleStageDetails = { expanded = !expanded }
+                )
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithTag("home_list")
+            .performScrollToNode(hasTestTag("stage_details_toggle"))
+        composeTestRule.waitForIdle()
+
+        // Estado inicial recolhido
+        composeTestRule.onNodeWithTag("stage_details_toggle")
+            .assertIsDisplayed()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Recolhido"))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+        assertEquals(
+            "Mostrar detalhes",
+            composeTestRule.onNodeWithTag("stage_details_toggle")
+                .fetchSemanticsNode().config.getOrNull(SemanticsActions.OnClick)?.label
+        )
+        composeTestRule.onNodeWithText("Estrutura organizada em Clean Architecture", substring = true)
+            .assertDoesNotExist()
+
+        // Expande ao clicar
+        composeTestRule.onNodeWithTag("stage_details_toggle").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithTag("stage_details_toggle")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Expandido"))
+        assertEquals(
+            "Ocultar detalhes",
+            composeTestRule.onNodeWithTag("stage_details_toggle")
+                .fetchSemanticsNode().config.getOrNull(SemanticsActions.OnClick)?.label
+        )
+        composeTestRule.onNodeWithText("Estrutura organizada em Clean Architecture", substring = true)
+            .assertIsDisplayed()
+
+        // Recolhe novamente ao clicar
+        composeTestRule.onNodeWithTag("stage_details_toggle").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithTag("stage_details_toggle")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Recolhido"))
+        assertEquals(
+            "Mostrar detalhes",
+            composeTestRule.onNodeWithTag("stage_details_toggle")
+                .fetchSemanticsNode().config.getOrNull(SemanticsActions.OnClick)?.label
+        )
+    }
+
+    @Test
+    fun `titulos estruturais da Home possuem semantica de heading e textos comuns nao`() {
+        composeTestRule.setContent {
+            ParintintinTheme {
+                HomeContent(
+                    uiState = HomeUiState(
+                        archiveStats = ArchiveStats(totalEntries = 20, totalArticles = 0),
+                        syncState = SyncState.Idle
+                    ),
+                    onManualSync = {},
+                    onToggleStageDetails = {}
+                )
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Preservação da Língua Parintintin").assert(isHeading())
+        composeTestRule.onNodeWithText("MODO DEMONSTRATIVO").assert(isHeading())
+        composeTestRule.onNodeWithTag("demo_mode_notice_body").assert(isHeading().not())
+
+        composeTestRule.onNodeWithTag("home_list")
+            .performScrollToNode(hasText("Acervo em construção"))
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Acervo em construção").assert(isHeading())
+        composeTestRule.onNodeWithText(
+            "O acervo linguístico autêntico ainda está em preparação.",
+            substring = true
+        ).assert(isHeading().not())
+
+        composeTestRule.onNodeWithTag("home_list")
+            .performScrollToNode(hasText("Armazenamento Local (Offline-First)"))
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Armazenamento Local (Offline-First)").assert(isHeading())
+
+        composeTestRule.onNodeWithTag("home_list")
+            .performScrollToNode(hasText("Módulos Planejados"))
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Módulos Planejados").assert(isHeading())
     }
 }

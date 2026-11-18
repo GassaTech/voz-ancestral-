@@ -3,11 +3,13 @@ package com.example.presentation.components
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -248,5 +250,24 @@ class OfflineArchiveStatusCardTest {
         composeTestRule.onNodeWithTag("home_offline_articles_chip").assertIsDisplayed()
         composeTestRule.onNodeWithText("42 verbetes locais").assertIsDisplayed()
         composeTestRule.onNodeWithText("12 artigos locais").assertIsDisplayed()
+    }
+
+    @Test
+    fun `titulo estrutural do cartao offline possui semantica de heading e corpo comum nao`() {
+        composeTestRule.setContent {
+            ParintintinTheme {
+                OfflineArchiveStatusCard(
+                    stats = sampleStats,
+                    syncState = SyncState.Idle,
+                    onManualSync = {}
+                )
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Armazenamento Local (Offline-First)").assert(isHeading())
+        composeTestRule.onNodeWithText(
+            "Base local preparada. Ainda não houve sincronização remota neste dispositivo."
+        ).assert(isHeading().not())
     }
 }
