@@ -12,6 +12,7 @@ import com.example.domain.model.CulturalArticle
 import com.example.domain.model.CulturalTopic
 import com.example.domain.model.DictionaryEntry
 import com.example.domain.model.GrammaticalClass
+import com.example.domain.model.RemoteSyncOutcome
 import com.example.domain.model.SemanticCategory
 import com.example.domain.model.SyncState
 import com.example.domain.repository.DictionaryRepository
@@ -137,7 +138,9 @@ class ArchiveSyncRepositoryImplTest {
             throwOnSync = AssertionError("Enciclopédia não deve ser sincronizada na versão 1.0")
         )
         val repository = createRepository(
-            dictionaryRepository = FakeDictionaryRepository(syncResult = AppResult.Success(12)),
+            dictionaryRepository = FakeDictionaryRepository(
+                syncResult = AppResult.Success(RemoteSyncOutcome.Synced(12))
+            ),
             encyclopediaRepository = encyclopediaRepository,
             syncDao = syncDao
         )
@@ -195,7 +198,9 @@ class ArchiveSyncRepositoryImplTest {
             syncResult = AppResult.Error("Falha ao consultar API da enciclopédia.")
         )
         val repository = createRepository(
-            dictionaryRepository = FakeDictionaryRepository(syncResult = AppResult.Success(5)),
+            dictionaryRepository = FakeDictionaryRepository(
+                syncResult = AppResult.Success(RemoteSyncOutcome.Synced(5))
+            ),
             encyclopediaRepository = encyclopediaRepository,
             syncDao = syncDao
         )
@@ -333,7 +338,7 @@ class ArchiveSyncRepositoryImplTest {
                     when (attempt) {
                         1 -> AppResult.Error("Sem internet")
                         2 -> throw CancellationException("Cancelado")
-                        else -> AppResult.Success(10)
+                        else -> AppResult.Success(RemoteSyncOutcome.Synced(10))
                     }
                 }
             ),
@@ -472,7 +477,9 @@ class ArchiveSyncRepositoryImplTest {
             throwOnRead = IllegalStateException("Erro ao consultar metadados no SQLite")
         )
         val repository = createRepository(
-            dictionaryRepository = FakeDictionaryRepository(syncResult = AppResult.Success(18)),
+            dictionaryRepository = FakeDictionaryRepository(
+                syncResult = AppResult.Success(RemoteSyncOutcome.Synced(18))
+            ),
             encyclopediaRepository = FakeEncyclopediaRepository(syncResult = AppResult.Success(7)),
             syncDao = syncDao
         )
@@ -503,7 +510,9 @@ class ArchiveSyncRepositoryImplTest {
             throwOnUpsert = IllegalStateException("Erro de escrita no SQLite")
         )
         val repository = createRepository(
-            dictionaryRepository = FakeDictionaryRepository(syncResult = AppResult.Success(25)),
+            dictionaryRepository = FakeDictionaryRepository(
+                syncResult = AppResult.Success(RemoteSyncOutcome.Synced(25))
+            ),
             encyclopediaRepository = FakeEncyclopediaRepository(syncResult = AppResult.Success(9)),
             syncDao = syncDao
         )
@@ -532,7 +541,9 @@ class ArchiveSyncRepositoryImplTest {
         )
         val syncDao = FakeSyncMetadataDao(initialEntity = persisted)
         val repository = createRepository(
-            dictionaryRepository = FakeDictionaryRepository(syncResult = AppResult.Success(2)),
+            dictionaryRepository = FakeDictionaryRepository(
+                syncResult = AppResult.Success(RemoteSyncOutcome.Synced(2))
+            ),
             encyclopediaRepository = FakeEncyclopediaRepository(syncResult = AppResult.Success(3)),
             syncDao = syncDao
         )
@@ -553,8 +564,8 @@ class ArchiveSyncRepositoryImplTest {
 
     @Test
     fun `estados transitorios Syncing e PendingRoomEmission protegem contra atraso e emissao antiga do Room`() = runTest {
-        val firstGate = CompletableDeferred<AppResult<Int>>()
-        val secondGate = CompletableDeferred<AppResult<Int>>()
+        val firstGate = CompletableDeferred<AppResult<RemoteSyncOutcome>>()
+        val secondGate = CompletableDeferred<AppResult<RemoteSyncOutcome>>()
         var syncCallCount = 0
         val syncDao = FakeSyncMetadataDao(deferFlowEmission = true)
 
@@ -576,7 +587,7 @@ class ArchiveSyncRepositoryImplTest {
         advanceUntilIdle()
         assertEquals(SyncState.Syncing, repository.syncState.value)
 
-        firstGate.complete(AppResult.Success(15))
+        firstGate.complete(AppResult.Success(RemoteSyncOutcome.Synced(15)))
         assertTrue(firstJob.await() is AppResult.Success)
         advanceUntilIdle()
 
@@ -595,7 +606,7 @@ class ArchiveSyncRepositoryImplTest {
         advanceUntilIdle()
         assertEquals(SyncState.Syncing, repository.syncState.value)
 
-        secondGate.complete(AppResult.Success(22))
+        secondGate.complete(AppResult.Success(RemoteSyncOutcome.Synced(22)))
         assertTrue(secondJob.await() is AppResult.Success)
         syncDao.emitLatestToObservers()
         advanceUntilIdle()
@@ -620,7 +631,7 @@ class ArchiveSyncRepositoryImplTest {
             dictionaryRepository = FakeDictionaryRepository(
                 customSync = {
                     callOrder += "remote"
-                    AppResult.Success(7)
+                    AppResult.Success(RemoteSyncOutcome.Synced(7))
                 }
             ),
             syncDao = syncDao,
@@ -730,7 +741,7 @@ class ArchiveSyncRepositoryImplTest {
             dictionaryRepository = FakeDictionaryRepository(
                 customSync = {
                     remoteCallCount += 1
-                    AppResult.Success(3)
+                    AppResult.Success(RemoteSyncOutcome.Synced(3))
                 }
             ),
             syncDao = syncDao,
@@ -773,7 +784,7 @@ class ArchiveSyncRepositoryImplTest {
             dictionaryRepository = FakeDictionaryRepository(
                 customSync = {
                     callOrder += "remote"
-                    AppResult.Success(20)
+                    AppResult.Success(RemoteSyncOutcome.Synced(20))
                 }
             ),
             syncDao = FakeSyncMetadataDao(),
@@ -815,7 +826,7 @@ class ArchiveSyncRepositoryImplTest {
                 dictionaryRepository = FakeDictionaryRepository(
                     customSync = {
                         callOrder += "remote"
-                        AppResult.Success(14)
+                        AppResult.Success(RemoteSyncOutcome.Synced(14))
                     }
                 ),
                 syncDao = syncDao,
@@ -832,6 +843,162 @@ class ArchiveSyncRepositoryImplTest {
             val state = repository.syncState.value as SyncState.Synced
             assertEquals(14, state.entriesCount)
             assertNotNull(syncDao.lastSaved?.lastSuccessfulSyncEpochMillis)
+        }
+    }
+
+    @Test
+    fun `RemoteSyncOutcome Empty sem historico oficial grava STATUS_REMOTE_EMPTY preserva nulls e emite RemoteEmpty`() = runTest {
+        val syncDao = FakeSyncMetadataDao()
+        val encyclopediaRepository = FakeEncyclopediaRepository(
+            throwOnSync = AssertionError("Enciclopédia não deve ser chamada")
+        )
+        val repository = createRepository(
+            dictionaryRepository = FakeDictionaryRepository(
+                syncResult = AppResult.Success(RemoteSyncOutcome.Empty)
+            ),
+            encyclopediaRepository = encyclopediaRepository,
+            syncDao = syncDao
+        )
+        advanceUntilIdle()
+
+        val result = repository.syncArchive()
+        advanceUntilIdle()
+
+        assertTrue(result is AppResult.Success)
+        assertEquals(0, encyclopediaRepository.syncCallCount)
+
+        val state = repository.syncState.value as SyncState.RemoteEmpty
+        assertNull(state.lastSyncedEpochMillis)
+        assertNull(state.entriesCount)
+        assertNull(state.articlesCount)
+
+        val saved = syncDao.lastSaved
+        assertNotNull(saved)
+        assertEquals(SyncMetadataEntity.STATUS_REMOTE_EMPTY, saved?.lastAttemptStatus)
+        assertNull(saved?.lastFailureReason)
+        assertNull(saved?.lastSuccessfulSyncEpochMillis)
+        assertNull(saved?.lastSuccessfulEntriesCount)
+        assertNull(saved?.lastSuccessfulArticlesCount)
+        assertNull(saved?.lastSuccessfulRemoteVersion)
+    }
+
+    @Test
+    fun `RemoteSyncOutcome Empty apos sincronizacao oficial preserva historico no Room e no SyncState`() = runTest {
+        val initialSynced = SyncMetadataEntity(
+            lastAttemptEpochMillis = 1_700_000_000_000L,
+            lastAttemptStatus = SyncMetadataEntity.STATUS_SYNCED,
+            lastFailureReason = null,
+            lastSuccessfulSyncEpochMillis = 1_700_000_000_000L,
+            lastSuccessfulEntriesCount = 24,
+            lastSuccessfulArticlesCount = 6,
+            lastSuccessfulRemoteVersion = "v1.4.0"
+        )
+        val syncDao = FakeSyncMetadataDao(initialEntity = initialSynced)
+        val repository = createRepository(
+            dictionaryRepository = FakeDictionaryRepository(
+                syncResult = AppResult.Success(RemoteSyncOutcome.Empty)
+            ),
+            syncDao = syncDao
+        )
+        repository.syncState.first { it is SyncState.Synced }
+
+        val result = repository.syncArchive()
+        advanceUntilIdle()
+
+        assertTrue(result is AppResult.Success)
+        val state = repository.syncState.value as SyncState.RemoteEmpty
+        assertTrue(state.lastAttemptEpochMillis > initialSynced.lastAttemptEpochMillis)
+        assertEquals(1_700_000_000_000L, state.lastSyncedEpochMillis)
+        assertEquals(24, state.entriesCount)
+        assertEquals(6, state.articlesCount)
+
+        val saved = syncDao.lastSaved
+        assertNotNull(saved)
+        assertEquals(SyncMetadataEntity.STATUS_REMOTE_EMPTY, saved?.lastAttemptStatus)
+        assertNull(saved?.lastFailureReason)
+        assertTrue((saved?.lastAttemptEpochMillis ?: 0L) > initialSynced.lastAttemptEpochMillis)
+        assertEquals(1_700_000_000_000L, saved?.lastSuccessfulSyncEpochMillis)
+        assertEquals(24, saved?.lastSuccessfulEntriesCount)
+        assertEquals(6, saved?.lastSuccessfulArticlesCount)
+        assertEquals("v1.4.0", saved?.lastSuccessfulRemoteVersion)
+    }
+
+    @Test
+    fun `recuperacao inicial transita de Loading para RemoteEmpty com e sem historico oficial persistido`() = runTest {
+        val withoutHistory = SyncMetadataEntity(
+            lastAttemptEpochMillis = 1_700_000_030_000L,
+            lastAttemptStatus = SyncMetadataEntity.STATUS_REMOTE_EMPTY,
+            lastFailureReason = null,
+            lastSuccessfulSyncEpochMillis = null,
+            lastSuccessfulEntriesCount = null,
+            lastSuccessfulArticlesCount = null,
+            lastSuccessfulRemoteVersion = null
+        )
+        val daoWithoutHistory = FakeSyncMetadataDao(
+            initialEntity = withoutHistory,
+            deferInitialEmission = true
+        )
+        val repoWithoutHistory = createRepository(syncDao = daoWithoutHistory)
+
+        advanceUntilIdle()
+        assertEquals(SyncState.Loading, repoWithoutHistory.syncState.value)
+
+        daoWithoutHistory.emitInitialMetadata()
+        advanceUntilIdle()
+
+        val recoveredNoHistory = repoWithoutHistory.syncState.value as SyncState.RemoteEmpty
+        assertEquals(1_700_000_030_000L, recoveredNoHistory.lastAttemptEpochMillis)
+        assertNull(recoveredNoHistory.lastSyncedEpochMillis)
+        assertNull(recoveredNoHistory.entriesCount)
+
+        val withHistory = SyncMetadataEntity(
+            lastAttemptEpochMillis = 1_700_000_050_000L,
+            lastAttemptStatus = SyncMetadataEntity.STATUS_REMOTE_EMPTY,
+            lastFailureReason = null,
+            lastSuccessfulSyncEpochMillis = 1_700_000_010_000L,
+            lastSuccessfulEntriesCount = 35,
+            lastSuccessfulArticlesCount = 8,
+            lastSuccessfulRemoteVersion = "v2.0.0"
+        )
+        val daoWithHistory = FakeSyncMetadataDao(
+            initialEntity = withHistory,
+            deferInitialEmission = true
+        )
+        val repoWithHistory = createRepository(syncDao = daoWithHistory)
+
+        advanceUntilIdle()
+        assertEquals(SyncState.Loading, repoWithHistory.syncState.value)
+
+        daoWithHistory.emitInitialMetadata()
+        advanceUntilIdle()
+
+        val recoveredWithHistory = repoWithHistory.syncState.value as SyncState.RemoteEmpty
+        assertEquals(1_700_000_050_000L, recoveredWithHistory.lastAttemptEpochMillis)
+        assertEquals(1_700_000_010_000L, recoveredWithHistory.lastSyncedEpochMillis)
+        assertEquals(35, recoveredWithHistory.entriesCount)
+        assertEquals(8, recoveredWithHistory.articlesCount)
+    }
+
+    @Test
+    fun `cancelamento durante registro de RemoteEmpty restaura estado anterior e relanca CancellationException`() = runTest {
+        val syncDao = FakeSyncMetadataDao(
+            throwOnRecordFailure = CancellationException("Cancelado ao gravar RemoteEmpty")
+        )
+        val repository = createRepository(
+            dictionaryRepository = FakeDictionaryRepository(
+                syncResult = AppResult.Success(RemoteSyncOutcome.Empty)
+            ),
+            syncDao = syncDao
+        )
+        advanceUntilIdle()
+
+        try {
+            repository.syncArchive()
+            fail("Era esperado relançar CancellationException")
+        } catch (_: CancellationException) {
+            advanceUntilIdle()
+            assertEquals(SyncState.Idle, repository.syncState.value)
+            assertNull(syncDao.lastSaved)
         }
     }
 
@@ -911,6 +1078,11 @@ class ArchiveSyncRepositoryImplTest {
             super.recordAttemptFailure(attemptEpochMillis, failureReason)
         }
 
+        override suspend fun recordRemoteEmptyAttempt(attemptEpochMillis: Long) {
+            throwOnRecordFailure?.let { throw it }
+            super.recordRemoteEmptyAttempt(attemptEpochMillis)
+        }
+
         fun emitInitialMetadata() {
             emitToObservers(lastSaved)
         }
@@ -931,9 +1103,9 @@ class ArchiveSyncRepositoryImplTest {
     private class FakeDictionaryRepository(
         private val total: Int = 0,
         private val favorites: Int = 0,
-        private val syncResult: AppResult<Int> = AppResult.Success(0),
+        private val syncResult: AppResult<RemoteSyncOutcome> = AppResult.Success(RemoteSyncOutcome.Empty),
         private val throwOnSync: Throwable? = null,
-        private val customSync: (suspend () -> AppResult<Int>)? = null
+        private val customSync: (suspend () -> AppResult<RemoteSyncOutcome>)? = null
     ) : DictionaryRepository {
         override fun observeEntries(
             query: String,
@@ -946,7 +1118,7 @@ class ArchiveSyncRepositoryImplTest {
         override fun observeTotalCount(): Flow<Int> = flowOf(total)
         override fun observeFavoriteCount(): Flow<Int> = flowOf(favorites)
         override suspend fun toggleFavorite(entryId: String) = Unit
-        override suspend fun syncFromRemote(): AppResult<Int> {
+        override suspend fun syncFromRemote(): AppResult<RemoteSyncOutcome> {
             customSync?.let { return it() }
             throwOnSync?.let { throw it }
             return syncResult

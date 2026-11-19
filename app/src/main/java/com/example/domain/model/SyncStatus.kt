@@ -10,6 +10,13 @@ sealed interface SyncState {
         val articlesCount: Int? = null
     ) : SyncState
 
+    data class RemoteEmpty(
+        val lastAttemptEpochMillis: Long,
+        val lastSyncedEpochMillis: Long? = null,
+        val entriesCount: Int? = null,
+        val articlesCount: Int? = null
+    ) : SyncState
+
     data class OfflineFallback(
         val reason: String,
         val lastAttemptEpochMillis: Long

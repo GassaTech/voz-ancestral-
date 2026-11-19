@@ -41,4 +41,26 @@ interface SyncMetadataDao {
         )
         upsert(updated)
     }
+
+    @Transaction
+    suspend fun recordRemoteEmptyAttempt(
+        attemptEpochMillis: Long
+    ) {
+        val current = getMetadataOnce(SyncMetadataEntity.SINGLETON_ID)
+        val updated = current?.copy(
+            lastAttemptEpochMillis = attemptEpochMillis,
+            lastAttemptStatus = SyncMetadataEntity.STATUS_REMOTE_EMPTY,
+            lastFailureReason = null
+        ) ?: SyncMetadataEntity(
+            id = SyncMetadataEntity.SINGLETON_ID,
+            lastAttemptEpochMillis = attemptEpochMillis,
+            lastAttemptStatus = SyncMetadataEntity.STATUS_REMOTE_EMPTY,
+            lastFailureReason = null,
+            lastSuccessfulSyncEpochMillis = null,
+            lastSuccessfulEntriesCount = null,
+            lastSuccessfulArticlesCount = null,
+            lastSuccessfulRemoteVersion = null
+        )
+        upsert(updated)
+    }
 }

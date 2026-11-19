@@ -25,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.CloudDone
 import androidx.compose.material.icons.rounded.CloudOff
+import androidx.compose.material.icons.rounded.CloudQueue
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Refresh
@@ -324,6 +325,7 @@ fun OfflineArchiveStatusCard(
         SyncState.Idle -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
         SyncState.Syncing -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)
         is SyncState.Synced -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
+        is SyncState.RemoteEmpty -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.45f)
         is SyncState.OfflineFallback -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.55f)
     }
 
@@ -332,6 +334,7 @@ fun OfflineArchiveStatusCard(
         SyncState.Idle,
         SyncState.Syncing,
         is SyncState.Synced -> MaterialTheme.colorScheme.onPrimaryContainer
+        is SyncState.RemoteEmpty -> MaterialTheme.colorScheme.onSecondaryContainer
         is SyncState.OfflineFallback -> MaterialTheme.colorScheme.onTertiaryContainer
     }
 
@@ -340,6 +343,7 @@ fun OfflineArchiveStatusCard(
         SyncState.Idle,
         SyncState.Syncing,
         is SyncState.Synced -> MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.9f)
+        is SyncState.RemoteEmpty -> MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.9f)
         is SyncState.OfflineFallback -> MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.9f)
     }
 
@@ -348,6 +352,7 @@ fun OfflineArchiveStatusCard(
         SyncState.Idle,
         SyncState.Syncing,
         is SyncState.Synced -> MaterialTheme.colorScheme.primary
+        is SyncState.RemoteEmpty -> MaterialTheme.colorScheme.secondary
         is SyncState.OfflineFallback -> MaterialTheme.colorScheme.tertiary
     }
 
@@ -356,6 +361,13 @@ fun OfflineArchiveStatusCard(
         SyncState.Idle -> stringResource(R.string.home_sync_idle_title)
         SyncState.Syncing -> stringResource(R.string.home_sync_syncing_title)
         is SyncState.Synced -> stringResource(R.string.home_sync_synced_title)
+        is SyncState.RemoteEmpty -> stringResource(
+            if (syncState.lastSyncedEpochMillis == null) {
+                R.string.home_sync_remote_empty_title
+            } else {
+                R.string.home_sync_remote_empty_title_with_history
+            }
+        )
         is SyncState.OfflineFallback -> stringResource(R.string.home_sync_offline_title)
     }
 
@@ -376,6 +388,13 @@ fun OfflineArchiveStatusCard(
             }
             stringResource(R.string.home_sync_synced_body, formattedTimestamp)
         }
+        is SyncState.RemoteEmpty -> stringResource(
+            if (syncState.lastSyncedEpochMillis == null) {
+                R.string.home_sync_remote_empty_body
+            } else {
+                R.string.home_sync_remote_empty_body_with_history
+            }
+        )
         is SyncState.OfflineFallback -> stringResource(R.string.home_sync_offline_body)
     }
 
@@ -389,6 +408,32 @@ fun OfflineArchiveStatusCard(
                 )
             } else {
                 null
+            }
+        }
+        is SyncState.RemoteEmpty -> {
+            val formattedAttempt = remember(syncState.lastAttemptEpochMillis, locale, timeZone) {
+                formatSyncTimestamp(
+                    epochMillis = syncState.lastAttemptEpochMillis,
+                    locale = locale,
+                    timeZone = timeZone
+                )
+            }
+            val previousSyncedAt = syncState.lastSyncedEpochMillis
+            if (previousSyncedAt == null) {
+                stringResource(R.string.home_sync_remote_empty_last_attempt, formattedAttempt)
+            } else {
+                val formattedSynced = remember(previousSyncedAt, locale, timeZone) {
+                    formatSyncTimestamp(
+                        epochMillis = previousSyncedAt,
+                        locale = locale,
+                        timeZone = timeZone
+                    )
+                }
+                stringResource(
+                    R.string.home_sync_remote_empty_history_detail,
+                    formattedSynced,
+                    formattedAttempt
+                )
             }
         }
         is SyncState.OfflineFallback -> {
@@ -410,7 +455,8 @@ fun OfflineArchiveStatusCard(
         is SyncState.OfflineFallback -> stringResource(R.string.home_sync_button_retry)
         SyncState.Loading,
         SyncState.Idle,
-        is SyncState.Synced -> stringResource(R.string.home_sync_button_now)
+        is SyncState.Synced,
+        is SyncState.RemoteEmpty -> stringResource(R.string.home_sync_button_now)
     }
     val buttonIcon = when (syncState) {
         is SyncState.OfflineFallback -> Icons.Rounded.Refresh
@@ -471,6 +517,13 @@ fun OfflineArchiveStatusCard(
                     is SyncState.Synced -> {
                         Icon(
                             imageVector = Icons.Rounded.CloudDone,
+                            contentDescription = null,
+                            tint = accentColor
+                        )
+                    }
+                    is SyncState.RemoteEmpty -> {
+                        Icon(
+                            imageVector = Icons.Rounded.CloudQueue,
                             contentDescription = null,
                             tint = accentColor
                         )

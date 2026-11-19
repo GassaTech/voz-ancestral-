@@ -269,7 +269,14 @@ Publicações sem alteração de conteúdo devem manter o mesmo valor de `versio
 
 ### 6.4. Respostas vazias (`[]`)
 
-- **Comportamento atual explícito do aplicativo:** se `/v1/dictionary.json` ou `/v1/articles.json` retornar um array JSON vazio (`[]`), o repositório correspondente retorna `AppResult.Success(0)` imediatamente **sem abrir transação** e **sem apagar os registros locais existentes**.
+- **Dicionário (`GET /v1/dictionary.json` — comportamento atual explícito):**
+  - `OfflineFirstDictionaryRepository.syncFromRemote()` retorna `AppResult.Success(RemoteSyncOutcome.Empty)` imediatamente **sem abrir transação** e **sem apagar registros locais ou favoritos existentes**.
+  - `ArchiveSyncRepositoryImpl.syncArchive()` diferencia explicitamente `RemoteSyncOutcome.Empty` de uma sincronização oficial com dados (`RemoteSyncOutcome.Synced(entriesCount)` com `entriesCount > 0`):
+    - Registra `lastAttemptStatus = SyncMetadataEntity.STATUS_REMOTE_EMPTY` via `SyncMetadataDao.recordRemoteEmptyAttempt(...)` e transita `syncState` para `SyncState.RemoteEmpty`.
+    - **Não** grava `STATUS_SYNCED`, **não** atualiza `lastSuccessfulSyncEpochMillis`, `lastSuccessfulEntriesCount`, `lastSuccessfulArticlesCount` nem `lastSuccessfulRemoteVersion` (preservando eventual histórico oficial anterior) e **não** trata a resposta vazia como falha de rede (`OfflineFallback`).
+    - Enquanto nenhuma sincronização oficial com verbetes válidos (`entriesCount > 0`) tiver sido concluída (`lastSuccessfulSyncEpochMillis == null`), futuras atualizações controladas do Seed demonstrativo continuam desbloqueadas.
+- **Enciclopédia (`GET /v1/articles.json` — comportamento atual explícito):**
+  - Na versão 1.0 a enciclopédia permanece fora do fluxo automático de `ArchiveSyncRepositoryImpl.syncArchive()`. Caso chamado diretamente, `OfflineFirstEncyclopediaRepository.syncFromRemote()` retorna `AppResult.Success(0)` imediatamente **sem abrir transação** e **sem apagar registros locais existentes**.
 
 ### 6.5. Política de exclusão de registros (**Decisão Pendente**)
 

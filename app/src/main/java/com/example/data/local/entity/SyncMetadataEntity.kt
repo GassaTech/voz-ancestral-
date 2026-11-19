@@ -26,6 +26,7 @@ data class SyncMetadataEntity(
     companion object {
         const val SINGLETON_ID = "archive_sync_singleton"
         const val STATUS_SYNCED = "SYNCED"
+        const val STATUS_REMOTE_EMPTY = "REMOTE_EMPTY"
         const val STATUS_OFFLINE_FALLBACK = "OFFLINE_FALLBACK"
     }
 }

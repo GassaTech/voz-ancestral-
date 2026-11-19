@@ -9,6 +9,7 @@ import com.example.data.local.seed.SeedUpdateOutcomeStatus
 import com.example.data.mapper.toDomainSyncState
 import com.example.di.ApplicationScope
 import com.example.domain.model.ArchiveStats
+import com.example.domain.model.RemoteSyncOutcome
 import com.example.domain.model.SyncState
 import com.example.domain.repository.DictionaryRepository
 import com.example.domain.repository.EncyclopediaRepository
@@ -144,33 +145,52 @@ class ArchiveSyncRepositoryImpl @Inject constructor(
                 val now = nextAttemptEpochMillis()
 
                 when (entriesResult) {
-                    is AppResult.Success -> {
-                        val syncedState = SyncState.Synced(
-                            lastSyncedEpochMillis = now,
-                            entriesCount = entriesResult.data,
-                            articlesCount = null
-                        )
-                        syncMetadataDao.upsert(
-                            SyncMetadataEntity(
-                                id = SyncMetadataEntity.SINGLETON_ID,
-                                lastAttemptEpochMillis = now,
-                                lastAttemptStatus = SyncMetadataEntity.STATUS_SYNCED,
-                                lastFailureReason = null,
-                                lastSuccessfulSyncEpochMillis = now,
-                                lastSuccessfulEntriesCount = entriesResult.data,
-                                // Na versão 1.0 a enciclopédia não participa da sincronização;
-                                // mantém null em vez de registrar contagem fictícia (ex.: 0).
-                                lastSuccessfulArticlesCount = null,
-                                // Limitação conhecida: versão real do manifesto ainda não integrada.
-                                lastSuccessfulRemoteVersion = MANIFEST_VERSION_UNAVAILABLE
+                    is AppResult.Success -> when (val outcome = entriesResult.data) {
+                        is RemoteSyncOutcome.Synced -> {
+                            val syncedState = SyncState.Synced(
+                                lastSyncedEpochMillis = now,
+                                entriesCount = outcome.entriesCount,
+                                articlesCount = null
                             )
-                        )
-                        transientOverride.value = TransientSyncOverride.PendingRoomEmission(
-                            attemptEpochMillis = now,
-                            expectedStatus = SyncMetadataEntity.STATUS_SYNCED,
-                            resolvedState = syncedState
-                        )
-                        AppResult.Success(Unit)
+                            syncMetadataDao.upsert(
+                                SyncMetadataEntity(
+                                    id = SyncMetadataEntity.SINGLETON_ID,
+                                    lastAttemptEpochMillis = now,
+                                    lastAttemptStatus = SyncMetadataEntity.STATUS_SYNCED,
+                                    lastFailureReason = null,
+                                    lastSuccessfulSyncEpochMillis = now,
+                                    lastSuccessfulEntriesCount = outcome.entriesCount,
+                                    // Na versão 1.0 a enciclopédia não participa da sincronização;
+                                    // mantém null em vez de registrar contagem fictícia (ex.: 0).
+                                    lastSuccessfulArticlesCount = null,
+                                    // Limitação conhecida: versão real do manifesto ainda não integrada.
+                                    lastSuccessfulRemoteVersion = MANIFEST_VERSION_UNAVAILABLE
+                                )
+                            )
+                            transientOverride.value = TransientSyncOverride.PendingRoomEmission(
+                                attemptEpochMillis = now,
+                                expectedStatus = SyncMetadataEntity.STATUS_SYNCED,
+                                resolvedState = syncedState
+                            )
+                            AppResult.Success(Unit)
+                        }
+
+                        RemoteSyncOutcome.Empty -> {
+                            val previousMetadata = syncMetadataDao.getMetadataOnce()
+                            syncMetadataDao.recordRemoteEmptyAttempt(attemptEpochMillis = now)
+                            val remoteEmptyState = SyncState.RemoteEmpty(
+                                lastAttemptEpochMillis = now,
+                                lastSyncedEpochMillis = previousMetadata?.lastSuccessfulSyncEpochMillis,
+                                entriesCount = previousMetadata?.lastSuccessfulEntriesCount,
+                                articlesCount = previousMetadata?.lastSuccessfulArticlesCount
+                            )
+                            transientOverride.value = TransientSyncOverride.PendingRoomEmission(
+                                attemptEpochMillis = now,
+                                expectedStatus = SyncMetadataEntity.STATUS_REMOTE_EMPTY,
+                                resolvedState = remoteEmptyState
+                            )
+                            AppResult.Success(Unit)
+                        }
                     }
 
                     is AppResult.Error -> {

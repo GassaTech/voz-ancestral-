@@ -10,12 +10,14 @@ import com.example.data.local.dao.SeedMetadataDao
 import com.example.data.local.database.ParintintinDatabase
 import com.example.data.local.entity.DictionaryEntryEntity
 import com.example.data.local.entity.SeedMetadataEntity
+import com.example.data.local.entity.SyncMetadataEntity
 import com.example.data.local.seed.AssetDictionarySeedImporter
 import com.example.data.local.seed.DictionarySeedAssetSource
 import com.example.data.local.seed.DictionarySeedJsonParser
 import com.example.data.local.seed.DictionarySeedSpec
 import com.example.data.local.seed.SeedClock
 import com.example.data.local.seed.SeedSha256Calculator
+import com.example.data.local.seed.SeedUpdateOutcomeStatus
 import com.example.data.local.seed.SeedVersionComparator
 import com.example.data.local.seed.VersionedDictionarySeedUpdater
 import com.example.data.remote.api.ParintintinApiService
@@ -685,6 +687,137 @@ class DictionaryOfflineIntegrationTest {
         assertEquals("termo_preexistente_estavel", entriesAfterRollback.getValue("int_seed_1").parintintinWord)
         assertTrue(entriesAfterRollback.getValue("int_seed_1").isFavorite)
         assertEquals(initialRollbackMeta, dbRollback.seedMetadataDao().getMetadataOnce())
+    }
+
+    @Test
+    fun `8 - resposta HTTP 200 vazia nao bloqueia futuras atualizacoes do seed e preserva metadados oficiais anteriores`() = runBlocking {
+        var currentSeedJson = syntheticSeedArrayJson()
+        val server = MockWebServer().apply {
+            enqueue(MockResponse().setResponseCode(200).setBody("[]"))
+            enqueue(MockResponse().setResponseCode(200).setBody("[]"))
+            enqueue(
+                MockResponse().setResponseCode(200).setBody(
+                    """
+                    [
+                      ${syntheticJsonEntry(
+                        id = "int_seed_1",
+                        word = "termo_oficial_publicado",
+                        translation = "significado_oficial_publicado",
+                        updatedAt = 1_700_000_020_000L
+                    )},
+                      ${syntheticJsonEntry(
+                        id = "official_extra",
+                        word = "termo_oficial_adicional",
+                        translation = "significado_oficial_adicional",
+                        updatedAt = 1_700_000_020_100L
+                    )}
+                    ]
+                    """.trimIndent()
+                )
+            )
+            enqueue(MockResponse().setResponseCode(200).setBody("[]"))
+            start()
+        }
+        startedServers += server
+
+        val database = createInMemoryDatabase()
+        val stack = createRealStack(
+            database = database,
+            baseUrl = server.url("/").toString(),
+            seedStreamProvider = { currentSeedJson.toUtf8Stream() }
+        )
+
+        // Passo 1: primeira execução com banco vazio + servidor HTTP 200 []
+        val firstResult = stack.syncRepository.syncArchive()
+        assertTrue(firstResult is AppResult.Success)
+        val firstState = withTimeout(5_000L) {
+            stack.syncRepository.syncState.first { it is SyncState.RemoteEmpty }
+        } as SyncState.RemoteEmpty
+        assertNull(firstState.lastSyncedEpochMillis)
+        assertNull(firstState.entriesCount)
+
+        val metadataAfterFirst = database.syncMetadataDao().getMetadataOnce()
+        assertEquals(SyncMetadataEntity.STATUS_REMOTE_EMPTY, metadataAfterFirst?.lastAttemptStatus)
+        assertNull(metadataAfterFirst?.lastSuccessfulSyncEpochMillis)
+        assertNull(metadataAfterFirst?.lastSuccessfulEntriesCount)
+
+        val entriesAfterFirst = stack.dictionaryRepository.observeEntries().first().associateBy { it.id }
+        assertEquals(4, entriesAfterFirst.size)
+        assertEquals("termo_sintetico_alpha", entriesAfterFirst.getValue("int_seed_1").parintintinWord)
+
+        // Marca favorito e altera o Seed local
+        stack.dictionaryRepository.toggleFavorite("int_seed_1")
+        currentSeedJson = """
+            [
+              ${syntheticJsonEntry(
+                id = "int_seed_1",
+                word = "termo_seed_revisado_v2",
+                translation = "significado_seed_revisado_v2",
+                updatedAt = 1_700_000_005_000L
+            )}
+            ]
+        """.trimIndent()
+
+        // Passo 2: nova chamada HTTP 200 [] -> atualizador do Seed NÃO deve ser bloqueado e favorito é preservado
+        val secondResult = stack.syncRepository.syncArchive()
+        assertTrue(secondResult is AppResult.Success)
+        val entriesAfterSecondSeed = stack.dictionaryRepository.observeEntries().first().associateBy { it.id }
+        assertEquals("termo_seed_revisado_v2", entriesAfterSecondSeed.getValue("int_seed_1").parintintinWord)
+        assertTrue(entriesAfterSecondSeed.getValue("int_seed_1").isFavorite)
+        assertNull(database.syncMetadataDao().getMetadataOnce()?.lastSuccessfulSyncEpochMillis)
+
+        // Passo 3: servidor publica acervo oficial não vazio -> Synced grava histórico oficial
+        val thirdResult = stack.syncRepository.syncArchive()
+        assertTrue(thirdResult is AppResult.Success)
+        val syncedState = withTimeout(5_000L) {
+            stack.syncRepository.syncState.first { it is SyncState.Synced }
+        } as SyncState.Synced
+        assertEquals(2, syncedState.entriesCount)
+
+        val officialSyncEpoch = database.syncMetadataDao().getMetadataOnce()?.lastSuccessfulSyncEpochMillis
+        assertTrue(officialSyncEpoch != null)
+        val entriesAfterOfficial = stack.dictionaryRepository.observeEntries().first().associateBy { it.id }
+        assertEquals("termo_oficial_publicado", entriesAfterOfficial.getValue("int_seed_1").parintintinWord)
+        assertTrue(entriesAfterOfficial.getValue("int_seed_1").isFavorite)
+        assertEquals("termo_oficial_adicional", entriesAfterOfficial.getValue("official_extra").parintintinWord)
+
+        // Passo 4: novo Seed alterado + HTTP 200 [] após sincronização oficial -> Seed fica bloqueado e histórico oficial é preservado
+        currentSeedJson = """
+            [
+              ${syntheticJsonEntry(
+                id = "int_seed_1",
+                word = "termo_seed_que_nao_deve_sobrescrever",
+                translation = "traducao_bloqueada",
+                updatedAt = 1_700_000_030_000L
+            )}
+            ]
+        """.trimIndent()
+
+        val directSeedCheck = stack.seedUpdater.updateIfNeeded()
+        assertTrue(directSeedCheck is AppResult.Success)
+        assertEquals(
+            SeedUpdateOutcomeStatus.BLOCKED_BY_OFFICIAL_SYNC,
+            (directSeedCheck as AppResult.Success).data.status
+        )
+
+        val fourthResult = stack.syncRepository.syncArchive()
+        assertTrue(fourthResult is AppResult.Success)
+        val stateAfterFourth = withTimeout(5_000L) {
+            stack.syncRepository.syncState.first {
+                it is SyncState.RemoteEmpty && it.lastSyncedEpochMillis == officialSyncEpoch
+            }
+        } as SyncState.RemoteEmpty
+        assertEquals(2, stateAfterFourth.entriesCount)
+
+        val metadataAfterFourth = database.syncMetadataDao().getMetadataOnce()
+        assertEquals(SyncMetadataEntity.STATUS_REMOTE_EMPTY, metadataAfterFourth?.lastAttemptStatus)
+        assertEquals(officialSyncEpoch, metadataAfterFourth?.lastSuccessfulSyncEpochMillis)
+        assertEquals(2, metadataAfterFourth?.lastSuccessfulEntriesCount)
+
+        val finalEntries = stack.dictionaryRepository.observeEntries().first().associateBy { it.id }
+        assertEquals("termo_oficial_publicado", finalEntries.getValue("int_seed_1").parintintinWord)
+        assertTrue(finalEntries.getValue("int_seed_1").isFavorite)
+        assertEquals("termo_oficial_adicional", finalEntries.getValue("official_extra").parintintinWord)
     }
 
     private fun createInMemoryDatabase(): ParintintinDatabase =

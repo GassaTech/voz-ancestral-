@@ -207,6 +207,16 @@ class HomeViewModelTest {
         advanceUntilIdle()
         assertEquals(synced, viewModel.uiState.value.syncState)
 
+        val remoteEmpty = SyncState.RemoteEmpty(
+            lastAttemptEpochMillis = 1_700_000_075_000L,
+            lastSyncedEpochMillis = 1_700_000_050_000L,
+            entriesCount = 20,
+            articlesCount = 5
+        )
+        fakeRepository.syncStateFlow.value = remoteEmpty
+        advanceUntilIdle()
+        assertEquals(remoteEmpty, viewModel.uiState.value.syncState)
+
         val fallback = SyncState.OfflineFallback(
             reason = "Sem conexão",
             lastAttemptEpochMillis = 1_700_000_090_000L
@@ -363,13 +373,20 @@ class HomeViewModelTest {
         advanceUntilIdle()
         assertEquals(2, fakeCoordinator.manualSyncCallCount)
 
+        fakeRepository.syncStateFlow.value = SyncState.RemoteEmpty(
+            lastAttemptEpochMillis = 1_700_000_270_000L
+        )
+        viewModel.syncManually()
+        advanceUntilIdle()
+        assertEquals(3, fakeCoordinator.manualSyncCallCount)
+
         fakeRepository.syncStateFlow.value = SyncState.OfflineFallback(
             reason = "Offline",
             lastAttemptEpochMillis = 1_700_000_280_000L
         )
         viewModel.syncManually()
         advanceUntilIdle()
-        assertEquals(3, fakeCoordinator.manualSyncCallCount)
+        assertEquals(4, fakeCoordinator.manualSyncCallCount)
     }
 
     @Test

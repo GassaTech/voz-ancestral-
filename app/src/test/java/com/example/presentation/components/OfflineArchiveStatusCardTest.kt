@@ -209,6 +209,100 @@ class OfflineArchiveStatusCardTest {
     }
 
     @Test
+    fun `estado RemoteEmpty sem historico informa ausencia de acervo publicado nao mostra Acervo sincronizado e habilita botao`() {
+        val attemptEpochMillis = 1_700_000_060_000L
+        val expectedAttempt = formatSyncTimestamp(
+            epochMillis = attemptEpochMillis,
+            locale = Locale.getDefault(),
+            timeZone = TimeZone.getDefault()
+        )
+        var manualClicks = 0
+
+        composeTestRule.setContent {
+            ParintintinTheme {
+                OfflineArchiveStatusCard(
+                    stats = sampleStats,
+                    syncState = SyncState.RemoteEmpty(
+                        lastAttemptEpochMillis = attemptEpochMillis,
+                        lastSyncedEpochMillis = null,
+                        entriesCount = null,
+                        articlesCount = null
+                    ),
+                    onManualSync = { manualClicks += 1 }
+                )
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Acervo oficial ainda indisponível").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "O servidor respondeu, mas ainda não há acervo oficial publicado. Os dados locais continuam disponíveis."
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithText("Última verificação em $expectedAttempt.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Acervo sincronizado").assertDoesNotExist()
+        assertLocalChipsDisplayed()
+
+        composeTestRule.onNodeWithTag("home_sync_button")
+            .assertIsDisplayed()
+            .assertIsEnabled()
+            .assertTextEquals("Sincronizar agora")
+            .performClick()
+
+        assertEquals(1, manualClicks)
+    }
+
+    @Test
+    fun `estado RemoteEmpty com historico preserva data oficial anterior sem exibir Acervo sincronizado`() {
+        val officialEpochMillis = 1_700_000_000_000L
+        val attemptEpochMillis = 1_700_000_090_000L
+        val expectedOfficial = formatSyncTimestamp(
+            epochMillis = officialEpochMillis,
+            locale = Locale.getDefault(),
+            timeZone = TimeZone.getDefault()
+        )
+        val expectedAttempt = formatSyncTimestamp(
+            epochMillis = attemptEpochMillis,
+            locale = Locale.getDefault(),
+            timeZone = TimeZone.getDefault()
+        )
+        var manualClicks = 0
+
+        composeTestRule.setContent {
+            ParintintinTheme {
+                OfflineArchiveStatusCard(
+                    stats = sampleStats,
+                    syncState = SyncState.RemoteEmpty(
+                        lastAttemptEpochMillis = attemptEpochMillis,
+                        lastSyncedEpochMillis = officialEpochMillis,
+                        entriesCount = 42,
+                        articlesCount = 12
+                    ),
+                    onManualSync = { manualClicks += 1 }
+                )
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Sem novos registros publicados").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "O servidor respondeu sem registros novos. O acervo oficial anterior continua preservado neste dispositivo."
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Última sincronização oficial em $expectedOfficial • Verificado em $expectedAttempt."
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithText("Acervo sincronizado").assertDoesNotExist()
+        assertLocalChipsDisplayed()
+
+        composeTestRule.onNodeWithTag("home_sync_button")
+            .assertIsDisplayed()
+            .assertIsEnabled()
+            .assertTextEquals("Sincronizar agora")
+            .performClick()
+
+        assertEquals(1, manualClicks)
+    }
+
+    @Test
     fun `cartao nao sofre overflow horizontal em tela estreita e mantem chips dentro da largura`() {
         val narrowWidth = 280.dp
 

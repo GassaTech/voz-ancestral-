@@ -14,6 +14,7 @@ import com.example.data.remote.dto.ArchiveManifestDto
 import com.example.data.remote.dto.CulturalArticleDto
 import com.example.data.remote.dto.DictionaryEntryDto
 import com.example.domain.model.GrammaticalClass
+import com.example.domain.model.RemoteSyncOutcome
 import com.example.domain.model.SemanticCategory
 import java.io.IOException
 import java.util.concurrent.atomic.AtomicBoolean
@@ -87,7 +88,7 @@ class OfflineFirstDictionaryRepositoryTest {
 
         val result = repository.syncFromRemote()
 
-        assertEquals(AppResult.Success(2), result)
+        assertEquals(AppResult.Success(RemoteSyncOutcome.Synced(2)), result)
         val entriesById = repository.observeEntries().first().associateBy { it.id }
         assertEquals("Ywy atualizado", entriesById.getValue("dict_1").parintintinWord)
         assertTrue(entriesById.getValue("dict_1").isFavorite)
@@ -112,7 +113,7 @@ class OfflineFirstDictionaryRepositoryTest {
 
         val result = repository.syncFromRemote()
 
-        assertEquals(AppResult.Success(3), result)
+        assertEquals(AppResult.Success(RemoteSyncOutcome.Synced(3)), result)
         val entries = repository.observeEntries().first()
         assertEquals(3, entries.size)
         assertTrue(entries.none { it.isFavorite })
@@ -141,7 +142,7 @@ class OfflineFirstDictionaryRepositoryTest {
     }
 
     @Test
-    fun `syncFromRemote com resposta vazia retorna zero sem excluir dados locais e sem transacao`() = runBlocking {
+    fun `syncFromRemote com resposta vazia retorna Empty sem excluir dados locais e sem transacao`() = runBlocking {
         database.dictionaryDao().upsertAll(
             listOf(
                 sampleEntity(id = "dict_1", word = "Kurumi", isFavorite = true)
@@ -151,12 +152,32 @@ class OfflineFirstDictionaryRepositoryTest {
 
         val result = repository.syncFromRemote()
 
-        assertEquals(AppResult.Success(0), result)
+        assertEquals(AppResult.Success(RemoteSyncOutcome.Empty), result)
         assertEquals(0, spyDao.getFavoriteIdsCallCount)
         assertEquals(0, spyDao.upsertCallCount)
         val entries = repository.observeEntries().first()
         assertEquals(1, entries.size)
+        assertEquals("Kurumi", entries.single().parintintinWord)
         assertTrue(entries.single().isFavorite)
+    }
+
+    @Test
+    fun `RemoteSyncOutcome Synced rejeita contagem menor ou igual a zero`() {
+        var zeroFailed = false
+        try {
+            RemoteSyncOutcome.Synced(0)
+        } catch (_: IllegalArgumentException) {
+            zeroFailed = true
+        }
+        assertTrue(zeroFailed)
+
+        var negativeFailed = false
+        try {
+            RemoteSyncOutcome.Synced(-1)
+        } catch (_: IllegalArgumentException) {
+            negativeFailed = true
+        }
+        assertTrue(negativeFailed)
     }
 
     @Test
@@ -195,7 +216,7 @@ class OfflineFirstDictionaryRepositoryTest {
 
         val result = repository.syncFromRemote()
 
-        assertEquals(AppResult.Success(2), result)
+        assertEquals(AppResult.Success(RemoteSyncOutcome.Synced(2)), result)
         val updated = repository.observeEntryById("dict_1").first()
         assertNotNull(updated)
         assertEquals("Tupã novo", updated?.parintintinWord)
@@ -281,7 +302,7 @@ class OfflineFirstDictionaryRepositoryTest {
             toggleMarkDeferred.await()
             toggleUnmarkDeferred.await()
 
-            assertEquals(AppResult.Success(2), syncResult)
+            assertEquals(AppResult.Success(RemoteSyncOutcome.Synced(2)), syncResult)
             assertTrue(getFavoritesInTransaction)
             assertTrue(upsertInTransaction)
             assertFalse(markCompletedDuringTransaction.get())

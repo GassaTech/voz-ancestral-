@@ -87,6 +87,13 @@ fun SyncMetadataEntity?.toDomainSyncState(defaultOfflineReason: String): SyncSta
             }
         }
 
+        SyncMetadataEntity.STATUS_REMOTE_EMPTY -> SyncState.RemoteEmpty(
+            lastAttemptEpochMillis = lastAttemptEpochMillis,
+            lastSyncedEpochMillis = lastSuccessfulSyncEpochMillis,
+            entriesCount = lastSuccessfulEntriesCount,
+            articlesCount = lastSuccessfulArticlesCount
+        )
+
         SyncMetadataEntity.STATUS_OFFLINE_FALLBACK -> {
             val resolvedReason = lastFailureReason
                 ?.takeIf { it.isNotBlank() }

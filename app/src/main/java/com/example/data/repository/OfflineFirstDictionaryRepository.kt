@@ -10,6 +10,7 @@ import com.example.data.mapper.toEntity
 import com.example.data.remote.datasource.RemoteArchiveDataSource
 import com.example.domain.model.DictionaryEntry
 import com.example.domain.model.GrammaticalClass
+import com.example.domain.model.RemoteSyncOutcome
 import com.example.domain.model.SemanticCategory
 import com.example.domain.repository.DictionaryRepository
 import javax.inject.Inject
@@ -59,11 +60,11 @@ class OfflineFirstDictionaryRepository @Inject constructor(
         }
     }
 
-    override suspend fun syncFromRemote(): AppResult<Int> = withContext(dispatchers.io) {
+    override suspend fun syncFromRemote(): AppResult<RemoteSyncOutcome> = withContext(dispatchers.io) {
         when (val result = remoteDataSource.fetchDictionaryEntries()) {
             is AppResult.Success -> {
                 if (result.data.isEmpty()) {
-                    return@withContext AppResult.Success(0)
+                    return@withContext AppResult.Success(RemoteSyncOutcome.Empty)
                 }
                 val syncedCount = database.withTransaction {
                     val favoriteIds = dictionaryDao.getFavoriteIds().toSet()
@@ -73,7 +74,7 @@ class OfflineFirstDictionaryRepository @Inject constructor(
                     dictionaryDao.upsertAll(entities)
                     entities.size
                 }
-                AppResult.Success(syncedCount)
+                AppResult.Success(RemoteSyncOutcome.Synced(syncedCount))
             }
             is AppResult.Error -> result
         }

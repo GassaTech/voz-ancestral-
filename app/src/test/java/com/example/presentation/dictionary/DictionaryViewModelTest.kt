@@ -4,6 +4,7 @@ import com.example.core.common.AppResult
 import com.example.domain.model.ArchiveStats
 import com.example.domain.model.DictionaryEntry
 import com.example.domain.model.GrammaticalClass
+import com.example.domain.model.RemoteSyncOutcome
 import com.example.domain.model.SemanticCategory
 import com.example.domain.model.SyncState
 import com.example.domain.repository.DictionaryRepository
@@ -780,7 +781,8 @@ class DictionaryViewModelTest {
         override fun observeTotalCount(): Flow<Int> = entriesFlow.map { it.size }
         override fun observeFavoriteCount(): Flow<Int> = flowOf(0)
         override suspend fun toggleFavorite(entryId: String) = Unit
-        override suspend fun syncFromRemote(): AppResult<Int> = AppResult.Success(0)
+        override suspend fun syncFromRemote(): AppResult<RemoteSyncOutcome> =
+            AppResult.Success(RemoteSyncOutcome.Empty)
     }
 
     private class FakeSyncStatusRepository(

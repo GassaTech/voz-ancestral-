@@ -29,6 +29,12 @@
     <string name="home_sync_offline_title">Modo offline ativo</string>
     <string name="home_sync_offline_body">Não foi possível atualizar agora, mas os dados locais continuam disponíveis para consulta.</string>
     <string name="home_sync_offline_last_attempt">Última tentativa em %1$s.</string>
+    <string name="home_sync_remote_empty_title">Acervo oficial ainda indisponível</string>
+    <string name="home_sync_remote_empty_body">O servidor respondeu, mas ainda não há acervo oficial publicado. Os dados locais continuam disponíveis.</string>
+    <string name="home_sync_remote_empty_last_attempt">Última verificação em %1$s.</string>
+    <string name="home_sync_remote_empty_title_with_history">Sem novos registros publicados</string>
+    <string name="home_sync_remote_empty_body_with_history">O servidor respondeu sem registros novos. O acervo oficial anterior continua preservado neste dispositivo.</string>
+    <string name="home_sync_remote_empty_history_detail">Última sincronização oficial em %1$s • Verificado em %2$s.</string>
     <string name="home_sync_button_now">Sincronizar agora</string>
     <string name="home_sync_button_syncing">Sincronizando…</string>
     <string name="home_sync_button_retry">Tentar novamente</string>
