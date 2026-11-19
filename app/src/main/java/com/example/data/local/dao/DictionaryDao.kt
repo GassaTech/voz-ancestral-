@@ -50,6 +50,9 @@ interface DictionaryDao {
     @Query("UPDATE dictionary_entries SET is_favorite = NOT is_favorite WHERE id = :entryId")
     suspend fun toggleFavorite(entryId: String)
 
+    @Query("SELECT id FROM dictionary_entries WHERE id IN (:ids)")
+    suspend fun getExistingIds(ids: List<String>): List<String>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(entries: List<DictionaryEntryEntity>)
 }
