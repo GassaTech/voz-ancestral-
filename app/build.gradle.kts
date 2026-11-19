@@ -21,7 +21,7 @@ android {
     versionCode = 1
     versionName = "1.0"
 
-    testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    testInstrumentationRunner = "com.example.HiltTestRunner"
   }
 
   // Do not remove or modify these signingConfigs. They are necessary for building, installing,
@@ -147,9 +147,12 @@ dependencies {
   androidTestImplementation(libs.androidx.espresso.core)
   androidTestImplementation(libs.androidx.junit)
   androidTestImplementation(libs.androidx.runner)
+  androidTestImplementation(libs.hilt.android.testing)
+  androidTestImplementation(libs.okhttp.mockwebserver)
   debugImplementation(libs.androidx.compose.ui.test.manifest)
   debugImplementation(libs.androidx.compose.ui.tooling)
   "ksp"(libs.androidx.room.compiler)
   "ksp"(libs.hilt.compiler)
   "ksp"(libs.moshi.kotlin.codegen)
+  "kspAndroidTest"(libs.hilt.compiler)
 }
