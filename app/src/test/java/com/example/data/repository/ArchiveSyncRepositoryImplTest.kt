@@ -4,7 +4,10 @@ import com.example.core.common.AppResult
 import com.example.core.common.DispatcherProvider
 import com.example.data.local.dao.SyncMetadataDao
 import com.example.data.local.entity.SyncMetadataEntity
-import com.example.data.local.seed.DictionarySeedImporter
+import com.example.data.local.seed.DictionarySeedSpec
+import com.example.data.local.seed.DictionarySeedUpdater
+import com.example.data.local.seed.SeedUpdateOutcome
+import com.example.data.local.seed.SeedUpdateOutcomeStatus
 import com.example.domain.model.CulturalArticle
 import com.example.domain.model.CulturalTopic
 import com.example.domain.model.DictionaryEntry
@@ -604,9 +607,15 @@ class ArchiveSyncRepositoryImplTest {
     }
 
     @Test
-    fun `15 - falha de importacao do seed nao impede tentativa de sincronizacao remota`() = runTest {
+    fun `15 - falha na atualizacao do seed nao impede tentativa de sincronizacao remota nem grava erro do seed em sync_metadata`() = runTest {
         val callOrder = mutableListOf<String>()
         val syncDao = FakeSyncMetadataDao()
+        val seedUpdater = FakeDictionarySeedUpdater(
+            customUpdate = {
+                callOrder += "seed"
+                AppResult.Error("JSON local malformado")
+            }
+        )
         val errorResultRepository = createRepository(
             dictionaryRepository = FakeDictionaryRepository(
                 customSync = {
@@ -615,12 +624,7 @@ class ArchiveSyncRepositoryImplTest {
                 }
             ),
             syncDao = syncDao,
-            dictionarySeedImporter = FakeDictionarySeedImporter(
-                customImport = {
-                    callOrder += "seed"
-                    AppResult.Error("JSON local malformado")
-                }
-            )
+            dictionarySeedUpdater = seedUpdater
         )
         advanceUntilIdle()
 
@@ -628,12 +632,22 @@ class ArchiveSyncRepositoryImplTest {
         advanceUntilIdle()
 
         assertTrue(result is AppResult.Success)
+        assertEquals(1, seedUpdater.updateCallCount)
         assertEquals(listOf("seed", "remote"), callOrder)
         val synced = errorResultRepository.syncState.value as SyncState.Synced
         assertEquals(7, synced.entriesCount)
+        assertEquals(SyncMetadataEntity.STATUS_SYNCED, syncDao.lastSaved?.lastAttemptStatus)
+        assertNull(syncDao.lastSaved?.lastFailureReason)
 
-        // Também não deve bloquear caso o importador lance exceção inesperada não-cancelamento
+        // Também não deve bloquear caso o atualizador lance exceção inesperada não-cancelamento
         val exceptionCallOrder = mutableListOf<String>()
+        val throwingSyncDao = FakeSyncMetadataDao()
+        val throwingUpdater = FakeDictionarySeedUpdater(
+            customUpdate = {
+                exceptionCallOrder += "seed"
+                throw IllegalStateException("Erro inesperado no asset")
+            }
+        )
         val throwingSeederRepository = createRepository(
             dictionaryRepository = FakeDictionaryRepository(
                 customSync = {
@@ -641,13 +655,8 @@ class ArchiveSyncRepositoryImplTest {
                     AppResult.Error("Sem internet")
                 }
             ),
-            syncDao = FakeSyncMetadataDao(),
-            dictionarySeedImporter = FakeDictionarySeedImporter(
-                customImport = {
-                    exceptionCallOrder += "seed"
-                    throw IllegalStateException("Erro inesperado no asset")
-                }
-            )
+            syncDao = throwingSyncDao,
+            dictionarySeedUpdater = throwingUpdater
         )
         advanceUntilIdle()
 
@@ -655,14 +664,33 @@ class ArchiveSyncRepositoryImplTest {
         advanceUntilIdle()
 
         assertTrue(fallbackResult is AppResult.Error)
+        assertEquals(1, throwingUpdater.updateCallCount)
         assertEquals(listOf("seed", "remote"), exceptionCallOrder)
-        assertTrue(throwingSeederRepository.syncState.value is SyncState.OfflineFallback)
+        val fallbackState = throwingSeederRepository.syncState.value as SyncState.OfflineFallback
+        assertEquals("Sem internet", fallbackState.reason)
+        assertEquals("Sem internet", throwingSyncDao.lastSaved?.lastFailureReason)
     }
 
     @Test
-    fun `seed local importado com sucesso nao registra STATUS_SYNCED quando chamada remota falha`() = runTest {
+    fun `seed local atualizado com sucesso nao registra STATUS_SYNCED quando chamada remota falha`() = runTest {
         val syncDao = FakeSyncMetadataDao()
         val callOrder = mutableListOf<String>()
+        val seedUpdater = FakeDictionarySeedUpdater(
+            customUpdate = { version ->
+                callOrder += "seed"
+                AppResult.Success(
+                    SeedUpdateOutcome(
+                        status = SeedUpdateOutcomeStatus.UPDATED,
+                        entriesProcessedCount = 10,
+                        appliedSeedVersion = version,
+                        appliedSeedHash = "hash_v$version",
+                        currentSeedVersion = version,
+                        currentSeedHash = "hash_v$version",
+                        message = "Seed atualizado"
+                    )
+                )
+            }
+        )
         val repository = createRepository(
             dictionaryRepository = FakeDictionaryRepository(
                 customSync = {
@@ -671,12 +699,7 @@ class ArchiveSyncRepositoryImplTest {
                 }
             ),
             syncDao = syncDao,
-            dictionarySeedImporter = FakeDictionarySeedImporter(
-                customImport = {
-                    callOrder += "seed"
-                    AppResult.Success(10)
-                }
-            )
+            dictionarySeedUpdater = seedUpdater
         )
         advanceUntilIdle()
 
@@ -684,6 +707,7 @@ class ArchiveSyncRepositoryImplTest {
         advanceUntilIdle()
 
         assertTrue(result is AppResult.Error)
+        assertEquals(1, seedUpdater.updateCallCount)
         assertEquals(listOf("seed", "remote"), callOrder)
         assertEquals(
             SyncMetadataEntity.STATUS_OFFLINE_FALLBACK,
@@ -694,16 +718,23 @@ class ArchiveSyncRepositoryImplTest {
     }
 
     @Test
-    fun `cancelamento durante importacao do seed restaura estado anterior e relanca CancellationException`() = runTest {
+    fun `cancelamento durante atualizacao do seed restaura estado anterior nao chama remoto e relanca CancellationException`() = runTest {
         val syncDao = FakeSyncMetadataDao()
+        var remoteCallCount = 0
+        val seedUpdater = FakeDictionarySeedUpdater(
+            customUpdate = {
+                throw CancellationException("Cancelado durante seed")
+            }
+        )
         val repository = createRepository(
-            dictionaryRepository = FakeDictionaryRepository(syncResult = AppResult.Success(3)),
-            syncDao = syncDao,
-            dictionarySeedImporter = FakeDictionarySeedImporter(
-                customImport = {
-                    throw CancellationException("Cancelado durante seed")
+            dictionaryRepository = FakeDictionaryRepository(
+                customSync = {
+                    remoteCallCount += 1
+                    AppResult.Success(3)
                 }
-            )
+            ),
+            syncDao = syncDao,
+            dictionarySeedUpdater = seedUpdater
         )
         advanceUntilIdle()
 
@@ -712,7 +743,95 @@ class ArchiveSyncRepositoryImplTest {
             fail("Era esperado relançar CancellationException")
         } catch (_: CancellationException) {
             advanceUntilIdle()
+            assertEquals(1, seedUpdater.updateCallCount)
+            assertEquals(0, remoteCallCount)
+            assertNull(syncDao.lastSaved)
             assertEquals(SyncState.Idle, repository.syncState.value)
+        }
+    }
+
+    @Test
+    fun `atualizacao do seed e executada exatamente uma vez por syncArchive e antes da sincronizacao remota`() = runTest {
+        val callOrder = mutableListOf<String>()
+        val seedUpdater = FakeDictionarySeedUpdater(
+            customUpdate = { version ->
+                callOrder += "seed"
+                AppResult.Success(
+                    SeedUpdateOutcome(
+                        status = SeedUpdateOutcomeStatus.APPLIED_INITIAL,
+                        entriesProcessedCount = 20,
+                        appliedSeedVersion = version,
+                        appliedSeedHash = "hash_initial",
+                        currentSeedVersion = version,
+                        currentSeedHash = "hash_initial",
+                        message = "Aplicado"
+                    )
+                )
+            }
+        )
+        val repository = createRepository(
+            dictionaryRepository = FakeDictionaryRepository(
+                customSync = {
+                    callOrder += "remote"
+                    AppResult.Success(20)
+                }
+            ),
+            syncDao = FakeSyncMetadataDao(),
+            dictionarySeedUpdater = seedUpdater
+        )
+        advanceUntilIdle()
+
+        val result = repository.syncArchive()
+        advanceUntilIdle()
+
+        assertTrue(result is AppResult.Success)
+        assertEquals(1, seedUpdater.updateCallCount)
+        assertEquals(listOf(DictionarySeedSpec.CURRENT_SEED_VERSION), seedUpdater.capturedVersions)
+        assertEquals(listOf("seed", "remote"), callOrder)
+    }
+
+    @Test
+    fun `todos os status de SeedUpdateOutcomeStatus permitem prosseguir para a sincronizacao remota`() = runTest {
+        SeedUpdateOutcomeStatus.entries.forEach { status ->
+            val callOrder = mutableListOf<String>()
+            val syncDao = FakeSyncMetadataDao()
+            val seedUpdater = FakeDictionarySeedUpdater(
+                customUpdate = { version ->
+                    callOrder += "seed"
+                    AppResult.Success(
+                        SeedUpdateOutcome(
+                            status = status,
+                            entriesProcessedCount = 0,
+                            appliedSeedVersion = version,
+                            appliedSeedHash = "hash_$status",
+                            currentSeedVersion = version,
+                            currentSeedHash = "hash_$status",
+                            message = "Status $status"
+                        )
+                    )
+                }
+            )
+            val repository = createRepository(
+                dictionaryRepository = FakeDictionaryRepository(
+                    customSync = {
+                        callOrder += "remote"
+                        AppResult.Success(14)
+                    }
+                ),
+                syncDao = syncDao,
+                dictionarySeedUpdater = seedUpdater
+            )
+            advanceUntilIdle()
+
+            val result = repository.syncArchive()
+            advanceUntilIdle()
+
+            assertTrue("Falha para status $status", result is AppResult.Success)
+            assertEquals("Contagem incorreta para status $status", 1, seedUpdater.updateCallCount)
+            assertEquals("Ordem incorreta para status $status", listOf("seed", "remote"), callOrder)
+            val state = repository.syncState.value as SyncState.Synced
+            assertEquals(14, state.entriesCount)
+            assertNotNull(syncDao.lastSaved?.lastSuccessfulSyncEpochMillis)
         }
     }
 
@@ -720,7 +839,7 @@ class ArchiveSyncRepositoryImplTest {
         dictionaryRepository: DictionaryRepository = FakeDictionaryRepository(),
         encyclopediaRepository: EncyclopediaRepository = FakeEncyclopediaRepository(),
         syncDao: SyncMetadataDao = FakeSyncMetadataDao(),
-        dictionarySeedImporter: DictionarySeedImporter = FakeDictionarySeedImporter()
+        dictionarySeedUpdater: DictionarySeedUpdater = FakeDictionarySeedUpdater()
     ): ArchiveSyncRepositoryImpl {
         val testDispatcher = StandardTestDispatcher(testScheduler)
         val applicationScope = CoroutineScope(SupervisorJob() + testDispatcher)
@@ -729,7 +848,7 @@ class ArchiveSyncRepositoryImplTest {
             dictionaryRepository = dictionaryRepository,
             encyclopediaRepository = encyclopediaRepository,
             syncMetadataDao = syncDao,
-            dictionarySeedImporter = dictionarySeedImporter,
+            dictionarySeedUpdater = dictionarySeedUpdater,
             dispatchers = TestDispatcherProvider(testDispatcher),
             applicationScope = applicationScope
         )
@@ -860,13 +979,35 @@ class ArchiveSyncRepositoryImplTest {
         }
     }
 
-    private class FakeDictionarySeedImporter(
-        private val importResult: AppResult<Int> = AppResult.Success(0),
-        private val customImport: (suspend () -> AppResult<Int>)? = null
-    ) : DictionarySeedImporter {
-        override suspend fun importIfEmpty(): AppResult<Int> {
-            customImport?.let { return it() }
-            return importResult
+    private class FakeDictionarySeedUpdater(
+        private val outcomeStatus: SeedUpdateOutcomeStatus = SeedUpdateOutcomeStatus.ALREADY_UP_TO_DATE,
+        private val customUpdate: (suspend (Int) -> AppResult<SeedUpdateOutcome>)? = null
+    ) : DictionarySeedUpdater {
+        var updateCallCount: Int = 0
+            private set
+        val capturedVersions = mutableListOf<Int>()
+
+        override suspend fun updateIfNeeded(currentVersion: Int): AppResult<SeedUpdateOutcome> {
+            updateCallCount += 1
+            capturedVersions += currentVersion
+            customUpdate?.let { return it(currentVersion) }
+            return AppResult.Success(
+                SeedUpdateOutcome(
+                    status = outcomeStatus,
+                    entriesProcessedCount = when (outcomeStatus) {
+                        SeedUpdateOutcomeStatus.APPLIED_INITIAL,
+                        SeedUpdateOutcomeStatus.UPDATED -> 20
+                        SeedUpdateOutcomeStatus.ALREADY_UP_TO_DATE,
+                        SeedUpdateOutcomeStatus.BLOCKED_BY_OFFICIAL_SYNC,
+                        SeedUpdateOutcomeStatus.BLOCKED_INCONSISTENT_VERSION -> 0
+                    },
+                    appliedSeedVersion = currentVersion,
+                    appliedSeedHash = "fake_hash_$currentVersion",
+                    currentSeedVersion = currentVersion,
+                    currentSeedHash = "fake_hash_$currentVersion",
+                    message = "Outcome simulado: $outcomeStatus"
+                )
+            )
         }
     }
 }

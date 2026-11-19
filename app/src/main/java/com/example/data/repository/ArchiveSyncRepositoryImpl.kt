@@ -4,7 +4,8 @@ import com.example.core.common.AppResult
 import com.example.core.common.DispatcherProvider
 import com.example.data.local.dao.SyncMetadataDao
 import com.example.data.local.entity.SyncMetadataEntity
-import com.example.data.local.seed.DictionarySeedImporter
+import com.example.data.local.seed.DictionarySeedUpdater
+import com.example.data.local.seed.SeedUpdateOutcomeStatus
 import com.example.data.mapper.toDomainSyncState
 import com.example.di.ApplicationScope
 import com.example.domain.model.ArchiveStats
@@ -32,7 +33,7 @@ class ArchiveSyncRepositoryImpl @Inject constructor(
     private val dictionaryRepository: DictionaryRepository,
     private val encyclopediaRepository: EncyclopediaRepository,
     private val syncMetadataDao: SyncMetadataDao,
-    private val dictionarySeedImporter: DictionarySeedImporter,
+    private val dictionarySeedUpdater: DictionarySeedUpdater,
     private val dispatchers: DispatcherProvider,
     @ApplicationScope private val applicationScope: CoroutineScope
 ) : SyncStatusRepository {
@@ -138,7 +139,7 @@ class ArchiveSyncRepositoryImpl @Inject constructor(
             transientOverride.value = TransientSyncOverride.Syncing
 
             try {
-                runSeedImportSafely()
+                runSeedUpdateSafely()
                 val entriesResult = dictionaryRepository.syncFromRemote()
                 val now = nextAttemptEpochMillis()
 
@@ -200,13 +201,26 @@ class ArchiveSyncRepositoryImpl @Inject constructor(
         }
     }
 
-    private suspend fun runSeedImportSafely() {
+    private suspend fun runSeedUpdateSafely() {
         try {
-            dictionarySeedImporter.importIfEmpty()
+            when (val result = dictionarySeedUpdater.updateIfNeeded()) {
+                is AppResult.Success -> when (result.data.status) {
+                    SeedUpdateOutcomeStatus.APPLIED_INITIAL,
+                    SeedUpdateOutcomeStatus.UPDATED,
+                    SeedUpdateOutcomeStatus.ALREADY_UP_TO_DATE,
+                    SeedUpdateOutcomeStatus.BLOCKED_BY_OFFICIAL_SYNC,
+                    SeedUpdateOutcomeStatus.BLOCKED_INCONSISTENT_VERSION -> Unit
+                }
+
+                is AppResult.Error -> {
+                    // Falha local na atualização do Seed não deve ser convertida em falha de rede
+                    // nem impedir a tentativa de sincronização remota.
+                }
+            }
         } catch (ce: CancellationException) {
             throw ce
         } catch (_: Exception) {
-            // Falha na importação local inicial não deve impedir a tentativa de sincronização remota.
+            // Exceção comum isolada na etapa local do Seed não deve impedir a sincronização remota.
         }
     }
 
