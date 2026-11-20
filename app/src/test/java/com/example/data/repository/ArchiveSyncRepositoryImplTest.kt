@@ -2,21 +2,27 @@ package com.example.data.repository
 
 import com.example.core.common.AppResult
 import com.example.core.common.DispatcherProvider
+import com.example.core.common.RemoteErrorKind
 import com.example.data.local.dao.SyncMetadataDao
 import com.example.data.local.entity.SyncMetadataEntity
 import com.example.data.local.seed.DictionarySeedSpec
 import com.example.data.local.seed.DictionarySeedUpdater
 import com.example.data.local.seed.SeedUpdateOutcome
 import com.example.data.local.seed.SeedUpdateOutcomeStatus
+import com.example.domain.connectivity.NetworkConnectivityObserver
 import com.example.domain.model.CulturalArticle
 import com.example.domain.model.CulturalTopic
+import com.example.domain.model.DeviceConnectivityState
 import com.example.domain.model.DictionaryEntry
 import com.example.domain.model.GrammaticalClass
 import com.example.domain.model.RemoteSyncOutcome
 import com.example.domain.model.SemanticCategory
+import com.example.domain.model.SyncFailureType
 import com.example.domain.model.SyncState
 import com.example.domain.repository.DictionaryRepository
 import com.example.domain.repository.EncyclopediaRepository
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineDispatcher
@@ -29,7 +35,9 @@ import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
@@ -38,6 +46,8 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -46,6 +56,8 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
+import retrofit2.HttpException
+import retrofit2.Response
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ArchiveSyncRepositoryImplTest {
@@ -1002,11 +1014,210 @@ class ArchiveSyncRepositoryImplTest {
         }
     }
 
+    @Test
+    fun `dispositivo Offline com falha remota classifica como NO_INTERNET e mantem timestamp nulo sem sync anterior`() = runTest {
+        val syncDao = FakeSyncMetadataDao()
+        val connectivityObserver = FakeNetworkConnectivityObserver(DeviceConnectivityState.Offline)
+        val repository = createRepository(
+            dictionaryRepository = FakeDictionaryRepository(
+                syncResult = AppResult.Error(
+                    message = "Sem rede",
+                    cause = UnknownHostException("archive.parintintin.org"),
+                    remoteErrorKind = RemoteErrorKind.DNS_FAILURE
+                )
+            ),
+            syncDao = syncDao,
+            connectivityObserver = connectivityObserver
+        )
+        advanceUntilIdle()
+
+        val result = repository.syncArchive()
+        advanceUntilIdle()
+
+        assertTrue(result is AppResult.Error)
+        val state = repository.syncState.value as SyncState.OfflineFallback
+        assertEquals(SyncFailureType.NO_INTERNET, state.failureType)
+        assertNull(state.lastSuccessfulSyncEpochMillis)
+        assertNull(syncDao.lastSaved?.lastSuccessfulSyncEpochMillis)
+    }
+
+    @Test
+    fun `rede ConnectedUnvalidated com falha remota classifica como UNVALIDATED_NETWORK`() = runTest {
+        val connectivityObserver = FakeNetworkConnectivityObserver(
+            DeviceConnectivityState.ConnectedUnvalidated
+        )
+        val repository = createRepository(
+            dictionaryRepository = FakeDictionaryRepository(
+                syncResult = AppResult.Error(
+                    message = "Rede sem acesso validado",
+                    cause = SocketTimeoutException("timeout"),
+                    remoteErrorKind = RemoteErrorKind.TIMEOUT
+                )
+            ),
+            connectivityObserver = connectivityObserver
+        )
+        advanceUntilIdle()
+
+        val result = repository.syncArchive()
+        advanceUntilIdle()
+
+        assertTrue(result is AppResult.Error)
+        val state = repository.syncState.value as SyncState.OfflineFallback
+        assertEquals(SyncFailureType.UNVALIDATED_NETWORK, state.failureType)
+        assertNull(state.lastSuccessfulSyncEpochMillis)
+    }
+
+    @Test
+    fun `dispositivo Online com HTTP 500 timeout e erro DNS classifica como SERVER_UNAVAILABLE`() = runTest {
+        val http500 = HttpException(
+            Response.error<Unit>(500, "{}".toResponseBody("application/json".toMediaType()))
+        )
+        val failures = listOf(
+            Triple(http500, RemoteErrorKind.HTTP_SERVER_ERROR, "HTTP 500"),
+            Triple(SocketTimeoutException("timeout"), RemoteErrorKind.TIMEOUT, "Timeout"),
+            Triple(UnknownHostException("archive.parintintin.org"), RemoteErrorKind.DNS_FAILURE, "DNS")
+        )
+
+        failures.forEach { (cause, kind, label) ->
+            val connectivityObserver = FakeNetworkConnectivityObserver(DeviceConnectivityState.Online)
+            val repository = createRepository(
+                dictionaryRepository = FakeDictionaryRepository(
+                    syncResult = AppResult.Error(
+                        message = label,
+                        cause = cause,
+                        remoteErrorKind = kind
+                    )
+                ),
+                connectivityObserver = connectivityObserver
+            )
+            advanceUntilIdle()
+
+            val result = repository.syncArchive()
+            advanceUntilIdle()
+
+            assertTrue(result is AppResult.Error)
+            val state = repository.syncState.value as SyncState.OfflineFallback
+            assertEquals(SyncFailureType.SERVER_UNAVAILABLE, state.failureType)
+            assertNull(state.lastSuccessfulSyncEpochMillis)
+        }
+    }
+
+    @Test
+    fun `mudanca de conectividade durante tentativa HTTP usa estado atual no momento da falha sem usar cache antigo`() = runTest {
+        val connectivityObserver = FakeNetworkConnectivityObserver(DeviceConnectivityState.Online)
+        var attempt = 0
+        val repository = createRepository(
+            dictionaryRepository = FakeDictionaryRepository(
+                customSync = {
+                    attempt += 1
+                    if (attempt == 1) {
+                        // Falha enquanto dispositivo permanece Online -> SERVER_UNAVAILABLE
+                        AppResult.Error(
+                            message = "Erro servidor",
+                            remoteErrorKind = RemoteErrorKind.HTTP_SERVER_ERROR
+                        )
+                    } else {
+                        // Durante a tentativa 2, conectividade cai para Offline antes do tratamento da falha
+                        connectivityObserver.setState(DeviceConnectivityState.Offline)
+                        AppResult.Error(
+                            message = "Conexão perdida",
+                            remoteErrorKind = RemoteErrorKind.IO_FAILURE
+                        )
+                    }
+                }
+            ),
+            connectivityObserver = connectivityObserver
+        )
+        advanceUntilIdle()
+
+        repository.syncArchive()
+        advanceUntilIdle()
+        assertEquals(
+            SyncFailureType.SERVER_UNAVAILABLE,
+            (repository.syncState.value as SyncState.OfflineFallback).failureType
+        )
+
+        repository.syncArchive()
+        advanceUntilIdle()
+        assertEquals(
+            SyncFailureType.NO_INTERNET,
+            (repository.syncState.value as SyncState.OfflineFallback).failureType
+        )
+    }
+
+    @Test
+    fun `falha apos sincronizacao oficial anterior preserva lastSuccessfulSyncEpochMillis em OfflineFallback e em falhas subsequentes`() = runTest {
+        val officialEpoch = 1_700_000_000_000L
+        val initialSynced = SyncMetadataEntity(
+            lastAttemptEpochMillis = officialEpoch,
+            lastAttemptStatus = SyncMetadataEntity.STATUS_SYNCED,
+            lastFailureReason = null,
+            lastSuccessfulSyncEpochMillis = officialEpoch,
+            lastSuccessfulEntriesCount = 30,
+            lastSuccessfulArticlesCount = null,
+            lastSuccessfulRemoteVersion = ArchiveSyncRepositoryImpl.MANIFEST_VERSION_UNAVAILABLE
+        )
+        val syncDao = FakeSyncMetadataDao(initialEntity = initialSynced)
+        val connectivityObserver = FakeNetworkConnectivityObserver(DeviceConnectivityState.Online)
+        val repository = createRepository(
+            dictionaryRepository = FakeDictionaryRepository(
+                syncResult = AppResult.Error(
+                    message = "Servidor indisponível",
+                    remoteErrorKind = RemoteErrorKind.HTTP_SERVER_ERROR
+                )
+            ),
+            syncDao = syncDao,
+            connectivityObserver = connectivityObserver
+        )
+        repository.syncState.first { it is SyncState.Synced }
+
+        repository.syncArchive()
+        advanceUntilIdle()
+
+        val firstFallback = repository.syncState.value as SyncState.OfflineFallback
+        assertEquals(SyncFailureType.SERVER_UNAVAILABLE, firstFallback.failureType)
+        assertEquals(officialEpoch, firstFallback.lastSuccessfulSyncEpochMillis)
+        assertEquals(officialEpoch, syncDao.lastSaved?.lastSuccessfulSyncEpochMillis)
+
+        // Segunda falha consecutiva (agora Offline) não pode perder o timestamp oficial nem manter cache SERVER_UNAVAILABLE
+        connectivityObserver.setState(DeviceConnectivityState.Offline)
+        repository.syncArchive()
+        advanceUntilIdle()
+
+        val secondFallback = repository.syncState.value as SyncState.OfflineFallback
+        assertEquals(SyncFailureType.NO_INTERNET, secondFallback.failureType)
+        assertEquals(officialEpoch, secondFallback.lastSuccessfulSyncEpochMillis)
+        assertEquals(officialEpoch, syncDao.lastSaved?.lastSuccessfulSyncEpochMillis)
+    }
+
+    @Test
+    fun `HTTP 200 com lista vazia continua produzindo RemoteEmpty mesmo com observador Online sem classificar como falha`() = runTest {
+        val syncDao = FakeSyncMetadataDao()
+        val connectivityObserver = FakeNetworkConnectivityObserver(DeviceConnectivityState.Online)
+        val repository = createRepository(
+            dictionaryRepository = FakeDictionaryRepository(
+                syncResult = AppResult.Success(RemoteSyncOutcome.Empty)
+            ),
+            syncDao = syncDao,
+            connectivityObserver = connectivityObserver
+        )
+        advanceUntilIdle()
+
+        val result = repository.syncArchive()
+        advanceUntilIdle()
+
+        assertTrue(result is AppResult.Success)
+        assertTrue(repository.syncState.value is SyncState.RemoteEmpty)
+        assertEquals(SyncMetadataEntity.STATUS_REMOTE_EMPTY, syncDao.lastSaved?.lastAttemptStatus)
+        assertNull(syncDao.lastSaved?.lastFailureReason)
+    }
+
     private fun TestScope.createRepository(
         dictionaryRepository: DictionaryRepository = FakeDictionaryRepository(),
         encyclopediaRepository: EncyclopediaRepository = FakeEncyclopediaRepository(),
         syncDao: SyncMetadataDao = FakeSyncMetadataDao(),
-        dictionarySeedUpdater: DictionarySeedUpdater = FakeDictionarySeedUpdater()
+        dictionarySeedUpdater: DictionarySeedUpdater = FakeDictionarySeedUpdater(),
+        connectivityObserver: NetworkConnectivityObserver = FakeNetworkConnectivityObserver()
     ): ArchiveSyncRepositoryImpl {
         val testDispatcher = StandardTestDispatcher(testScheduler)
         val applicationScope = CoroutineScope(SupervisorJob() + testDispatcher)
@@ -1016,6 +1227,7 @@ class ArchiveSyncRepositoryImplTest {
             encyclopediaRepository = encyclopediaRepository,
             syncMetadataDao = syncDao,
             dictionarySeedUpdater = dictionarySeedUpdater,
+            networkConnectivityObserver = connectivityObserver,
             dispatchers = TestDispatcherProvider(testDispatcher),
             applicationScope = applicationScope
         )
@@ -1180,6 +1392,17 @@ class ArchiveSyncRepositoryImplTest {
                     message = "Outcome simulado: $outcomeStatus"
                 )
             )
+        }
+    }
+
+    private class FakeNetworkConnectivityObserver(
+        initialState: DeviceConnectivityState = DeviceConnectivityState.Offline
+    ) : NetworkConnectivityObserver {
+        private val stateFlow = MutableStateFlow(initialState)
+        override val connectivityState: StateFlow<DeviceConnectivityState> = stateFlow.asStateFlow()
+
+        fun setState(newState: DeviceConnectivityState) {
+            stateFlow.value = newState
         }
     }
 }

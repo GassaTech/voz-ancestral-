@@ -8,12 +8,15 @@ import com.example.data.local.seed.DictionarySeedUpdater
 import com.example.data.local.seed.SeedUpdateOutcomeStatus
 import com.example.data.mapper.toDomainSyncState
 import com.example.di.ApplicationScope
+import com.example.domain.connectivity.NetworkConnectivityObserver
 import com.example.domain.model.ArchiveStats
 import com.example.domain.model.RemoteSyncOutcome
+import com.example.domain.model.SyncFailureType
 import com.example.domain.model.SyncState
 import com.example.domain.repository.DictionaryRepository
 import com.example.domain.repository.EncyclopediaRepository
 import com.example.domain.repository.SyncStatusRepository
+import com.example.domain.sync.SyncFailureClassifier
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CancellationException
@@ -35,6 +38,7 @@ class ArchiveSyncRepositoryImpl @Inject constructor(
     private val encyclopediaRepository: EncyclopediaRepository,
     private val syncMetadataDao: SyncMetadataDao,
     private val dictionarySeedUpdater: DictionarySeedUpdater,
+    private val networkConnectivityObserver: NetworkConnectivityObserver,
     private val dispatchers: DispatcherProvider,
     @ApplicationScope private val applicationScope: CoroutineScope
 ) : SyncStatusRepository {
@@ -53,10 +57,23 @@ class ArchiveSyncRepositoryImpl @Inject constructor(
         ) : TransientSyncOverride
     }
 
+    private data class ClassifiedFailure(
+        val attemptEpochMillis: Long,
+        val failureType: SyncFailureType
+    )
+
+    private data class AttemptSnapshot(
+        val nextEpochMillis: Long,
+        val persistedMetadata: SyncMetadataEntity?
+    )
+
     private val syncMutex = Mutex()
     private val transientOverride =
         MutableStateFlow<TransientSyncOverride>(TransientSyncOverride.None)
     private var lastAttemptEpochMillisInMemory: Long? = null
+
+    @Volatile
+    private var lastClassifiedFailure: ClassifiedFailure? = null
 
     override val syncState: StateFlow<SyncState> = combine(
         transientOverride,
@@ -76,17 +93,24 @@ class ArchiveSyncRepositoryImpl @Inject constructor(
         metadata: SyncMetadataEntity?
     ): SyncState = when (override) {
         TransientSyncOverride.None ->
-            metadata.toDomainSyncState(DEFAULT_OFFLINE_REASON)
+            metadata.toDomainSyncState(
+                defaultOfflineReason = DEFAULT_OFFLINE_REASON,
+                offlineFailureType = resolveFailureTypeFor(metadata)
+            )
 
         TransientSyncOverride.Syncing ->
             SyncState.Syncing
 
         is TransientSyncOverride.PendingRoomEmission -> {
+            val mappedState = metadata.toDomainSyncState(
+                defaultOfflineReason = DEFAULT_OFFLINE_REASON,
+                offlineFailureType = resolveFailureTypeFor(metadata)
+            )
             val isConfirmedByRoom = metadata != null && (
                 metadata.lastAttemptEpochMillis > override.attemptEpochMillis ||
                     (metadata.lastAttemptEpochMillis == override.attemptEpochMillis &&
                         metadata.lastAttemptStatus == override.expectedStatus &&
-                        metadata.toDomainSyncState(DEFAULT_OFFLINE_REASON) == override.resolvedState)
+                        mappedState == override.resolvedState)
                 )
             if (isConfirmedByRoom) {
                 transientOverride.compareAndSet(override, TransientSyncOverride.None)
@@ -103,7 +127,10 @@ class ArchiveSyncRepositoryImpl @Inject constructor(
     private fun resolveLatestActiveOverride(metadata: SyncMetadataEntity?): SyncState =
         when (val latest = transientOverride.value) {
             TransientSyncOverride.None ->
-                metadata.toDomainSyncState(DEFAULT_OFFLINE_REASON)
+                metadata.toDomainSyncState(
+                    defaultOfflineReason = DEFAULT_OFFLINE_REASON,
+                    offlineFailureType = resolveFailureTypeFor(metadata)
+                )
 
             TransientSyncOverride.Syncing ->
                 SyncState.Syncing
@@ -114,6 +141,30 @@ class ArchiveSyncRepositoryImpl @Inject constructor(
             is TransientSyncOverride.InMemoryFallback ->
                 latest.fallbackState
         }
+
+    private fun resolveFailureTypeFor(metadata: SyncMetadataEntity?): SyncFailureType {
+        if (metadata == null || metadata.lastAttemptStatus != SyncMetadataEntity.STATUS_OFFLINE_FALLBACK) {
+            return SyncFailureType.NO_INTERNET
+        }
+        val classified = lastClassifiedFailure
+        return if (classified != null && classified.attemptEpochMillis == metadata.lastAttemptEpochMillis) {
+            classified.failureType
+        } else {
+            classifyCurrentConnectivity()
+        }
+    }
+
+    private fun classifyCurrentConnectivity(): SyncFailureType =
+        SyncFailureClassifier.classify(networkConnectivityObserver.connectivityState.value)
+
+    private fun currentKnownSuccessfulSyncEpochMillis(): Long? = when (val current = syncState.value) {
+        is SyncState.Synced -> current.lastSyncedEpochMillis
+        is SyncState.RemoteEmpty -> current.lastSyncedEpochMillis
+        is SyncState.OfflineFallback -> current.lastSuccessfulSyncEpochMillis
+        SyncState.Loading,
+        SyncState.Idle,
+        SyncState.Syncing -> null
+    }
 
     override fun observeArchiveStats(): Flow<ArchiveStats> =
         combine(
@@ -132,6 +183,7 @@ class ArchiveSyncRepositoryImpl @Inject constructor(
 
     override suspend fun syncArchive(): AppResult<Unit> = syncMutex.withLock {
         withContext(dispatchers.io) {
+            val previousSuccessfulSyncEpochMillis = currentKnownSuccessfulSyncEpochMillis()
             val previousOverride = transientOverride.value
             val restoreOnCancel = when (previousOverride) {
                 is TransientSyncOverride.InMemoryFallback -> previousOverride
@@ -142,79 +194,102 @@ class ArchiveSyncRepositoryImpl @Inject constructor(
             try {
                 runSeedUpdateSafely()
                 val entriesResult = dictionaryRepository.syncFromRemote()
-                val now = nextAttemptEpochMillis()
 
                 when (entriesResult) {
-                    is AppResult.Success -> when (val outcome = entriesResult.data) {
-                        is RemoteSyncOutcome.Synced -> {
-                            val syncedState = SyncState.Synced(
-                                lastSyncedEpochMillis = now,
-                                entriesCount = outcome.entriesCount,
-                                articlesCount = null
-                            )
-                            syncMetadataDao.upsert(
-                                SyncMetadataEntity(
-                                    id = SyncMetadataEntity.SINGLETON_ID,
-                                    lastAttemptEpochMillis = now,
-                                    lastAttemptStatus = SyncMetadataEntity.STATUS_SYNCED,
-                                    lastFailureReason = null,
-                                    lastSuccessfulSyncEpochMillis = now,
-                                    lastSuccessfulEntriesCount = outcome.entriesCount,
-                                    // Na versão 1.0 a enciclopédia não participa da sincronização;
-                                    // mantém null em vez de registrar contagem fictícia (ex.: 0).
-                                    lastSuccessfulArticlesCount = null,
-                                    // Limitação conhecida: versão real do manifesto ainda não integrada.
-                                    lastSuccessfulRemoteVersion = MANIFEST_VERSION_UNAVAILABLE
-                                )
-                            )
-                            transientOverride.value = TransientSyncOverride.PendingRoomEmission(
-                                attemptEpochMillis = now,
-                                expectedStatus = SyncMetadataEntity.STATUS_SYNCED,
-                                resolvedState = syncedState
-                            )
-                            AppResult.Success(Unit)
-                        }
+                    is AppResult.Success -> {
+                        val attemptSnapshot = nextAttemptSnapshot()
+                        val now = attemptSnapshot.nextEpochMillis
+                        val previousMetadata = attemptSnapshot.persistedMetadata
 
-                        RemoteSyncOutcome.Empty -> {
-                            val previousMetadata = syncMetadataDao.getMetadataOnce()
-                            syncMetadataDao.recordRemoteEmptyAttempt(attemptEpochMillis = now)
-                            val remoteEmptyState = SyncState.RemoteEmpty(
-                                lastAttemptEpochMillis = now,
-                                lastSyncedEpochMillis = previousMetadata?.lastSuccessfulSyncEpochMillis,
-                                entriesCount = previousMetadata?.lastSuccessfulEntriesCount,
-                                articlesCount = previousMetadata?.lastSuccessfulArticlesCount
-                            )
-                            transientOverride.value = TransientSyncOverride.PendingRoomEmission(
-                                attemptEpochMillis = now,
-                                expectedStatus = SyncMetadataEntity.STATUS_REMOTE_EMPTY,
-                                resolvedState = remoteEmptyState
-                            )
-                            AppResult.Success(Unit)
+                        when (val outcome = entriesResult.data) {
+                            is RemoteSyncOutcome.Synced -> {
+                                lastClassifiedFailure = null
+                                val syncedState = SyncState.Synced(
+                                    lastSyncedEpochMillis = now,
+                                    entriesCount = outcome.entriesCount,
+                                    articlesCount = null
+                                )
+                                syncMetadataDao.upsert(
+                                    SyncMetadataEntity(
+                                        id = SyncMetadataEntity.SINGLETON_ID,
+                                        lastAttemptEpochMillis = now,
+                                        lastAttemptStatus = SyncMetadataEntity.STATUS_SYNCED,
+                                        lastFailureReason = null,
+                                        lastSuccessfulSyncEpochMillis = now,
+                                        lastSuccessfulEntriesCount = outcome.entriesCount,
+                                        // Na versão 1.0 a enciclopédia não participa da sincronização;
+                                        // mantém null em vez de registrar contagem fictícia (ex.: 0).
+                                        lastSuccessfulArticlesCount = null,
+                                        // Limitação conhecida: versão real do manifesto ainda não integrada.
+                                        lastSuccessfulRemoteVersion = MANIFEST_VERSION_UNAVAILABLE
+                                    )
+                                )
+                                transientOverride.value = TransientSyncOverride.PendingRoomEmission(
+                                    attemptEpochMillis = now,
+                                    expectedStatus = SyncMetadataEntity.STATUS_SYNCED,
+                                    resolvedState = syncedState
+                                )
+                                AppResult.Success(Unit)
+                            }
+
+                            RemoteSyncOutcome.Empty -> {
+                                lastClassifiedFailure = null
+                                syncMetadataDao.recordRemoteEmptyAttempt(attemptEpochMillis = now)
+                                val remoteEmptyState = SyncState.RemoteEmpty(
+                                    lastAttemptEpochMillis = now,
+                                    lastSyncedEpochMillis = previousMetadata?.lastSuccessfulSyncEpochMillis,
+                                    entriesCount = previousMetadata?.lastSuccessfulEntriesCount,
+                                    articlesCount = previousMetadata?.lastSuccessfulArticlesCount
+                                )
+                                transientOverride.value = TransientSyncOverride.PendingRoomEmission(
+                                    attemptEpochMillis = now,
+                                    expectedStatus = SyncMetadataEntity.STATUS_REMOTE_EMPTY,
+                                    resolvedState = remoteEmptyState
+                                )
+                                AppResult.Success(Unit)
+                            }
                         }
                     }
 
                     is AppResult.Error -> {
+                        val failureType = classifyCurrentConnectivity()
+                        val attemptSnapshot = nextAttemptSnapshot()
+                        val now = attemptSnapshot.nextEpochMillis
                         val reason = entriesResult.message
                             .takeIf { it.isNotBlank() }
                             ?: DEFAULT_OFFLINE_REASON
+                        lastClassifiedFailure = ClassifiedFailure(
+                            attemptEpochMillis = now,
+                            failureType = failureType
+                        )
                         persistOfflineFallback(
                             now = now,
                             reason = reason,
+                            failureType = failureType,
+                            lastSuccessfulSyncEpochMillis = attemptSnapshot.persistedMetadata
+                                ?.lastSuccessfulSyncEpochMillis,
                             restoreOnCancel = restoreOnCancel
                         )
-                        AppResult.Error(message = reason, cause = entriesResult.cause)
+                        AppResult.Error(
+                            message = reason,
+                            cause = entriesResult.cause,
+                            remoteErrorKind = entriesResult.remoteErrorKind
+                        )
                     }
                 }
             } catch (ce: CancellationException) {
                 transientOverride.value = restoreOnCancel
                 throw ce
             } catch (e: Exception) {
+                val failureType = classifyCurrentConnectivity()
                 val initialReason = e.localizedMessage
                     ?.takeIf { it.isNotBlank() }
                     ?: DEFAULT_OFFLINE_REASON
                 handleFailureWithTimestampCheck(
                     initialReason = initialReason,
                     initialError = e,
+                    failureType = failureType,
+                    fallbackSuccessfulSyncEpochMillis = previousSuccessfulSyncEpochMillis,
                     restoreOnCancel = restoreOnCancel
                 )
             }
@@ -244,24 +319,30 @@ class ArchiveSyncRepositoryImpl @Inject constructor(
         }
     }
 
-    private suspend fun nextAttemptEpochMillis(): Long {
-        val persistedLastAttempt = syncMetadataDao.getMetadataOnce()?.lastAttemptEpochMillis
+    private suspend fun nextAttemptSnapshot(): AttemptSnapshot {
+        val persistedMetadata = syncMetadataDao.getMetadataOnce()
+        val persistedLastAttempt = persistedMetadata?.lastAttemptEpochMillis
         val latestReference = listOfNotNull(
             persistedLastAttempt,
             lastAttemptEpochMillisInMemory
         ).maxOrNull()
         val nextTimestamp = computeNextTimestamp(latestReference)
         lastAttemptEpochMillisInMemory = nextTimestamp
-        return nextTimestamp
+        return AttemptSnapshot(
+            nextEpochMillis = nextTimestamp,
+            persistedMetadata = persistedMetadata
+        )
     }
 
     private suspend fun handleFailureWithTimestampCheck(
         initialReason: String,
         initialError: Exception,
+        failureType: SyncFailureType,
+        fallbackSuccessfulSyncEpochMillis: Long?,
         restoreOnCancel: TransientSyncOverride
     ): AppResult<Unit> {
-        val verifiedNow = try {
-            nextAttemptEpochMillis()
+        val verifiedSnapshot = try {
+            nextAttemptSnapshot()
         } catch (ce: CancellationException) {
             transientOverride.value = restoreOnCancel
             throw ce
@@ -281,15 +362,25 @@ class ArchiveSyncRepositoryImpl @Inject constructor(
             transientOverride.value = TransientSyncOverride.InMemoryFallback(
                 SyncState.OfflineFallback(
                     reason = combinedReason,
-                    lastAttemptEpochMillis = unverifiedNow
+                    lastAttemptEpochMillis = unverifiedNow,
+                    failureType = failureType,
+                    lastSuccessfulSyncEpochMillis = fallbackSuccessfulSyncEpochMillis
                 )
             )
             return AppResult.Error(message = combinedReason, cause = readError)
         }
 
+        lastClassifiedFailure = ClassifiedFailure(
+            attemptEpochMillis = verifiedSnapshot.nextEpochMillis,
+            failureType = failureType
+        )
         persistOfflineFallback(
-            now = verifiedNow,
+            now = verifiedSnapshot.nextEpochMillis,
             reason = initialReason,
+            failureType = failureType,
+            lastSuccessfulSyncEpochMillis = verifiedSnapshot.persistedMetadata
+                ?.lastSuccessfulSyncEpochMillis
+                ?: fallbackSuccessfulSyncEpochMillis,
             restoreOnCancel = restoreOnCancel
         )
         return AppResult.Error(message = initialReason, cause = initialError)
@@ -307,11 +398,15 @@ class ArchiveSyncRepositoryImpl @Inject constructor(
     private suspend fun persistOfflineFallback(
         now: Long,
         reason: String,
+        failureType: SyncFailureType,
+        lastSuccessfulSyncEpochMillis: Long?,
         restoreOnCancel: TransientSyncOverride
     ) {
         val offlineState = SyncState.OfflineFallback(
             reason = reason,
-            lastAttemptEpochMillis = now
+            lastAttemptEpochMillis = now,
+            failureType = failureType,
+            lastSuccessfulSyncEpochMillis = lastSuccessfulSyncEpochMillis
         )
         try {
             syncMetadataDao.recordAttemptFailure(

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModelStore
 import com.example.core.common.AppResult
 import com.example.data.sync.ArchiveSyncCoordinatorImpl
 import com.example.domain.model.ArchiveStats
+import com.example.domain.model.SyncFailureType
 import com.example.domain.model.SyncState
 import com.example.domain.repository.SyncStatusRepository
 import com.example.domain.sync.ArchiveSyncCoordinator
@@ -219,11 +220,16 @@ class HomeViewModelTest {
 
         val fallback = SyncState.OfflineFallback(
             reason = "Sem conexão",
-            lastAttemptEpochMillis = 1_700_000_090_000L
+            lastAttemptEpochMillis = 1_700_000_090_000L,
+            failureType = SyncFailureType.SERVER_UNAVAILABLE,
+            lastSuccessfulSyncEpochMillis = 1_700_000_050_000L
         )
         fakeRepository.syncStateFlow.value = fallback
         advanceUntilIdle()
         assertEquals(fallback, viewModel.uiState.value.syncState)
+        val propagatedFallback = viewModel.uiState.value.syncState as SyncState.OfflineFallback
+        assertEquals(SyncFailureType.SERVER_UNAVAILABLE, propagatedFallback.failureType)
+        assertEquals(1_700_000_050_000L, propagatedFallback.lastSuccessfulSyncEpochMillis)
 
         collectorJob.cancel()
     }

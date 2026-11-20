@@ -10,6 +10,7 @@ import com.example.domain.model.CulturalTopic
 import com.example.domain.model.DictionaryEntry
 import com.example.domain.model.GrammaticalClass
 import com.example.domain.model.SemanticCategory
+import com.example.domain.model.SyncFailureType
 import com.example.domain.model.SyncState
 
 fun DictionaryEntryEntity.toDomain(): DictionaryEntry = DictionaryEntry(
@@ -71,7 +72,10 @@ fun CulturalArticleDto.toEntity(isBookmarked: Boolean): CulturalArticleEntity = 
     updatedAtEpochMillis = updatedAtEpochMillis
 )
 
-fun SyncMetadataEntity?.toDomainSyncState(defaultOfflineReason: String): SyncState {
+fun SyncMetadataEntity?.toDomainSyncState(
+    defaultOfflineReason: String,
+    offlineFailureType: SyncFailureType = SyncFailureType.NO_INTERNET
+): SyncState {
     if (this == null) return SyncState.Idle
     return when (lastAttemptStatus) {
         SyncMetadataEntity.STATUS_SYNCED -> {
@@ -100,7 +104,9 @@ fun SyncMetadataEntity?.toDomainSyncState(defaultOfflineReason: String): SyncSta
                 ?: defaultOfflineReason
             SyncState.OfflineFallback(
                 reason = resolvedReason,
-                lastAttemptEpochMillis = lastAttemptEpochMillis
+                lastAttemptEpochMillis = lastAttemptEpochMillis,
+                failureType = offlineFailureType,
+                lastSuccessfulSyncEpochMillis = lastSuccessfulSyncEpochMillis
             )
         }
 

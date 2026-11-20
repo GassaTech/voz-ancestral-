@@ -19,7 +19,9 @@ sealed interface SyncState {
 
     data class OfflineFallback(
         val reason: String,
-        val lastAttemptEpochMillis: Long
+        val lastAttemptEpochMillis: Long,
+        val failureType: SyncFailureType = SyncFailureType.NO_INTERNET,
+        val lastSuccessfulSyncEpochMillis: Long? = null
     ) : SyncState
 }
 

@@ -25,8 +25,11 @@ import com.example.data.remote.datasource.RemoteArchiveDataSource
 import com.example.data.repository.ArchiveSyncRepositoryImpl
 import com.example.data.repository.OfflineFirstDictionaryRepository
 import com.example.data.repository.OfflineFirstEncyclopediaRepository
+import com.example.domain.connectivity.NetworkConnectivityObserver
+import com.example.domain.model.DeviceConnectivityState
 import com.example.domain.model.GrammaticalClass
 import com.example.domain.model.SemanticCategory
+import com.example.domain.model.SyncFailureType
 import com.example.domain.model.SyncState
 import com.example.domain.usecase.ObserveArchiveStatsUseCase
 import com.example.domain.usecase.ObserveDictionaryEntriesUseCase
@@ -46,6 +49,9 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -820,6 +826,148 @@ class DictionaryOfflineIntegrationTest {
         assertEquals("termo_oficial_adicional", finalEntries.getValue("official_extra").parintintinWord)
     }
 
+    @Test
+    fun `9 - classificacao de falhas remotas diferencia Offline ConnectedUnvalidated Online com Room e MockWebServer reais`() = runBlocking {
+        val server = MockWebServer().apply {
+            enqueue(MockResponse().setResponseCode(500).setBody("Internal Server Error 1"))
+            enqueue(MockResponse().setResponseCode(500).setBody("Internal Server Error 2"))
+            start()
+        }
+        startedServers += server
+
+        // Sub-cenário A: dispositivo Offline -> falha de conexão -> NO_INTERNET e Seed preservado
+        val dbOffline = createInMemoryDatabase()
+        val offlineObserver = FakeNetworkConnectivityObserver(DeviceConnectivityState.Offline)
+        val stackOffline = createRealStack(
+            database = dbOffline,
+            baseUrl = "http://127.0.0.1:1/",
+            seedStreamProvider = { syntheticSeedArrayJson().toUtf8Stream() },
+            connectivityObserver = offlineObserver
+        )
+        val offlineResult = stackOffline.syncRepository.syncArchive()
+        assertTrue(offlineResult is AppResult.Error)
+        val offlineState = withTimeout(5_000L) {
+            stackOffline.syncRepository.syncState.first { it is SyncState.OfflineFallback }
+        } as SyncState.OfflineFallback
+        assertEquals(SyncFailureType.NO_INTERNET, offlineState.failureType)
+        assertNull(offlineState.lastSuccessfulSyncEpochMillis)
+        assertEquals(4, stackOffline.dictionaryRepository.observeTotalCount().first())
+
+        // Sub-cenário B: ConnectedUnvalidated -> HTTP 500 -> UNVALIDATED_NETWORK e Seed preservado
+        val dbUnvalidated = createInMemoryDatabase()
+        val unvalidatedObserver = FakeNetworkConnectivityObserver(DeviceConnectivityState.ConnectedUnvalidated)
+        val stackUnvalidated = createRealStack(
+            database = dbUnvalidated,
+            baseUrl = server.url("/").toString(),
+            seedStreamProvider = { syntheticSeedArrayJson().toUtf8Stream() },
+            connectivityObserver = unvalidatedObserver
+        )
+        val unvalidatedResult = stackUnvalidated.syncRepository.syncArchive()
+        assertTrue(unvalidatedResult is AppResult.Error)
+        val unvalidatedState = withTimeout(5_000L) {
+            stackUnvalidated.syncRepository.syncState.first { it is SyncState.OfflineFallback }
+        } as SyncState.OfflineFallback
+        assertEquals(SyncFailureType.UNVALIDATED_NETWORK, unvalidatedState.failureType)
+        assertNull(unvalidatedState.lastSuccessfulSyncEpochMillis)
+        assertEquals(4, stackUnvalidated.dictionaryRepository.observeTotalCount().first())
+
+        // Sub-cenário C: Online -> HTTP 500 -> SERVER_UNAVAILABLE e Seed preservado
+        val dbOnline = createInMemoryDatabase()
+        val onlineObserver = FakeNetworkConnectivityObserver(DeviceConnectivityState.Online)
+        val stackOnline = createRealStack(
+            database = dbOnline,
+            baseUrl = server.url("/").toString(),
+            seedStreamProvider = { syntheticSeedArrayJson().toUtf8Stream() },
+            connectivityObserver = onlineObserver
+        )
+        val onlineResult = stackOnline.syncRepository.syncArchive()
+        assertTrue(onlineResult is AppResult.Error)
+        val onlineState = withTimeout(5_000L) {
+            stackOnline.syncRepository.syncState.first { it is SyncState.OfflineFallback }
+        } as SyncState.OfflineFallback
+        assertEquals(SyncFailureType.SERVER_UNAVAILABLE, onlineState.failureType)
+        assertNull(onlineState.lastSuccessfulSyncEpochMillis)
+        assertEquals(4, stackOnline.dictionaryRepository.observeTotalCount().first())
+    }
+
+    @Test
+    fun `10 - sincronizacao oficial com favorito preservado seguida de HTTP 500 preserva timestamp oficial favoritos e HTTP 200 vazio segue RemoteEmpty`() = runBlocking {
+        val server = MockWebServer().apply {
+            enqueue(
+                MockResponse().setResponseCode(200).setBody(
+                    """
+                    [
+                      ${syntheticJsonEntry(
+                        id = "int_seed_1",
+                        word = "termo_oficial_k",
+                        translation = "significado_oficial_k",
+                        updatedAt = 1_700_000_050_000L
+                    )}
+                    ]
+                    """.trimIndent()
+                )
+            )
+            enqueue(MockResponse().setResponseCode(500).setBody("Server Down"))
+            enqueue(MockResponse().setResponseCode(200).setBody("[]"))
+            start()
+        }
+        startedServers += server
+
+        val database = createInMemoryDatabase()
+        val connectivityObserver = FakeNetworkConnectivityObserver(DeviceConnectivityState.Online)
+        val stack = createRealStack(
+            database = database,
+            baseUrl = server.url("/").toString(),
+            seedStreamProvider = { syntheticSeedArrayJson().toUtf8Stream() },
+            connectivityObserver = connectivityObserver
+        )
+
+        // Prepara Seed inicial e marca favorito antes da sincronização oficial
+        assertEquals(AppResult.Success(4), stack.seedImporter.importIfEmptyFromStream {
+            syntheticSeedArrayJson().toUtf8Stream()
+        })
+        stack.dictionaryRepository.toggleFavorite("int_seed_1")
+
+        // Passo 1: sincronização oficial bem-sucedida preserva favorito
+        val officialResult = stack.syncRepository.syncArchive()
+        assertTrue(officialResult is AppResult.Success)
+        val syncedState = withTimeout(5_000L) {
+            stack.syncRepository.syncState.first { it is SyncState.Synced }
+        } as SyncState.Synced
+        val officialTimestamp = syncedState.lastSyncedEpochMillis
+
+        val entriesAfterOfficial = stack.dictionaryRepository.observeEntries().first().associateBy { it.id }
+        assertEquals("termo_oficial_k", entriesAfterOfficial.getValue("int_seed_1").parintintinWord)
+        assertTrue(entriesAfterOfficial.getValue("int_seed_1").isFavorite)
+
+        // Passo 2: dispositivo Online + HTTP 500 -> SERVER_UNAVAILABLE preservando timestamp oficial e favoritos
+        val failedResult = stack.syncRepository.syncArchive()
+        assertTrue(failedResult is AppResult.Error)
+        val fallbackState = withTimeout(5_000L) {
+            stack.syncRepository.syncState.first { it is SyncState.OfflineFallback }
+        } as SyncState.OfflineFallback
+        assertEquals(SyncFailureType.SERVER_UNAVAILABLE, fallbackState.failureType)
+        assertEquals(officialTimestamp, fallbackState.lastSuccessfulSyncEpochMillis)
+
+        val entriesAfterFailure = stack.dictionaryRepository.observeEntries().first().associateBy { it.id }
+        assertEquals("termo_oficial_k", entriesAfterFailure.getValue("int_seed_1").parintintinWord)
+        assertTrue(entriesAfterFailure.getValue("int_seed_1").isFavorite)
+
+        // Passo 3: HTTP 200 [] continua tratado como SyncState.RemoteEmpty e preserva histórico oficial e favoritos
+        val emptyResult = stack.syncRepository.syncArchive()
+        assertTrue(emptyResult is AppResult.Success)
+        val remoteEmptyState = withTimeout(5_000L) {
+            stack.syncRepository.syncState.first { it is SyncState.RemoteEmpty }
+        } as SyncState.RemoteEmpty
+        assertEquals(officialTimestamp, remoteEmptyState.lastSyncedEpochMillis)
+        assertEquals(1, remoteEmptyState.entriesCount)
+        assertTrue(
+            stack.dictionaryRepository.observeEntries().first()
+                .first { it.id == "int_seed_1" }
+                .isFavorite
+        )
+    }
+
     private fun createInMemoryDatabase(): ParintintinDatabase =
         Room.inMemoryDatabaseBuilder(context, ParintintinDatabase::class.java)
             .allowMainThreadQueries()
@@ -837,7 +985,8 @@ class DictionaryOfflineIntegrationTest {
         database: ParintintinDatabase,
         baseUrl: String = "http://127.0.0.1:1/",
         seedStreamProvider: () -> InputStream = { "[]".toUtf8Stream() },
-        onBeforeSeedMetadataUpsert: (suspend (SeedMetadataEntity) -> Unit)? = null
+        onBeforeSeedMetadataUpsert: (suspend (SeedMetadataEntity) -> Unit)? = null,
+        connectivityObserver: NetworkConnectivityObserver = FakeNetworkConnectivityObserver()
     ): RealIntegrationStack {
         val apiService = Retrofit.Builder()
             .baseUrl(baseUrl)
@@ -890,6 +1039,7 @@ class DictionaryOfflineIntegrationTest {
             encyclopediaRepository = encyclopediaRepository,
             syncMetadataDao = database.syncMetadataDao(),
             dictionarySeedUpdater = seedUpdater,
+            networkConnectivityObserver = connectivityObserver,
             dispatchers = testDispatchers,
             applicationScope = appScope
         )
@@ -901,6 +1051,17 @@ class DictionaryOfflineIntegrationTest {
             dictionaryRepository = dictionaryRepository,
             syncRepository = syncRepository
         )
+    }
+
+    private class FakeNetworkConnectivityObserver(
+        initialState: DeviceConnectivityState = DeviceConnectivityState.Online
+    ) : NetworkConnectivityObserver {
+        private val stateFlow = MutableStateFlow(initialState)
+        override val connectivityState: StateFlow<DeviceConnectivityState> = stateFlow.asStateFlow()
+
+        fun setState(state: DeviceConnectivityState) {
+            stateFlow.value = state
+        }
     }
 
     private data class RealIntegrationStack(
