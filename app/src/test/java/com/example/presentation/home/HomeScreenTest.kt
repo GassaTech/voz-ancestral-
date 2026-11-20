@@ -24,7 +24,10 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.unit.dp
 import com.example.domain.model.ArchiveStats
+import com.example.domain.model.SyncFailureType
 import com.example.domain.model.SyncState
+import com.example.presentation.components.BRAZILIAN_PORTUGUESE_LOCALE
+import com.example.presentation.components.formatSyncTimestamp
 import com.example.ui.theme.ParintintinTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -282,5 +285,96 @@ class HomeScreenTest {
             .performScrollToNode(hasText("Módulos Planejados"))
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText("Módulos Planejados").assert(isHeading())
+    }
+
+    @Test
+    fun `home exibe estados diferenciados de falha mantem MODO DEMONSTRATIVO visivel e preserva botao de sync manual`() {
+        var currentSyncState by mutableStateOf<SyncState>(
+            SyncState.OfflineFallback(
+                reason = "Offline",
+                lastAttemptEpochMillis = 1_700_000_010_000L,
+                failureType = SyncFailureType.NO_INTERNET,
+                lastSuccessfulSyncEpochMillis = null
+            )
+        )
+        var manualSyncCount = 0
+
+        composeTestRule.setContent {
+            ParintintinTheme {
+                HomeContent(
+                    uiState = HomeUiState(
+                        archiveStats = ArchiveStats(totalEntries = 20, totalArticles = 0),
+                        syncState = currentSyncState
+                    ),
+                    onManualSync = { manualSyncCount += 1 },
+                    onToggleStageDetails = {}
+                )
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        // NO_INTERNET
+        composeTestRule.onNodeWithTag("demo_mode_notice_title").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("home_list")
+            .performScrollToNode(hasTestTag("home_offline_status_card"))
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Sem conexão com a internet").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Ainda não houve sincronização oficial concluída.").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("home_sync_button").performClick()
+        assertEquals(1, manualSyncCount)
+
+        // UNVALIDATED_NETWORK
+        currentSyncState = SyncState.OfflineFallback(
+            reason = "Captive portal",
+            lastAttemptEpochMillis = 1_700_000_020_000L,
+            failureType = SyncFailureType.UNVALIDATED_NETWORK,
+            lastSuccessfulSyncEpochMillis = null
+        )
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Conexão ainda não validada").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("home_sync_button").performClick()
+        assertEquals(2, manualSyncCount)
+
+        // SERVER_UNAVAILABLE com histórico oficial
+        val officialEpoch = 1_700_000_000_000L
+        val expectedOfficial = formatSyncTimestamp(
+            epochMillis = officialEpoch,
+            locale = BRAZILIAN_PORTUGUESE_LOCALE
+        )
+        currentSyncState = SyncState.OfflineFallback(
+            reason = "HTTP 500",
+            lastAttemptEpochMillis = 1_700_000_030_000L,
+            failureType = SyncFailureType.SERVER_UNAVAILABLE,
+            lastSuccessfulSyncEpochMillis = officialEpoch
+        )
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Não foi possível sincronizar").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Sem internet", substring = true, ignoreCase = true)
+            .assertDoesNotExist()
+        composeTestRule.onNodeWithText("Última sincronização oficial em $expectedOfficial.")
+            .assertIsDisplayed()
+
+        // RemoteEmpty sem histórico
+        currentSyncState = SyncState.RemoteEmpty(
+            lastAttemptEpochMillis = 1_700_000_040_000L,
+            lastSyncedEpochMillis = null
+        )
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Acervo oficial ainda indisponível").assertIsDisplayed()
+
+        // Synced mantém MODO DEMONSTRATIVO visível na Home
+        currentSyncState = SyncState.Synced(
+            lastSyncedEpochMillis = officialEpoch,
+            entriesCount = 20,
+            articlesCount = null
+        )
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Acervo sincronizado").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("home_list")
+            .performScrollToNode(hasTestTag("demo_mode_notice_card"))
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("demo_mode_notice_title")
+            .assertIsDisplayed()
+            .assertTextEquals("MODO DEMONSTRATIVO")
     }
 }

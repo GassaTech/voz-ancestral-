@@ -65,6 +65,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.R
 import com.example.domain.model.ArchiveStats
+import com.example.domain.model.SyncFailureType
 import com.example.domain.model.SyncState
 import java.text.DateFormat
 import java.util.Date
@@ -368,10 +369,17 @@ fun OfflineArchiveStatusCard(
                 R.string.home_sync_remote_empty_title_with_history
             }
         )
-        is SyncState.OfflineFallback -> stringResource(R.string.home_sync_offline_title)
+        is SyncState.OfflineFallback -> stringResource(
+            when (syncState.failureType) {
+                SyncFailureType.NO_INTERNET -> R.string.home_sync_offline_no_internet_title
+                SyncFailureType.UNVALIDATED_NETWORK -> R.string.home_sync_offline_unvalidated_title
+                SyncFailureType.SERVER_UNAVAILABLE ->
+                    R.string.home_sync_offline_server_unavailable_title
+            }
+        )
     }
 
-    val locale = Locale.getDefault()
+    val locale = BRAZILIAN_PORTUGUESE_LOCALE
     val timeZone = TimeZone.getDefault()
 
     val statusBody = when (syncState) {
@@ -395,7 +403,33 @@ fun OfflineArchiveStatusCard(
                 R.string.home_sync_remote_empty_body_with_history
             }
         )
-        is SyncState.OfflineFallback -> stringResource(R.string.home_sync_offline_body)
+        is SyncState.OfflineFallback -> stringResource(
+            when (syncState.failureType) {
+                SyncFailureType.NO_INTERNET -> R.string.home_sync_offline_no_internet_body
+                SyncFailureType.UNVALIDATED_NETWORK -> R.string.home_sync_offline_unvalidated_body
+                SyncFailureType.SERVER_UNAVAILABLE ->
+                    R.string.home_sync_offline_server_unavailable_body
+            }
+        )
+    }
+
+    val officialHistoryDetail = when (syncState) {
+        is SyncState.OfflineFallback -> {
+            val lastOfficialSync = syncState.lastSuccessfulSyncEpochMillis
+            if (lastOfficialSync == null) {
+                stringResource(R.string.home_sync_offline_no_official_history)
+            } else {
+                val formattedOfficial = remember(lastOfficialSync, locale, timeZone) {
+                    formatSyncTimestamp(
+                        epochMillis = lastOfficialSync,
+                        locale = locale,
+                        timeZone = timeZone
+                    )
+                }
+                stringResource(R.string.home_sync_offline_last_official_sync, formattedOfficial)
+            }
+        }
+        else -> null
     }
 
     val secondaryDetail = when (syncState) {
@@ -529,8 +563,13 @@ fun OfflineArchiveStatusCard(
                         )
                     }
                     is SyncState.OfflineFallback -> {
+                        val offlineIcon = when (syncState.failureType) {
+                            SyncFailureType.UNVALIDATED_NETWORK -> Icons.Rounded.WarningAmber
+                            SyncFailureType.NO_INTERNET,
+                            SyncFailureType.SERVER_UNAVAILABLE -> Icons.Rounded.CloudOff
+                        }
                         Icon(
-                            imageVector = Icons.Rounded.CloudOff,
+                            imageVector = offlineIcon,
                             contentDescription = null,
                             tint = accentColor
                         )
@@ -541,7 +580,9 @@ fun OfflineArchiveStatusCard(
                     text = statusTitle,
                     style = MaterialTheme.typography.titleMedium,
                     color = primaryTextColor,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("home_sync_status_title")
                 )
             }
 
@@ -558,14 +599,25 @@ fun OfflineArchiveStatusCard(
             Text(
                 text = statusBody,
                 style = MaterialTheme.typography.bodyMedium,
-                color = secondaryTextColor
+                color = secondaryTextColor,
+                modifier = Modifier.testTag("home_sync_status_body")
             )
+
+            if (officialHistoryDetail != null) {
+                Text(
+                    text = officialHistoryDetail,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = secondaryTextColor,
+                    modifier = Modifier.testTag("home_sync_official_history")
+                )
+            }
 
             if (secondaryDetail != null) {
                 Text(
                     text = secondaryDetail,
                     style = MaterialTheme.typography.bodySmall,
-                    color = secondaryTextColor
+                    color = secondaryTextColor,
+                    modifier = Modifier.testTag("home_sync_secondary_detail")
                 )
             }
 
@@ -637,9 +689,11 @@ private fun StatusMetricChip(
     }
 }
 
+internal val BRAZILIAN_PORTUGUESE_LOCALE: Locale = Locale.forLanguageTag("pt-BR")
+
 internal fun formatSyncTimestamp(
     epochMillis: Long,
-    locale: Locale = Locale.getDefault(),
+    locale: Locale = BRAZILIAN_PORTUGUESE_LOCALE,
     timeZone: TimeZone = TimeZone.getDefault()
 ): String {
     val formatter = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT, locale)

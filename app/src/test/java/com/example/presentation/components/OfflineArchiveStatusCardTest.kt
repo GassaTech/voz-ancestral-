@@ -16,6 +16,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import com.example.domain.model.ArchiveStats
+import com.example.domain.model.SyncFailureType
 import com.example.domain.model.SyncState
 import com.example.ui.theme.ParintintinTheme
 import java.util.Locale
@@ -138,7 +139,7 @@ class OfflineArchiveStatusCardTest {
         val epochMillis = 1_700_000_000_000L
         val expectedFormatted = formatSyncTimestamp(
             epochMillis = epochMillis,
-            locale = Locale.getDefault(),
+            locale = BRAZILIAN_PORTUGUESE_LOCALE,
             timeZone = TimeZone.getDefault()
         )
         var manualClicks = 0
@@ -173,8 +174,13 @@ class OfflineArchiveStatusCardTest {
     }
 
     @Test
-    fun `estado OfflineFallback oculta mensagem tecnica exibe texto amigavel chips locais e botao Tentar novamente`() {
+    fun `estado OfflineFallback NO_INTERNET oculta mensagem tecnica exibe texto especifico chips locais e botao Tentar novamente`() {
         val epochMillis = 1_700_000_050_000L
+        val expectedAttempt = formatSyncTimestamp(
+            epochMillis = epochMillis,
+            locale = BRAZILIAN_PORTUGUESE_LOCALE,
+            timeZone = TimeZone.getDefault()
+        )
         val technicalError = "java.net.UnknownHostException: api.internal.test"
         var manualClicks = 0
 
@@ -184,7 +190,9 @@ class OfflineArchiveStatusCardTest {
                     stats = sampleStats,
                     syncState = SyncState.OfflineFallback(
                         reason = technicalError,
-                        lastAttemptEpochMillis = epochMillis
+                        lastAttemptEpochMillis = epochMillis,
+                        failureType = SyncFailureType.NO_INTERNET,
+                        lastSuccessfulSyncEpochMillis = null
                     ),
                     onManualSync = { manualClicks += 1 }
                 )
@@ -192,10 +200,13 @@ class OfflineArchiveStatusCardTest {
         }
         composeTestRule.waitForIdle()
 
-        composeTestRule.onNodeWithText("Modo offline ativo").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Sem conexão com a internet").assertIsDisplayed()
         composeTestRule.onNodeWithText(
-            "Não foi possível atualizar agora, mas os dados locais continuam disponíveis para consulta."
+            "O aplicativo continua utilizando os dados disponíveis localmente. " +
+                "A sincronização poderá ser tentada novamente quando houver conexão."
         ).assertIsDisplayed()
+        composeTestRule.onNodeWithText("Ainda não houve sincronização oficial concluída.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Última tentativa em $expectedAttempt.").assertIsDisplayed()
         composeTestRule.onNodeWithText(technicalError, substring = true).assertDoesNotExist()
         assertLocalChipsDisplayed()
 
@@ -209,11 +220,150 @@ class OfflineArchiveStatusCardTest {
     }
 
     @Test
+    fun `estado OfflineFallback UNVALIDATED_NETWORK exibe rede disponivel sem internet validada e ausencia de historico`() {
+        val attemptEpochMillis = 1_700_000_055_000L
+        val expectedAttempt = formatSyncTimestamp(
+            epochMillis = attemptEpochMillis,
+            locale = BRAZILIAN_PORTUGUESE_LOCALE,
+            timeZone = TimeZone.getDefault()
+        )
+        var manualClicks = 0
+
+        composeTestRule.setContent {
+            ParintintinTheme {
+                OfflineArchiveStatusCard(
+                    stats = sampleStats,
+                    syncState = SyncState.OfflineFallback(
+                        reason = "SocketTimeoutException",
+                        lastAttemptEpochMillis = attemptEpochMillis,
+                        failureType = SyncFailureType.UNVALIDATED_NETWORK,
+                        lastSuccessfulSyncEpochMillis = null
+                    ),
+                    onManualSync = { manualClicks += 1 }
+                )
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Conexão ainda não validada").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "O dispositivo possui uma rede disponível, mas ainda não foi possível " +
+                "confirmar o acesso à internet. Os dados locais continuam disponíveis."
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithText("Ainda não houve sincronização oficial concluída.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Última tentativa em $expectedAttempt.").assertIsDisplayed()
+        assertLocalChipsDisplayed()
+
+        composeTestRule.onNodeWithTag("home_sync_button")
+            .assertIsDisplayed()
+            .assertIsEnabled()
+            .assertTextEquals("Tentar novamente")
+            .performClick()
+
+        assertEquals(1, manualClicks)
+    }
+
+    @Test
+    fun `estado OfflineFallback SERVER_UNAVAILABLE nao afirma ausencia de internet e informa falha remota`() {
+        val attemptEpochMillis = 1_700_000_058_000L
+        val expectedAttempt = formatSyncTimestamp(
+            epochMillis = attemptEpochMillis,
+            locale = BRAZILIAN_PORTUGUESE_LOCALE,
+            timeZone = TimeZone.getDefault()
+        )
+        var manualClicks = 0
+
+        composeTestRule.setContent {
+            ParintintinTheme {
+                OfflineArchiveStatusCard(
+                    stats = sampleStats,
+                    syncState = SyncState.OfflineFallback(
+                        reason = "HTTP 500",
+                        lastAttemptEpochMillis = attemptEpochMillis,
+                        failureType = SyncFailureType.SERVER_UNAVAILABLE,
+                        lastSuccessfulSyncEpochMillis = null
+                    ),
+                    onManualSync = { manualClicks += 1 }
+                )
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Não foi possível sincronizar").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "O dispositivo possui conexão, mas o serviço remoto não respondeu " +
+                "adequadamente ou apresentou uma falha. Os dados locais continuam disponíveis."
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithText("Sem internet", substring = true, ignoreCase = true)
+            .assertDoesNotExist()
+        composeTestRule.onNodeWithText("Sem conexão", substring = true, ignoreCase = true)
+            .assertDoesNotExist()
+        composeTestRule.onNodeWithText("Ainda não houve sincronização oficial concluída.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Última tentativa em $expectedAttempt.").assertIsDisplayed()
+
+        composeTestRule.onNodeWithTag("home_sync_button")
+            .assertIsDisplayed()
+            .assertIsEnabled()
+            .assertTextEquals("Tentar novamente")
+            .performClick()
+
+        assertEquals(1, manualClicks)
+    }
+
+    @Test
+    fun `estado OfflineFallback com historico oficial exibe timestamp pt_BR sem substituir pela tentativa malsucedida`() {
+        val officialEpochMillis = 1_700_000_000_000L
+        val failedAttemptEpochMillis = 1_700_120_000_000L
+        val expectedOfficial = formatSyncTimestamp(
+            epochMillis = officialEpochMillis,
+            locale = BRAZILIAN_PORTUGUESE_LOCALE,
+            timeZone = TimeZone.getDefault()
+        )
+        val expectedAttempt = formatSyncTimestamp(
+            epochMillis = failedAttemptEpochMillis,
+            locale = BRAZILIAN_PORTUGUESE_LOCALE,
+            timeZone = TimeZone.getDefault()
+        )
+
+        val previousLocale = Locale.getDefault()
+        Locale.setDefault(Locale.US)
+        try {
+            composeTestRule.setContent {
+                ParintintinTheme {
+                    OfflineArchiveStatusCard(
+                        stats = sampleStats,
+                        syncState = SyncState.OfflineFallback(
+                            reason = "HTTP 503",
+                            lastAttemptEpochMillis = failedAttemptEpochMillis,
+                            failureType = SyncFailureType.SERVER_UNAVAILABLE,
+                            lastSuccessfulSyncEpochMillis = officialEpochMillis
+                        ),
+                        onManualSync = {}
+                    )
+                }
+            }
+            composeTestRule.waitForIdle()
+
+            composeTestRule.onNodeWithText("Última sincronização oficial em $expectedOfficial.")
+                .assertIsDisplayed()
+            composeTestRule.onNodeWithText("Última tentativa em $expectedAttempt.")
+                .assertIsDisplayed()
+            composeTestRule.onNodeWithText("Ainda não houve sincronização oficial concluída.")
+                .assertDoesNotExist()
+            composeTestRule.onNodeWithText("Última sincronização oficial em $expectedAttempt.")
+                .assertDoesNotExist()
+            composeTestRule.onNodeWithText("Acervo sincronizado").assertDoesNotExist()
+        } finally {
+            Locale.setDefault(previousLocale)
+        }
+    }
+
+    @Test
     fun `estado RemoteEmpty sem historico informa ausencia de acervo publicado nao mostra Acervo sincronizado e habilita botao`() {
         val attemptEpochMillis = 1_700_000_060_000L
         val expectedAttempt = formatSyncTimestamp(
             epochMillis = attemptEpochMillis,
-            locale = Locale.getDefault(),
+            locale = BRAZILIAN_PORTUGUESE_LOCALE,
             timeZone = TimeZone.getDefault()
         )
         var manualClicks = 0
@@ -257,12 +407,12 @@ class OfflineArchiveStatusCardTest {
         val attemptEpochMillis = 1_700_000_090_000L
         val expectedOfficial = formatSyncTimestamp(
             epochMillis = officialEpochMillis,
-            locale = Locale.getDefault(),
+            locale = BRAZILIAN_PORTUGUESE_LOCALE,
             timeZone = TimeZone.getDefault()
         )
         val expectedAttempt = formatSyncTimestamp(
             epochMillis = attemptEpochMillis,
-            locale = Locale.getDefault(),
+            locale = BRAZILIAN_PORTUGUESE_LOCALE,
             timeZone = TimeZone.getDefault()
         )
         var manualClicks = 0
@@ -303,7 +453,7 @@ class OfflineArchiveStatusCardTest {
     }
 
     @Test
-    fun `cartao nao sofre overflow horizontal em tela estreita e mantem chips dentro da largura`() {
+    fun `cartao nao sofre overflow horizontal em tela estreita e mantem textos e chips dentro da largura`() {
         val narrowWidth = 280.dp
 
         composeTestRule.setContent {
@@ -316,7 +466,9 @@ class OfflineArchiveStatusCardTest {
                         ),
                         syncState = SyncState.OfflineFallback(
                             reason = "Timeout",
-                            lastAttemptEpochMillis = 1_700_000_050_000L
+                            lastAttemptEpochMillis = 1_700_100_050_000L,
+                            failureType = SyncFailureType.SERVER_UNAVAILABLE,
+                            lastSuccessfulSyncEpochMillis = 1_700_000_000_000L
                         ),
                         onManualSync = {}
                     )
@@ -327,6 +479,14 @@ class OfflineArchiveStatusCardTest {
 
         val cardBounds = composeTestRule.onNodeWithTag("home_offline_status_card")
             .fetchSemanticsNode().boundsInRoot
+        val titleBounds = composeTestRule.onNodeWithTag("home_sync_status_title")
+            .fetchSemanticsNode().boundsInRoot
+        val bodyBounds = composeTestRule.onNodeWithTag("home_sync_status_body")
+            .fetchSemanticsNode().boundsInRoot
+        val historyBounds = composeTestRule.onNodeWithTag("home_sync_official_history")
+            .fetchSemanticsNode().boundsInRoot
+        val detailBounds = composeTestRule.onNodeWithTag("home_sync_secondary_detail")
+            .fetchSemanticsNode().boundsInRoot
         val entriesBounds = composeTestRule.onNodeWithTag("home_offline_entries_chip")
             .fetchSemanticsNode().boundsInRoot
         val articlesBounds = composeTestRule.onNodeWithTag("home_offline_articles_chip")
@@ -334,6 +494,10 @@ class OfflineArchiveStatusCardTest {
         val buttonBounds = composeTestRule.onNodeWithTag("home_sync_button")
             .fetchSemanticsNode().boundsInRoot
 
+        assert(titleBounds.right <= cardBounds.right)
+        assert(bodyBounds.right <= cardBounds.right)
+        assert(historyBounds.right <= cardBounds.right)
+        assert(detailBounds.right <= cardBounds.right)
         assert(entriesBounds.right <= cardBounds.right)
         assert(articlesBounds.right <= cardBounds.right)
         assert(buttonBounds.right <= cardBounds.right)
