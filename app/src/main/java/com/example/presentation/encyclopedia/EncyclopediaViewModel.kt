@@ -8,6 +8,7 @@ import com.example.domain.usecase.ObserveCulturalArticlesUseCase
 import com.example.domain.usecase.ToggleArticleBookmarkUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -67,6 +68,9 @@ class EncyclopediaViewModel @Inject constructor(
             }
             .onStart { emit(EncyclopediaArticlesState.Loading) }
             .catch { throwable ->
+                if (throwable is CancellationException) {
+                    throw throwable
+                }
                 emit(
                     EncyclopediaArticlesState.Error(
                         throwable.localizedMessage
