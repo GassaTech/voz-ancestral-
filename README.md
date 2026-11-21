@@ -225,7 +225,7 @@ Os resultados detalhados de verificação estão documentados em [`TEST_RESULTS.
 | Situação | Itens Abrangidos |
 |---|---|
 | **Implementado (v1.0 Demonstrativa)** | Telas **Início** e **Dicionário**, busca textual com *debounce*, filtros por categoria semântica e classe gramatical, banco Room v3 com migrações, seed demonstrativo versionado por SHA-256 (`DEMO-001`..`DEMO-020`), observação de conectividade, coordenação de sincronização offline-first e 233 testes aprovados na JVM. |
-| **Parcialmente Implementado / Estruturas Preparatórias** | Módulo `Encyclopedia` presente no código sem exposição na barra inferior nem sincronização (com saneamento `TEC-001` de `CancellationException` pendente em `EncyclopediaViewModel.kt`); campos/use cases de favoritos e detalhes sem UI na v1.0; endpoint `/v1/manifest.json` declarado sem integração; suíte `androidTest` apenas compilada; ajuste pendente na Seção 6.3 de `docs/api-v1-contract.md`. |
+| **Parcialmente Implementado / Estruturas Preparatórias** | Módulo `Encyclopedia` presente no código sem exposição na barra inferior nem sincronização (com saneamento `TEC-001` de `CancellationException` pendente em `EncyclopediaViewModel.kt`); campos/use cases de favoritos e detalhes sem UI na v1.0; endpoint `/v1/manifest.json` declarado sem integração; suíte `androidTest` apenas compilada. |
 | **Planejado (Pós-v1.0)** | Obtenção de conteúdo linguístico e cultural autêntico devidamente validado e autorizado; disponibilização operacional de backend HTTPS oficial; integração do manifesto e definição da política de exclusão remota; ativação da Enciclopédia Cultural, interface de Favoritos, tela de Detalhes e reprodução de áudio; execução em dispositivo físico e empacotamento Release assinado. |
 
 ---
