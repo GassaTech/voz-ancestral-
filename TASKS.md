@@ -54,11 +54,11 @@ Este documento registra unidades de trabalho pequenas, independentes e verificá
 |---|---|---|---|---|---|
 | **`DOC-001`** | Criação e revisão pontual do documento `SPECIFICATION.md` na raiz do repositório. | **`CONCLUÍDA`** | Nenhuma (inspeção técnica prévia do código e auditoria geral). | `SPECIFICATION.md` presente na raiz com as 16 seções obrigatórias, `RF-001`–`RF-011`, `RNF-001`–`RNF-009`, `RN-01`–`RN-09`, ajustes da Etapa 1.1.1 aplicados e consistência com o código verificada. | `/SPECIFICATION.md` (256 linhas); relatórios aprovados das Etapas 1.1 e 1.1.1. |
 | **`DOC-002`** | Criação e revisão corretiva pontual do documento `PLANNING.md` na raiz do repositório. | **`CONCLUÍDA`** | `DOC-001`. | `PLANNING.md` presente na raiz com as 12 seções obrigatórias (`4.1`–`4.12`), 11 fases, 10 marcos (`M1`–`M10`), distinção entre código estrutural e experiência v1.0 e revisão corretiva aplicada. | `/PLANNING.md` (231 linhas); relatório aprovado da Etapa 1.2 e sua revisão corretiva. |
-| **`DOC-003`** | Criação do documento `TASKS.md` na raiz do repositório. | **`PARCIAL`** *(em elaboração nesta etapa)* | `DOC-001`, `DOC-002`. | `TASKS.md` presente na raiz com as 9 seções obrigatórias, quantitativos consistentes, coerência integral com `SPECIFICATION.md` e `PLANNING.md` e revisão humana concluída. | `/TASKS.md` (este documento em elaboração). |
-| **`DOC-004`** | Criação do documento `TEST_RESULTS.md` na raiz do repositório. | **`PENDENTE`** | `DOC-001`, `DOC-002`, `DOC-003`, `VAL-001`, `VAL-002`, `VAL-005` (e referência às limitações de `VAL-003`, `VAL-004` e `VAL-006`). | `TEST_RESULTS.md` criado e revisado na raiz consolidando de forma auditável as 24 suítes JVM (233 testes aprovados), o status de compilação de `androidTest`, o estado do APK Debug e as lacunas de execução em dispositivo real. | `PLANNING.md` (Seções 8, 10 — Prioridade 1, e 11.1). |
-| **`DOC-005`** | Criação do documento `AI_USAGE.md` na raiz do repositório. | **`PENDENTE`** | `DOC-001`, `DOC-002`, `DOC-003`. | `AI_USAGE.md` criado e revisado na raiz registrando de maneira transparente o uso e os limites de ferramentas de IA no ciclo acadêmico do projeto, sem informações não comprovadas. | `SPECIFICATION.md` (Seção 15); `PLANNING.md` (Seção 10 — Prioridade 1). |
-| **`DOC-006`** | Criação do documento `README.md` na raiz do repositório. | **`PENDENTE`** | `DOC-001`, `DOC-002`, `DOC-003`, `DOC-004`, `DOC-005` *(recomendado após os demais documentos SDD)*. | `README.md` criado e revisado na raiz apresentando identificação oficial (**Voz Ancestral** / **Acervo Provisório** v1.0 Demonstrativa), escopo real (`Início` e `Dicionário`), instruções verificadas de build/testes e referências aos documentos SDD. | `SPECIFICATION.md` (Seção 15); `PLANNING.md` (Seção 10 — Prioridade 1). |
-| **`DOC-007`** | Revisão da inconsistência da Seção 6.3 de `docs/api-v1-contract.md` em relação à Seção 6.4 e à implementação real. | **`PENDENTE`** | `DOC-001`, `DOC-002`. | Seção 6.3 de `docs/api-v1-contract.md` ajustada para deixar explícito que na v1.0 `ArchiveSyncRepositoryImpl.syncArchive()` sincroniza somente `dictionaryRepository.syncFromRemote()`, mantendo `encyclopediaRepository` fora do fluxo de sincronização (em conformidade com a Seção 6.4 e o código). | `docs/api-v1-contract.md` (linhas 259–280); `ArchiveSyncRepositoryImpl.kt` (linhas 196, 220–222); `PLANNING.md` (Seção 10). |
+| **`DOC-003`** | Criação do documento `TASKS.md` na raiz do repositório. | **`CONCLUÍDA`** | `DOC-001`, `DOC-002`. | `TASKS.md` presente na raiz com as 9 seções obrigatórias, quantitativos consistentes, coerência integral com `SPECIFICATION.md` e `PLANNING.md` e revisão humana concluída. | `/TASKS.md` (criado, revisado na Seção 8.2 e atualizado na Etapa 1.7.2). |
+| **`DOC-004`** | Criação do documento `TEST_RESULTS.md` na raiz do repositório. | **`CONCLUÍDA`** | `DOC-001`, `DOC-002`, `DOC-003`, `VAL-001`, `VAL-002`, `VAL-005` (e referência às limitações de `VAL-003`, `VAL-004` e `VAL-006`). | `TEST_RESULTS.md` criado e revisado na raiz consolidando de forma auditável as 24 suítes JVM (233 testes aprovados), o status de compilação de `androidTest`, o estado do APK Debug e as lacunas de execução em dispositivo real. | `/TEST_RESULTS.md` (239 linhas, incluindo correção terminológica nas Seções 6 e 14). |
+| **`DOC-005`** | Criação do documento `AI_USAGE.md` na raiz do repositório. | **`CONCLUÍDA`** | `DOC-001`, `DOC-002`, `DOC-003`. | `AI_USAGE.md` criado e revisado na raiz registrando de maneira transparente o uso e os limites de ferramentas de IA no ciclo acadêmico do projeto, sem informações não comprovadas. | `/AI_USAGE.md` (144 linhas, incluindo ajuste pontual na Seção 5). |
+| **`DOC-006`** | Criação do documento `README.md` na raiz do repositório. | **`CONCLUÍDA`** | `DOC-001`, `DOC-002`, `DOC-003`, `DOC-004`, `DOC-005` *(recomendado após os demais documentos SDD)*. | `README.md` criado e revisado na raiz apresentando identificação oficial (**Voz Ancestral** / **Acervo Provisório** v1.0 Demonstrativa), escopo real (`Início` e `Dicionário`), instruções verificadas de build/testes e referências aos documentos SDD. | `/README.md` (238 linhas, com ajustes pontuais nas Seções 5, 7 e 8). |
+| **`DOC-007`** | Revisão da inconsistência das Seções 1, 6.1 e 6.3 de `docs/api-v1-contract.md` em relação à Seção 6.4 e à implementação real. | **`CONCLUÍDA`** | `DOC-001`, `DOC-002`. | Tabela da Seção 1 e Seções 6.1 e 6.3 (com coerência terminológica na Seção 6.4) de `docs/api-v1-contract.md` ajustadas para deixar explícito que na v1.0 `ArchiveSyncRepositoryImpl.syncArchive()` sincroniza somente `dictionaryRepository.syncFromRemote()`, mantendo `encyclopediaRepository` fora do fluxo de sincronização. | `docs/api-v1-contract.md` (linhas 21–25 e 246–284); `ArchiveSyncRepositoryImpl.kt` (linhas 196, 220–222); Etapa 1.7.1. |
 
 ---
 
@@ -120,12 +120,12 @@ Este documento registra unidades de trabalho pequenas, independentes e verificá
 7. **Áudio autêntico:** `FUT-001` + definição contratual de mídia → `FUT-008`.
 
 ### 7.2 Ordem Recomendada de Execução (Sem Prazos Inventados)
-1. **Fechamento da etapa atual:** revisão humana de `TASKS.md` (`DOC-003`) para consolidação como `CONCLUÍDA`.
-2. **Regularização documental complementar da v1.0:**
-   - Criar `TEST_RESULTS.md` (`DOC-004`).
-   - Criar `AI_USAGE.md` (`DOC-005`).
-   - Revisar a Seção 6.3 de `docs/api-v1-contract.md` (`DOC-007`).
-   - Criar `README.md` (`DOC-006`) referenciando o conjunto SDD completo.
+1. **Cadeia documental base concluída (`DOC-001`–`DOC-003`):** `SPECIFICATION.md`, `PLANNING.md` e `TASKS.md` criados, revisados e consolidados como **`CONCLUÍDA`**.
+2. **Regularização documental complementar da v1.0 concluída (`DOC-004`–`DOC-007`):**
+   - `TEST_RESULTS.md` criado e revisado (`DOC-004` — **`CONCLUÍDA`**).
+   - `AI_USAGE.md` criado e revisado (`DOC-005` — **`CONCLUÍDA`**).
+   - `README.md` criado e revisado referenciando o conjunto SDD completo (`DOC-006` — **`CONCLUÍDA`**).
+   - `docs/api-v1-contract.md` revisado e corrigido nas Seções 1, 6.1, 6.3 e 6.4 (`DOC-007` — **`CONCLUÍDA`**).
 3. **Saneamento técnico preparatório:** aplicar `TEC-001` em `EncyclopediaViewModel.kt` com teste unitário dedicado, mantendo inalterada a navegação da v1.0.
 4. **Validação externa da v1.0 (quando houver ambiente físico/emulador e credenciais):** executar `VAL-003` (`:app:connectedDebugAndroidTest`), `VAL-004` (validação manual, TalkBack e *benchmarks*) e, se aplicável à entrega final, `VAL-006` (assinatura Release).
 5. **Ciclo pós-v1.0 (somente após autorizações e infraestrutura):** desbloquear `FUT-001`, `FUT-009` e `FUT-002`, seguidos por `FUT-003`, `FUT-004`, `FUT-005`, `FUT-006`, `FUT-007` e `FUT-008`.
@@ -139,14 +139,14 @@ Os totais abaixo foram calculados exclusivamente a partir das **23 tarefas** efe
 ### 8.1 Quantitativo por Categoria e Status
 | Categoria | Prefixo | `CONCLUÍDA` | `PARCIAL` | `PENDENTE` | `BLOQUEADA` | `NÃO APLICÁVEL` | Total |
 |---|---|---|---|---|---|---|---|
-| **Documentação** | `DOC` | 2 | 1 | 4 | 0 | 0 | **7** |
+| **Documentação** | `DOC` | 7 | 0 | 0 | 0 | 0 | **7** |
 | **Validação e Testes** | `VAL` | 3 | 0 | 1 | 2 | 0 | **6** |
 | **Saneamento Técnico** | `TEC` | 0 | 0 | 1 | 0 | 0 | **1** |
 | **Funcionalidades Futuras (Pós-v1.0)** | `FUT` | 0 | 0 | 2 | 7 | 0 | **9** |
-| **Total Geral** | — | **5** | **1** | **8** | **9** | **0** | **23** |
+| **Total Geral** | — | **10** | **0** | **4** | **9** | **0** | **23** |
 
 ### 8.2 Síntese Objetiva da Versão 1.0 vs. Pós-v1.0
-- **Regularização documental, validação e saneamento técnico associado ao projeto (`DOC` + `VAL` + `TEC` = 14 tarefas):** `5` concluídas (`DOC-001`, `DOC-002`, `VAL-001`, `VAL-002`, `VAL-005`), `1` parcial (`DOC-003`, em elaboração nesta etapa), `6` pendentes (`DOC-004`, `DOC-005`, `DOC-006`, `DOC-007`, `VAL-004`, `TEC-001`) e `2` bloqueadas por recursos externos ao ambiente (`VAL-003` e `VAL-006`).
+- **Regularização documental, validação e saneamento técnico associado ao projeto (`DOC` + `VAL` + `TEC` = 14 tarefas):** `10` concluídas (`DOC-001`, `DOC-002`, `DOC-003`, `DOC-004`, `DOC-005`, `DOC-006`, `DOC-007`, `VAL-001`, `VAL-002`, `VAL-005`), `0` parciais, `2` pendentes (`VAL-004`, `TEC-001`) e `2` bloqueadas por recursos externos ao ambiente (`VAL-003` e `VAL-006`).
   - *Observação:* as tarefas `DOC` e `VAL` estão relacionadas à documentação e à validação da versão demonstrativa; já `TEC-001` é uma correção preparatória para futura utilização do módulo `Encyclopedia` e não representa funcionalidade visível nem requisito funcional indispensável à experiência atual da v1.0, concentrada em **Início** e **Dicionário**.
 - **Escopo Pós-v1.0 (`FUT` = 9 tarefas):** `0` concluídas, `2` pendentes (`FUT-006`, `FUT-007`) e `7` bloqueadas (`FUT-001`, `FUT-002`, `FUT-003`, `FUT-004`, `FUT-005`, `FUT-008`, `FUT-009`).
 
@@ -154,9 +154,9 @@ Os totais abaixo foram calculados exclusivamente a partir das **23 tarefas** efe
 
 ## 9. Histórico e Limitações
 
-- **Versão do documento:** `1.0` (Reconstrução retrospectiva alinhada ao `SPECIFICATION.md` e ao `PLANNING.md` no estado atual do repositório).
-- **Natureza da reconstrução:** Este documento foi elaborado retrospectivamente a partir das evidências verificáveis no código-fonte, nas suítes de testes, nos artefatos `.build-outputs/` e na documentação existente (`SPECIFICATION.md`, `PLANNING.md`, `docs/api-v1-contract.md`).
+- **Versão do documento:** `1.0` (Reconstrução retrospectiva alinhada ao `SPECIFICATION.md` e ao `PLANNING.md` no estado atual do repositório, com status documentais atualizados na Etapa 1.7.2).
+- **Natureza da reconstrução:** Este documento foi elaborado retrospectivamente a partir das evidências verificáveis no código-fonte, nas suítes de testes, nos artefatos `.build-outputs/` e na documentação existente (`SPECIFICATION.md`, `PLANNING.md`, `TEST_RESULTS.md`, `AI_USAGE.md`, `README.md`, `docs/api-v1-contract.md`).
 - **Limitações registradas:**
   - Não foram inventados históricos de execução prévios, datas, responsáveis individuais, estimativas de esforço, prazos acadêmicos ou aprovações formais inexistentes no repositório.
   - Operações Git não foram executadas nesta etapa em cumprimento às regras de preservação do projeto.
-  - Os status registrados representam um retrato fiel do estado atual verificado e deverão ser atualizados incrementalmente à medida que `DOC-003` for revisado e que tarefas subsequentes (`DOC-004`–`DOC-007`, `VAL-*`, `TEC-001`, `FUT-*`) forem efetivamente executadas e comprovadas.
+  - Os status registrados representam um retrato fiel do estado atual verificado após a conclusão de `DOC-001`–`DOC-007` e deverão ser atualizados incrementalmente à medida que as tarefas ainda abertas (`VAL-003`, `VAL-004`, `VAL-006`, `TEC-001` e `FUT-001`–`FUT-009`) forem efetivamente executadas e comprovadas.
