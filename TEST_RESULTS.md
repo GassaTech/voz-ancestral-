@@ -46,7 +46,7 @@ Consolidar, de forma transparente e auditável:
 
 ## 4. Ambiente e Ferramentas de Teste Comprovados
 
-As informações abaixo correspondem exclusivamente às configurações e bibliotecas declaradas no repositório (`gradle/libs.versions.toml`, `app/build.gradle.kts`, `gradle.properties` e relatórios XML em `app/build/test-results/testDebugUnitTest/`):
+As informações abaixo correspondem exclusivamente às configurações e bibliotecas declaradas no repositório (`gradle/libs.versions.toml`, `app/build.gradle.kts`, `gradle.properties`) e aos registros históricos da execução que gerou relatórios XML em `app/build/test-results/testDebugUnitTest/`:
 
 | Componente / Ferramenta | Configuração / Versão Comprovada |
 |---|---|
@@ -63,6 +63,8 @@ As informações abaixo correspondem exclusivamente às configurações e biblio
 
 *Nota sobre cobertura:* Não há plugin ou relatório JaCoCo/cobertura percentual configurado ou gerado no projeto; portanto, **nenhum percentual de cobertura de código é declarado**.
 
+*Nota sobre persistência de relatórios de build:* Na execução histórica registrada, os relatórios XML foram gerados em `app/build/test-results/testDebugUnitTest/` e os relatórios HTML do Gradle são gerados em `app/build/reports/tests/testDebugUnitTest/`. Ambos os diretórios integram a estrutura de saída do Gradle dentro de `app/build/`, diretório ignorado pelo Git (`app/.gitignore`).
+
 ---
 
 ## 5. Estratégia de Testes
@@ -77,12 +79,14 @@ A verificação técnica da Versão 1.0 Demonstrativa apoia-se em duas frentes p
 
 - **Comando executado:** `gradle :app:testDebugUnitTest`
 - **Status geral da execução:** `BUILD SUCCESSFUL` — **`APROVADO`**
-- **Totais consolidados (confirmados pelos 24 arquivos XML em `app/build/test-results/testDebugUnitTest/`):**
+- **Totais consolidados (referentes à execução histórica registrada de `gradle :app:testDebugUnitTest`, confirmados naquela ocasião pelos 24 arquivos XML em `app/build/test-results/testDebugUnitTest/`):**
   - **24 suítes de testes**
   - **233 testes aprovados**
   - **0 falhas (`failures="0"`)**
   - **0 erros (`errors="0"`)**
   - **0 testes ignorados (`skipped="0"`)**
+
+> **Persistência e natureza transitória dos relatórios:** Os 233 testes aprovados em 24 suítes correspondem a uma execução histórica registrada do comando `gradle :app:testDebugUnitTest`. Naquela execução, o Gradle produziu os relatórios XML em `app/build/test-results/testDebugUnitTest/` e gera os relatórios HTML correspondentes em `app/build/reports/tests/testDebugUnitTest/`. Ambos os diretórios pertencem à estrutura de saída do Gradle dentro de `app/build/`, que é ignorada pelo controle de versão Git conforme `app/.gitignore`. Por constituírem artefatos transitórios de build, tais relatórios não permanecem necessariamente disponíveis após limpezas, rebuilds ou reinicializações do ambiente; sua ausência em inspeções posteriores não invalida o resultado histórico aqui registrado, podendo os relatórios XML e HTML ser regenerados mediante nova execução de `gradle :app:testDebugUnitTest`.
 
 ### Detalhamento Real das 24 Suítes Executadas na JVM
 | # | Suíte / Classe (`app/src/test`) | Testes | Falhas | Erros | Ignorados | Status | Escopo Verificado |
@@ -236,3 +240,4 @@ Os itens abaixo encontram-se explicitamente sem execução comprovada até o mom
 - **Natureza do registro:** consolidação documental retrospectiva correspondente à **Versão 1.0 Demonstrativa** do projeto **Voz Ancestral** (`Acervo Provisório`), alinhada aos documentos `SPECIFICATION.md`, `PLANNING.md`, `TASKS.md` e `docs/api-v1-contract.md`.
 - **Atualizações futuras previstas:** este documento deverá ser atualizado somente quando houver novas execuções comprovadas (como execução de `:app:connectedDebugAndroidTest` em dispositivo/emulador externo, testes presenciais com TalkBack, geração de APK Release assinado ou futura homologação contra backend oficial ativo).
 - **Preservação:** a criação deste relatório não alterou código-fonte, arquivos Gradle, testes automatizados nem os documentos anteriores (`SPECIFICATION.md`, `PLANNING.md`, `TASKS.md`, `docs/api-v1-contract.md`).
+- **Natureza transitória dos relatórios gerados pelo Gradle:** enquanto este arquivo `TEST_RESULTS.md` preserva no repositório o registro histórico consolidado (24 suítes e 233 testes aprovados), os arquivos XML (`app/build/test-results/testDebugUnitTest/`) e HTML (`app/build/reports/tests/testDebugUnitTest/`) ficam em `app/build/` — fora do controle de versão Git (`app/.gitignore`) —, podendo deixar de existir após limpezas, rebuilds ou reinicializações do ambiente sem invalidar os resultados históricos registrados e sendo regeneráveis por uma nova execução de `gradle :app:testDebugUnitTest`.
