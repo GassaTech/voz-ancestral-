@@ -145,7 +145,7 @@ O aplicativo adota **Clean Architecture** combinada ao padrão **MVVM**:
         │   │   └── ui/theme/
         │   └── res/                  # Drawables, fontes locais, mipmaps, strings e XMLs
         ├── debug/                    # Manifesto e recursos específicos de Debug
-        ├── test/                     # 24 suítes automatizadas executáveis na JVM
+        ├── test/                     # 25 suítes automatizadas executáveis na JVM
         └── androidTest/              # Suítes instrumentadas Hilt/Compose (não executadas)
 ```
 
@@ -198,7 +198,7 @@ cd voz-ancestral-
 Os resultados detalhados de verificação estão documentados em [`TEST_RESULTS.md`](TEST_RESULTS.md):
 
 - **Testes automatizados na JVM (`gradle :app:testDebugUnitTest`) — APROVADOS:**
-  - **233 testes aprovados em 24 suítes** (`0` falhas, `0` erros e `0` ignorados).
+  - **238 testes aprovados em 25 suítes** (`0` falhas, `0` erros e `0` ignorados).
   - Abrangem lógica pura de domínio, validação e hash SHA-256 do seed, migrações e persistência SQLite/Room, desserialização e contratos HTTP com `MockWebServer`, observação de conectividade, coordenação de sincronização, ViewModels, navegação e UI Compose via Robolectric (`sdk = 36`).
 - **Testes instrumentados Android (`app/src/androidTest`) — COMPILADOS, NÃO EXECUTADOS:**
   - As suítes `StartupSeedHiltInstrumentedTest` e `ExampleInstrumentedTest` (com `HiltTestRunner`, `TestDatabaseModule` e `TestNetworkModule`) foram compiladas via `:app:assembleDebugAndroidTest`, mas **não foram executadas** em emulador ou dispositivo físico neste ambiente devido à ausência de emulador e de acesso ADB.
@@ -214,7 +214,7 @@ Os resultados detalhados de verificação estão documentados em [`TEST_RESULTS.
 | [`SPECIFICATION.md`](SPECIFICATION.md) | Especificação funcional, requisitos (`RF`, `RNF`), regras de negócio (`RN`), arquitetura e limitações da v1.0. |
 | [`PLANNING.md`](PLANNING.md) | Planejamento retrospectivo, metodologia SDD, 11 fases, 10 marcos (`M1`–`M10`), riscos e prioridades. |
 | [`TASKS.md`](TASKS.md) | Decomposição rastreável das 23 tarefas entre documentação (`DOC`), validação (`VAL`), saneamento técnico (`TEC`) e evolução futura (`FUT`). |
-| [`TEST_RESULTS.md`](TEST_RESULTS.md) | Registro auditável das 24 suítes JVM (233 testes), compilação de `androidTest`, verificação do APK Debug e cenários não validados. |
+| [`TEST_RESULTS.md`](TEST_RESULTS.md) | Registro auditável das 25 suítes JVM (238 testes, preservando o histórico anterior de 24 suítes / 233 testes), compilação de `androidTest`, verificação do APK Debug e cenários não validados. |
 | [`AI_USAGE.md`](AI_USAGE.md) | Registro transparente do uso de ferramentas de Inteligência Artificial, responsabilidades humanas e limites acadêmicos. |
 | [`docs/api-v1-contract.md`](docs/api-v1-contract.md) | Especificação proposta para o futuro contrato JSON/HTTP da API v1. |
 
@@ -224,8 +224,8 @@ Os resultados detalhados de verificação estão documentados em [`TEST_RESULTS.
 
 | Situação | Itens Abrangidos |
 |---|---|
-| **Implementado (v1.0 Demonstrativa)** | Telas **Início** e **Dicionário**, busca textual com *debounce*, filtros por categoria semântica e classe gramatical, banco Room v3 com migrações, seed demonstrativo versionado por SHA-256 (`DEMO-001`..`DEMO-020`), observação de conectividade, coordenação de sincronização offline-first e 233 testes aprovados na JVM. |
-| **Parcialmente Implementado / Estruturas Preparatórias** | Módulo `Encyclopedia` presente no código sem exposição na barra inferior nem sincronização (com saneamento `TEC-001` de `CancellationException` pendente em `EncyclopediaViewModel.kt`); campos/use cases de favoritos e detalhes sem UI na v1.0; endpoint `/v1/manifest.json` declarado sem integração; suíte `androidTest` apenas compilada. |
+| **Implementado (v1.0 Demonstrativa)** | Telas **Início** e **Dicionário**, busca textual com *debounce*, filtros por categoria semântica e classe gramatical, banco Room v3 com migrações, seed demonstrativo versionado por SHA-256 (`DEMO-001`..`DEMO-020`), observação de conectividade, coordenação de sincronização offline-first e 238 testes aprovados na JVM. |
+| **Parcialmente Implementado / Estruturas Preparatórias** | Módulo `Encyclopedia` presente no código sem exposição na barra inferior nem sincronização (saneamento `TEC-001` de `CancellationException` concluído e validado em `EncyclopediaViewModel.kt`); campos/use cases de favoritos e detalhes sem UI na v1.0; endpoint `/v1/manifest.json` declarado sem integração; suíte `androidTest` apenas compilada. |
 | **Planejado (Pós-v1.0)** | Obtenção de conteúdo linguístico e cultural autêntico devidamente validado e autorizado; disponibilização operacional de backend HTTPS oficial; integração do manifesto e definição da política de exclusão remota; ativação da Enciclopédia Cultural, interface de Favoritos, tela de Detalhes e reprodução de áudio; execução em dispositivo físico e empacotamento Release assinado. |
 
 ---
