@@ -18,11 +18,11 @@
 
 ### Endpoints Previstos
 
-| Método | Caminho | Finalidade | Status de integração no cliente |
+| Método | Caminho | Finalidade | Status de integração no cliente (v1.0) |
 |---|---|---|---|
-| `GET` | `/v1/manifest.json` | Metadados de versão e contagens esperadas do snapshot | Declarado no Retrofit (`getArchiveManifest()`), **ainda não chamado** no fluxo de sincronização |
-| `GET` | `/v1/dictionary.json` | Lista completa de verbetes do dicionário | Integrado (`OfflineFirstDictionaryRepository`) |
-| `GET` | `/v1/articles.json` | Lista completa de artigos culturais da enciclopédia | Integrado (`OfflineFirstEncyclopediaRepository`) |
+| `GET` | `/v1/manifest.json` | Metadados de versão e contagens esperadas do snapshot | Declarado no Retrofit (`getArchiveManifest()`), **ainda não chamado** no fluxo de `ArchiveSyncRepositoryImpl.syncArchive()` |
+| `GET` | `/v1/dictionary.json` | Lista completa de verbetes do dicionário | Implementado em `OfflineFirstDictionaryRepository` e **integrado** ao fluxo efetivo de `ArchiveSyncRepositoryImpl.syncArchive()` |
+| `GET` | `/v1/articles.json` | Lista completa de artigos culturais da enciclopédia | Documentado no contrato, declarado no Retrofit (`getCulturalArticles()`) e implementado em `OfflineFirstEncyclopediaRepository`, porém **não integrado** ao fluxo de `ArchiveSyncRepositoryImpl.syncArchive()` na versão 1.0 |
 
 ---
 
@@ -244,7 +244,7 @@ Os itens abaixo definem regras esperadas do servidor e dos dados publicados; **o
 ### 6.1. Relação entre versão do manifesto e conteúdo
 
 - **Requisito proposto para o futuro backend:** os arquivos `/v1/manifest.json`, `/v1/dictionary.json` e `/v1/articles.json` devem ser publicados de forma consistente entre si, representando um mesmo snapshot do acervo.
-- **Comportamento atual no cliente:** o aplicativo ainda **não consulta** `GET /v1/manifest.json` durante a sincronização e registra `lastSuccessfulRemoteVersion = "manifesto_nao_integrado"` nos metadados locais. Toda sincronização atual baixa integralmente `/v1/dictionary.json` e `/v1/articles.json` em paralelo.
+- **Comportamento atual no cliente (versão 1.0):** o aplicativo ainda **não consulta** `GET /v1/manifest.json` durante a sincronização e registra `lastSuccessfulRemoteVersion = "manifesto_nao_integrado"` nos metadados locais. Na versão 1.0, o fluxo `ArchiveSyncRepositoryImpl.syncArchive()` sincroniza **exclusivamente** o dicionário remoto (`GET /v1/dictionary.json` via `dictionaryRepository.syncFromRemote()`), e a enciclopédia **não participa** desse fluxo. A existência do endpoint `GET /v1/articles.json` no contrato e na interface `ParintintinApiService`, bem como a presença de `RemoteArchiveDataSource.fetchCulturalArticles()` e `OfflineFirstEncyclopediaRepository`, constitui estrutura preparatória e **não** significa que a sincronização da enciclopédia esteja integrada à versão 1.0.
 
 ### 6.2. Quando a versão do manifesto deve ser incrementada *(Requisito proposto)*
 
@@ -256,16 +256,21 @@ Como parte do contrato proposto para o servidor, a propriedade `version` em `/v1
 
 Publicações sem alteração de conteúdo devem manter o mesmo valor de `version`. *(Atualmente o cliente ainda não compara essa versão antes de sincronizar.)*
 
-### 6.3. Comportamento esperado diante de falhas e sincronização parcial
+### 6.3. Comportamento esperado diante de falhas e execução da sincronização
 
-- **Comportamento efetivamente implementado no aplicativo (Offline-First):**
-  - `ArchiveSyncRepositoryImpl.syncArchive()` dispara `dictionaryRepository.syncFromRemote()` e `encyclopediaRepository.syncFromRemote()` em paralelo via `async`.
-  - Cada repositório (`OfflineFirstDictionaryRepository` e `OfflineFirstEncyclopediaRepository`) executa suas próprias operações de leitura de favoritos/marcadores, mapeamento e `upsertAll(...)` dentro de **sua própria transação Room** (`database.withTransaction`).
-  - A transação do dicionário e a transação da enciclopédia são **independentes**: **não existe atualmente uma transação global envolvendo os dois repositórios**.
-  - Portanto, em caso de **sincronização parcial** (por exemplo, se o download do dicionário concluir e for persistido no Room, mas o download da enciclopédia falhar por erro de rede, HTTP ou desserialização), os dados do dicionário **permanecerão atualizados** no banco local, enquanto os dados locais da enciclopédia permanecerão inalterados (sem rollback global das alterações já confirmadas no outro repositório).
-  - Mesmo nesse cenário parcial, como nem todos os módulos concluíram com sucesso, o estado geral observado pela interface (`syncState`) passa para `OfflineFallback`.
-  - Os metadados da última sincronização **completa** bem-sucedida (`lastSuccessfulSyncEpochMillis`, `lastSuccessfulEntriesCount`, `lastSuccessfulArticlesCount` e `lastSuccessfulRemoteVersion`) são preservados no Room por `SyncMetadataDao.recordAttemptFailure(...)` conforme a implementação atual.
-  - Se ambos os repositórios concluírem com sucesso, `syncMetadataDao.upsert(...)` registra o novo snapshot em `SyncMetadataEntity` e `syncState` transita para `Synced`.
+- **Comportamento efetivamente implementado no aplicativo na versão 1.0 (Offline-First):**
+  - `ArchiveSyncRepositoryImpl.syncArchive()` executa sob `syncMutex.withLock` em `dispatchers.io`, colocando `syncState` em `SyncState.Syncing`.
+  - Primeiro executa `runSeedUpdateSafely()` (`dictionarySeedUpdater.updateIfNeeded()`), isolando eventuais falhas locais do seed para não bloquear a tentativa de sincronização remota.
+  - Em seguida, invoca **exclusivamente** `dictionaryRepository.syncFromRemote()` (`OfflineFirstDictionaryRepository`), **não** disparando `encyclopediaRepository.syncFromRemote()` na versão 1.0 (`encyclopediaRepository` é injetado em `ArchiveSyncRepositoryImpl` e utilizado atualmente apenas em `observeArchiveStats()`).
+  - Em caso de sucesso com verbetes (`AppResult.Success(RemoteSyncOutcome.Synced(entriesCount))`):
+    - `OfflineFirstDictionaryRepository.syncFromRemote()` persiste os verbetes dentro de transação Room própria (`database.withTransaction`), preservando `is_favorite`.
+    - `ArchiveSyncRepositoryImpl` grava `SyncMetadataEntity` via `syncMetadataDao.upsert(...)` com `lastAttemptStatus = STATUS_SYNCED`, `lastSuccessfulSyncEpochMillis = now`, `lastSuccessfulEntriesCount = outcome.entriesCount`, `lastSuccessfulArticlesCount = null` (mantido `null` explicitamente na v1.0 por ausência de sincronização da enciclopédia) e `lastSuccessfulRemoteVersion = "manifesto_nao_integrado"`, transitando `syncState` para `SyncState.Synced`.
+  - Em caso de lista remota vazia (`AppResult.Success(RemoteSyncOutcome.Empty)`), aplica o tratamento detalhado na Seção 6.4 (`SyncState.RemoteEmpty`).
+  - Em caso de falha remota (`AppResult.Error`) ou exceção não canceladora:
+    - Nenhum dado é gravado em `dictionary_entries`, preservando integralmente os registros e favoritos locais existentes.
+    - `ArchiveSyncRepositoryImpl` classifica a conectividade atual via `SyncFailureClassifier.classify(networkConnectivityObserver.connectivityState.value)` (`NO_INTERNET`, `UNVALIDATED_NETWORK` ou `SERVER_UNAVAILABLE`), persiste `STATUS_OFFLINE_FALLBACK` via `syncMetadataDao.recordAttemptFailure(...)` preservando intactos `lastSuccessfulSyncEpochMillis`, `lastSuccessfulEntriesCount`, `lastSuccessfulArticlesCount` e `lastSuccessfulRemoteVersion`, e transita `syncState` para `SyncState.OfflineFallback` (ou mantém fallback em memória caso a escrita no Room falhe).
+    - `CancellationException` nunca é convertida em falha offline: o estado transitório é restaurado e o cancelamento é propagado.
+  - *Nota para evolução futura (pós-v1.0):* embora `OfflineFirstDictionaryRepository` e `OfflineFirstEncyclopediaRepository` possuam cada qual sua própria transação `database.withTransaction` independente (sem transação global envolvendo ambos), qualquer sincronização futura conjunta de dicionário e enciclopédia ainda precisará ser integrada e ter sua semântica de falha parcial definida antes da ativação.
 
 ### 6.4. Respostas vazias (`[]`)
 
@@ -276,7 +281,7 @@ Publicações sem alteração de conteúdo devem manter o mesmo valor de `versio
     - **Não** grava `STATUS_SYNCED`, **não** atualiza `lastSuccessfulSyncEpochMillis`, `lastSuccessfulEntriesCount`, `lastSuccessfulArticlesCount` nem `lastSuccessfulRemoteVersion` (preservando eventual histórico oficial anterior) e **não** trata a resposta vazia como falha de rede (`OfflineFallback`).
     - Enquanto nenhuma sincronização oficial com verbetes válidos (`entriesCount > 0`) tiver sido concluída (`lastSuccessfulSyncEpochMillis == null`), futuras atualizações controladas do Seed demonstrativo continuam desbloqueadas.
 - **Enciclopédia (`GET /v1/articles.json` — comportamento atual explícito):**
-  - Na versão 1.0 a enciclopédia permanece fora do fluxo automático de `ArchiveSyncRepositoryImpl.syncArchive()`. Caso chamado diretamente, `OfflineFirstEncyclopediaRepository.syncFromRemote()` retorna `AppResult.Success(0)` imediatamente **sem abrir transação** e **sem apagar registros locais existentes**.
+  - Na versão 1.0 a enciclopédia permanece fora do fluxo de sincronização de `ArchiveSyncRepositoryImpl.syncArchive()`. Caso chamado diretamente, `OfflineFirstEncyclopediaRepository.syncFromRemote()` retorna `AppResult.Success(0)` imediatamente **sem abrir transação** e **sem apagar registros locais existentes**.
 
 ### 6.5. Política de exclusão de registros (**Decisão Pendente**)
 
