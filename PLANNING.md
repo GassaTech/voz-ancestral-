@@ -39,13 +39,13 @@ Para a condução organizada da regularização e das evoluções subsequentes d
 
 1. **Specification (Especificação):** definir e documentar formalmente o escopo, os requisitos funcionais, os requisitos não funcionais, as regras de negócio, as limitações e os critérios de aceitação (`SPECIFICATION.md`), mantendo coerência estrita entre texto e comportamento do sistema.
 2. **Planning (Planejamento):** organizar fases, dependências técnicas, decisões arquiteturais, estratégia de testes, marcos de entrega, riscos e prioridades de regularização e evolução (`PLANNING.md`).
-3. **Task Decomposition (Decomposição de Tarefas):** quebrar objetivos de regularização documental, correções pontuais e funcionalidades futuras em unidades de trabalho pequenas, atômicas e verificáveis (`TASKS.md`, pendente de criação).
+3. **Task Decomposition (Decomposição de Tarefas):** quebrar objetivos de regularização documental, correções pontuais e funcionalidades futuras em unidades de trabalho pequenas, atômicas e verificáveis (`TASKS.md`, criado após este planejamento e atualizado na Etapa 1.7.2 com `DOC-001`–`DOC-007` concluídas).
 4. **Implementation (Implementação):** executar modificações incrementais estritamente alinhadas às especificações e contratos acordados, preservando o escopo estável já validado.
-5. **Validation (Validação):** comprovar conformidade por compilação, execução da suíte automatizada (`TEST_RESULTS.md`, pendente de criação), revisões de consistência e checagem dos critérios de conclusão.
+5. **Validation (Validação):** comprovar conformidade por compilação, execução da suíte automatizada (`TEST_RESULTS.md`, criado e revisado na regularização documental), revisões de consistência e checagem dos critérios de conclusão.
 
 ### Diferenciação entre Reconstrução Retrospectiva e Regularização Documental
 - **Processo original de desenvolvimento (reconstrução retrospectiva):** no estado atual do repositório, o código-fonte da Versão 1.0 Demonstrativa (incluindo etapas identificáveis como a implementação de conectividade e sincronização na UI e auditorias de regressão) foi construído antes da formalização integral dos documentos SDD na raiz do projeto. Não há documentação prévia escrita antes do código que permita comprovar a ordem cronológica exata ou reuniões originais de concepção.
-- **Processo atual de regularização documental (SDD formal):** a criação sequencial de `SPECIFICATION.md` (concluído), `PLANNING.md` (etapa atual) e dos documentos subsequentes (`TASKS.md`, `TEST_RESULTS.md`, `AI_USAGE.md` e `README.md`) aplica a disciplina SDD de forma controlada e rastreável a partir do estado real verificado do código, evitando divergências entre documentação acadêmica e artefato entregue.
+- **Processo de regularização documental (SDD formal):** iniciado pela criação sequencial de `SPECIFICATION.md` (Etapa 1.1/1.1.1) e deste `PLANNING.md` (Etapa 1.2) — quando os artefatos subsequentes ainda estavam pendentes — e posteriormente completado com a criação e revisão de `TASKS.md`, `TEST_RESULTS.md`, `AI_USAGE.md` e `README.md`, a correção de `docs/api-v1-contract.md` (Etapa 1.7.1) e a atualização dos status documentais em `TASKS.md` (Etapa 1.7.2), concluindo as sete tarefas documentais (`DOC-001` a `DOC-007`) a partir do código verificado.
 
 ---
 
@@ -65,9 +65,9 @@ Com base na inspeção dos módulos, contratos, recursos e relatórios de audito
 | **8. Interface Home e estados de conectividade** | Apresentar na tela inicial o escopo demonstrativo, estatísticas locais e feedback preciso dos estados de conectividade e sincronização. | `HomeScreen.kt`, `HomeViewModel.kt`, `OfflineArchiveStatusCard` e subcomponentes em `PreserveComponents.kt`, navegação restrita a `Home` e `Dictionary` em `ParintintinBottomBar.kt` / `ParintintinNavHost.kt`. | **CONCLUÍDA** | Fases 3, 6 e 7. |
 | **9. Testes, integração e regressão** | Validar funcionamento, contratos, migrações, responsividade e ausência de regressão por suítes automatizadas. | 24 suítes JVM/Robolectric/Compose/Room/`MockWebServer` aprovadas (233 testes); 2 suítes instrumentadas em `app/src/androidTest` compiladas via `:app:assembleDebugAndroidTest`, pendentes de execução em dispositivo/emulador. | **PARCIAL** | Fases 1 a 8; disponibilidade de emulador/ADB para `androidTest`. |
 | **10. Preparação da versão 1.0 demonstrativa** | Consolidar artefato instalável v1.0 demonstrativo e verificar configuração de build/assinatura Release. | APK Debug v1.0 validado (`com.aistudio.parintintin.kagwah`, `versionCode = 1`, `versionName = "1.0"`, assinatura Debug v2) copiado em `.build-outputs/Parintintin-v1.0-debug.apk`; build Release bloqueado em `:app:packageRelease` por ausência de `my-upload-key.jks` e variáveis de assinatura. | **PARCIAL** | Fase 9; keystore Release dedicada e variáveis seguras para distribuição final. |
-| **11. Regularização documental (SDD)** | Reconstruir e alinhar a documentação acadêmica e técnica do projeto ao estado verificado do código. | `SPECIFICATION.md` criado e revisado; `PLANNING.md` criado nesta etapa; `TASKS.md`, `TEST_RESULTS.md`, `AI_USAGE.md`, `README.md` e ajuste de `docs/api-v1-contract.md` pendentes. | **PARCIAL** | Fases 1 a 10 e auditoria técnica geral. |
+| **11. Regularização documental (SDD)** | Reconstruir e alinhar a documentação acadêmica e técnica do projeto ao estado verificado do código. | Conjunto documental concluído (`DOC-001` a `DOC-007`): `SPECIFICATION.md`, `PLANNING.md`, `TASKS.md`, `TEST_RESULTS.md`, `AI_USAGE.md` e `README.md` criados e revisados; `docs/api-v1-contract.md` corrigido (Etapa 1.7.1) e status atualizados em `TASKS.md` (Etapa 1.7.2). | **CONCLUÍDA** | Fases 1 a 10 e auditoria técnica geral. |
 
-*Resumo situacional das fases:* **8 concluídas** (Fases 1 a 8), **3 parciais** (Fases 9, 10 e 11).
+*Resumo situacional das fases:* **9 concluídas** (Fases 1 a 8 e 11), **2 parciais** (Fases 9 e 10).
 
 ---
 
@@ -135,10 +135,10 @@ Relações técnicas verificadas:
 | **M6: Interface demonstrativa integrada** | `HomeScreen` com avisos demonstrativos, `OfflineArchiveStatusCard` detalhado e navegação exclusiva `Início` ↔ `Dicionário`. | `HomeScreen.kt`, `PreserveComponents.kt`, `ParintintinNavHost.kt`, `ParintintinBottomBar.kt`. | **CONCLUÍDO** |
 | **M7: Validação técnica** | Execução da suíte JVM/Robolectric/Compose/Room/`MockWebServer` (233 testes) e compilação da suíte instrumentada (`androidTest`). | 24 suítes em `app/src/test` aprovadas; `:app:assembleDebugAndroidTest` compilado; execução em dispositivo/emulador pendente. | **PARCIAL** |
 | **M8: Versão 1.0 demonstrativa** | Geração e verificação do APK Debug v1.0 (`Parintintin-v1.0-debug.apk`) e auditoria de configuração Release. | `.build-outputs/Parintintin-v1.0-debug.apk` validado; APK Release pendente de keystore e variáveis de assinatura. | **PARCIAL** |
-| **M9: Regularização documental** | Reconstrução e entrega do conjunto documental SDD e correção de inconsistência contratual. | `SPECIFICATION.md` concluído; `PLANNING.md` em criação; `TASKS.md`, `TEST_RESULTS.md`, `AI_USAGE.md`, `README.md` e revisão de `docs/api-v1-contract.md` pendentes. | **PARCIAL** |
+| **M9: Regularização documental** | Reconstrução e entrega do conjunto documental SDD e correção de inconsistência contratual. | Sete tarefas documentais concluídas (`DOC-001` a `DOC-007`): `SPECIFICATION.md`, `PLANNING.md`, `TASKS.md` (atualizado na Etapa 1.7.2), `TEST_RESULTS.md`, `AI_USAGE.md` e `README.md` presentes e revisados, e `docs/api-v1-contract.md` corrigido na Etapa 1.7.1. | **CONCLUÍDO** |
 | **M10: Evolução oficial pós-v1.0** | Operacionalização de backend oficial, manifesto, conteúdo linguístico autêntico e habilitação dos módulos Enciclopédia, Favoritos, Detalhes e Áudio. | Estruturas parciais e contrato proposto em `docs/api-v1-contract.md`. | **PENDENTE** |
 
-*Resumo situacional dos marcos:* **6 concluídos** (`M1` a `M6`), **3 parciais** (`M7` a `M9`) e **1 pendente** (`M10`).
+*Resumo situacional dos marcos:* **7 concluídos** (`M1` a `M6` e `M9`), **2 parciais** (`M7` e `M8`) e **1 pendente** (`M10`).
 
 ---
 
@@ -201,9 +201,10 @@ Funcionalidades planejadas para ciclos posteriores à Versão 1.0 Demonstrativa 
 ## 11. Critérios de Conclusão
 
 ### 11.1 Critérios para Documentação Regularizada
-- `SPECIFICATION.md`, `PLANNING.md`, `TASKS.md`, `TEST_RESULTS.md`, `AI_USAGE.md` e `README.md` criados e revisados na raiz do repositório.
-- `docs/api-v1-contract.md` atualizado para eliminar a divergência entre a Seção 6.3 e a Seção 6.4/implementação atual.
-- Coerência integral entre todos os documentos SDD, código-fonte, recursos (`strings.xml`, `dictionary_seed.json`) e relatórios de auditoria, sem atribuição falsa de funcionalidades futuras como concluídas.
+*(Situação atual: **critérios atendidos** com a conclusão das sete tarefas documentais `DOC-001` a `DOC-007`, permanecendo abertas nas Seções 11.2 e 11.3 as pendências externas de validação e de saneamento preparatório.)*
+- `SPECIFICATION.md`, `PLANNING.md`, `TASKS.md`, `TEST_RESULTS.md`, `AI_USAGE.md` e `README.md` criados e revisados na raiz do repositório (`DOC-001` a `DOC-006` concluídas; `TASKS.md` atualizado na Etapa 1.7.2).
+- `docs/api-v1-contract.md` atualizado na Etapa 1.7.1 (`DOC-007` concluída) para eliminar a divergência das Seções 1, 6.1 e 6.3 em relação à Seção 6.4 e à implementação atual de `ArchiveSyncRepositoryImpl.syncArchive()`.
+- Coerência verificada entre os documentos SDD, o código-fonte, os recursos (`strings.xml`, `dictionary_seed.json`) e os relatórios de auditoria, sem atribuição falsa de funcionalidades futuras como concluídas e sem confundir conclusão documental com validação em hardware real.
 
 ### 11.2 Critérios para Versão 1.0 Demonstrativa Tecnicamente Validada
 *(Critérios restritos à experiência demonstrativa visível da v1.0 — telas **Início** e **Dicionário** — sem incluir pré-requisitos exclusivos de módulos futuros não expostos.)*
