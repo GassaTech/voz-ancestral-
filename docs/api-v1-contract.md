@@ -1,7 +1,7 @@
 # Especificação Proposta do Contrato da API v1 — Acervo Parintintin
 
-> **Status do documento:** Especificação técnica **proposta** para implementação futura do backend remoto.  
-> O servidor remoto **ainda não existe** e os endpoints descritos abaixo ainda não foram validados contra um ambiente em produção. Este contrato reflete exatamente o que o cliente Android atual espera receber e processar (`ParintintinApiService`, `ArchiveDtos`, `ArchiveMappers`, `RemoteArchiveDataSource` e `ParintintinApiContractTest`).
+> **Status do documento:** Especificação técnica **proposta** para o contrato da API remota do acervo.  
+> O cliente Android está configurado para o endereço remoto `https://archive.parintintin.org/` (`NetworkModule`), porém **não foi possível confirmar a disponibilidade operacional do servidor remoto no ambiente de auditoria** e os endpoints descritos abaixo ainda não foram validados contra um ambiente em produção. Este contrato documenta exatamente o que o cliente Android atual espera receber e processar (`ParintintinApiService`, `ArchiveDtos`, `ArchiveMappers`, `RemoteArchiveDataSource`), cuja desserialização e comportamento HTTP foram verificados exclusivamente em ambiente controlado com `MockWebServer` (`ParintintinApiContractTest`).
 >
 > **Nota sobre exemplos:** Todos os payloads de exemplo neste documento utilizam dados **exclusivamente ilustrativos/fictícios**, sem representar vocabulário, pronúncia ou conteúdo cultural Parintintin autêntico.
 
@@ -286,13 +286,13 @@ Publicações sem alteração de conteúdo devem manter o mesmo valor de `versio
 ### 6.5. Política de exclusão de registros (**Decisão Pendente**)
 
 - **Comportamento atual:** o cliente utiliza `@Insert(onConflict = OnConflictStrategy.REPLACE)` apenas para os IDs presentes na resposta remota e **não remove registros locais que deixaram de existir no servidor**.
-- Como o backend ainda não existe, **não há política de exclusão definida neste momento**. Essa regra permanece como **decisão pendente** antes da integração completa de reconciliação no cliente.
+- Como a disponibilidade operacional do servidor remoto não foi confirmada e o contrato definitivo de reconciliação ainda não foi fechado, **não há política de exclusão definida neste momento**. Essa regra permanece como **decisão pendente** antes da integração completa de reconciliação no cliente.
 
 ---
 
 ## 7. Decisões de Contrato Pendentes para Definição Futura
 
-Antes de implementar o backend e integrar o manifesto no aplicativo, precisam ser definidas:
+Antes de homologar o backend operacional e integrar o manifesto no aplicativo, precisam ser definidas:
 
 1. **Política de exclusão de registros removidos no servidor:**
    - Definir se a API trabalhará por **snapshot completo** (onde ausência na lista significa remoção no cliente, respeitando regra explícita para respostas `[]` acidentais) ou por **tombstones** (ex.: campo `is_deleted: Boolean` / `deleted_at_epoch_millis`), além do tratamento para itens excluídos que estavam favoritados pelo usuário.

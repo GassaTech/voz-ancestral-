@@ -19,7 +19,7 @@
 | **Natureza da Versão** | Demonstrativa com registros fictícios em português | `strings.xml`, `app/src/main/assets/dictionary_seed.json` |
 
 ### Descrição Resumida
-O aplicativo **Acervo Provisório**, vinculado ao projeto acadêmico **Voz Ancestral**, é um cliente Android *offline-first* voltado à organização, preservação digital e consulta local de registros linguísticos e culturais da língua Parintintin. Na **versão 1.0 demonstrativa**, o aplicativo disponibiliza as telas **Início** (*Home*) e **Dicionário**, utilizando exclusivamente 20 verbetes fictícios em português (`DEMO-001` a `DEMO-020`) armazenados em banco SQLite/Room local e preparados para futura sincronização com um acervo remoto oficial ainda não existente.
+O aplicativo **Acervo Provisório**, vinculado ao projeto acadêmico **Voz Ancestral**, é um cliente Android *offline-first* voltado à organização, preservação digital e consulta local de registros linguísticos e culturais da língua Parintintin. Na **versão 1.0 demonstrativa**, o aplicativo disponibiliza as telas **Início** (*Home*) e **Dicionário**, utilizando exclusivamente 20 verbetes fictícios em português (`DEMO-001` a `DEMO-020`) armazenados em banco SQLite/Room local e preparados para futura sincronização com o acervo remoto oficial (cuja disponibilidade operacional não foi confirmada no ambiente de auditoria).
 
 ---
 
@@ -115,7 +115,7 @@ As funcionalidades abaixo **não estão disponíveis ao usuário na versão 1.0 
 | **Tela de Detalhes de Verbetes** | Apenas `ObserveDictionaryEntryByIdUseCase` declarado no domínio, sem tela, rota ou navegação implementadas. | `ArchiveUseCases.kt` (linhas 35–40), `ParintintinNavHost.kt` |
 | **Pronúncias em Áudio** | Apenas o campo anulável `audioUrl: String?` nos modelos/DTO/entidade e um card informativo `"Planejado"` na Home; não há player de áudio nem arquivos sonoros. | `DictionaryEntry.kt`, `HomeScreen.kt` (linhas 50–54) |
 | **Acervo Oficial (Tela Dedicada)** | Rota `AppDestination.Archive` renderiza apenas `ProvisionalDestinationScreen` com selo `"TELA PROVISÓRIA • ETAPA 2.2"` e não é exposta na barra inferior. | `ParintintinNavHost.kt` (linhas 85–93), `AppDestination.kt` |
-| **Integração com Servidor Remoto Ativo** | Base URL `https://archive.parintintin.org/` configurada sem backend publicado; manifesto `/v1/manifest.json` e política de exclusão remota permanecem pendentes. | `NetworkModule.kt`, `ParintintinApiService.kt`, `docs/api-v1-contract.md` |
+| **Integração com Servidor Remoto Ativo** | Base URL `https://archive.parintintin.org/` configurada no cliente (`NetworkModule.kt`), porém sem disponibilidade operacional confirmada do servidor remoto no ambiente de auditoria (integração HTTP testada em ambiente controlado com `MockWebServer`); manifesto `/v1/manifest.json` e política de exclusão remota permanecem pendentes. | `NetworkModule.kt`, `ParintintinApiService.kt`, `docs/api-v1-contract.md` |
 
 ---
 
@@ -164,7 +164,7 @@ As funcionalidades abaixo **não estão disponíveis ao usuário na versão 1.0 
 | **Hilt** | `2.59` (`hilt-navigation-compose 1.2.0`) | Grafo de DI em `SingletonComponent` e injeção de `@HiltViewModel`. |
 | **Kotlin Coroutines + Flow / StateFlow** | `1.10.2` | Execução assíncrona em `Dispatchers.IO`, sincronia com `Mutex`/`Deferred` e fluxos reativos UI←Room. |
 | **Room** | `2.7.0` (Schema v3) | Persistência SQLite local, transações, `Flow` reativo, `TypeConverters` e migrações. |
-| **Retrofit + OkHttp** | Retrofit `2.12.0`, OkHttp `4.10.0` | **Cliente HTTP configurado no app**, pronto para endpoints JSON, porém **sem servidor externo ativo disponível** atualmente. |
+| **Retrofit + OkHttp** | Retrofit `2.12.0`, OkHttp `4.10.0` | **Cliente HTTP configurado no app** (`https://archive.parintintin.org/`), pronto para endpoints JSON e testado com `MockWebServer` em ambiente controlado, porém sem disponibilidade operacional confirmada do servidor remoto no ambiente de auditoria (manifesto `/v1/manifest.json` pendente de integração). |
 | **Moshi** | `1.15.2` | Desserialização JSON com codegen para DTOs da API e validação do `dictionary_seed.json`. |
 | **Kotlinx Serialization JSON** | `1.8.0` | Rotas tipadas do Navigation Compose, `ParintintinConverters` e `applied_seed_ids_json`. |
 | **KSP** | `2.3.5` | Processamento de anotações em compilação para Room, Hilt e Moshi (KAPT **não** é utilizado). |
