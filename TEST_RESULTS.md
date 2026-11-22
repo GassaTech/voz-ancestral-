@@ -63,7 +63,9 @@ As informações abaixo correspondem exclusivamente às configurações e biblio
 
 *Nota sobre cobertura:* Não há plugin ou relatório JaCoCo/cobertura percentual configurado ou gerado no projeto; portanto, **nenhum percentual de cobertura de código é declarado**.
 
-*Nota sobre persistência de relatórios de build:* Na execução histórica registrada, os relatórios XML foram gerados em `app/build/test-results/testDebugUnitTest/` e os relatórios HTML do Gradle são gerados em `app/build/reports/tests/testDebugUnitTest/`. Ambos os diretórios integram a estrutura de saída do Gradle dentro de `app/build/`, diretório ignorado pelo Git (`app/.gitignore`).
+*Nota sobre resolução de artefato do Robolectric neste container:* ao executar `gradle :app:testDebugUnitTest` como usuário `root` (`HOME=/root`) sem variável auxiliar, 14 suítes Robolectric falharam com `java.lang.AssertionError: Failed to fetch maven artifact org.robolectric:android-all-instrumented:16-robolectric-13921718-i7` porque o cache local pré-baixado reside em `/home/appuser/.m2/repository/` e o acesso externo ao Maven Central é bloqueado neste container. Ao definir `JAVA_TOOL_OPTIONS="-Duser.home=/home/appuser"`, o trabalhador JVM resolveu o cache offline normalmente e todas as 25 suítes foram aprovadas.
+
+*Nota sobre persistência de relatórios de build:* Nas execuções verificadas, os relatórios XML são gerados em `app/build/test-results/testDebugUnitTest/` e os relatórios HTML do Gradle em `app/build/reports/tests/testDebugUnitTest/`. Ambos os diretórios integram a estrutura de saída do Gradle dentro de `app/build/`, diretório ignorado pelo Git (`app/.gitignore`).
 
 ---
 
@@ -77,16 +79,17 @@ A verificação técnica da Versão 1.0 Demonstrativa apoia-se em duas frentes p
 
 ## 6. Testes Automatizados Executados na JVM
 
-- **Comando executado:** `gradle :app:testDebugUnitTest`
-- **Status geral da execução:** `BUILD SUCCESSFUL` — **`APROVADO`**
-- **Totais consolidados (execução mais recente após conclusão de `TEC-001` e inclusão de `EncyclopediaViewModelTest`, confirmados pelos 25 arquivos XML em `app/build/test-results/testDebugUnitTest/`):**
+- **Comando executado (reexecução verificada em 22/11/2026 com cache Robolectric em `/home/appuser/.m2`):** `JAVA_TOOL_OPTIONS="-Duser.home=/home/appuser" gradle :app:testDebugUnitTest` *(em ambientes onde o `HOME` do usuário atual já contém o cache Maven/Gradle ou possui acesso normal a repositórios, `gradle :app:testDebugUnitTest` ou `sh gradlew :app:testDebugUnitTest` executa diretamente sem `JAVA_TOOL_OPTIONS`)*
+- **Execução prévia no mesmo ambiente sem `JAVA_TOOL_OPTIONS` (registrada por transparência):** `gradle :app:testDebugUnitTest` sob `HOME=/root` falhou em 14 suítes Robolectric (`137` testes concluídos, `14` falhas de `MavenArtifactFetcher` para `org.robolectric:android-all-instrumented:16-robolectric-13921718-i7`) por diferença de diretório `user.home`.
+- **Status geral da execução válida:** `BUILD SUCCESSFUL` — **`APROVADO`**
+- **Totais consolidados (confirmados pelos 25 arquivos XML em `app/build/test-results/testDebugUnitTest/`):**
   - **25 suítes de testes**
   - **238 testes aprovados**
   - **0 falhas (`failures="0"`)**
   - **0 erros (`errors="0"`)**
   - **0 testes ignorados (`skipped="0"`)**
 
-> **Registro histórico anterior e natureza transitória dos relatórios:** Antes da conclusão de `TEC-001`, a execução histórica inicial da Versão 1.0 Demonstrativa registrou **233 testes aprovados em 24 suítes** via `gradle :app:testDebugUnitTest` (`VAL-001`). Após a correção em `EncyclopediaViewModel.kt` e a criação de `EncyclopediaViewModelTest.kt` (+5 testes), a nova execução completa de `gradle :app:testDebugUnitTest` passou a contabilizar **238 testes aprovados em 25 suítes** (`0` falhas, `0` erros, `0` ignorados). Em todas as execuções, o Gradle produz os relatórios XML em `app/build/test-results/testDebugUnitTest/` e os relatórios HTML em `app/build/reports/tests/testDebugUnitTest/`. Ambos os diretórios pertencem à estrutura de saída do Gradle dentro de `app/build/`, ignorada pelo controle de versão Git conforme `app/.gitignore`. Por constituírem artefatos transitórios de build, tais relatórios não permanecem necessariamente disponíveis após limpezas, rebuilds ou reinicializações do ambiente; sua ausência em inspeções posteriores não invalida os resultados históricos aqui registrados, podendo os relatórios XML e HTML ser regenerados mediante nova execução de `gradle :app:testDebugUnitTest`.
+> **Registro histórico anterior e natureza transitória dos relatórios:** Antes da conclusão de `TEC-001`, a execução histórica inicial da Versão 1.0 Demonstrativa registrou **233 testes aprovados em 24 suítes** via `gradle :app:testDebugUnitTest` (`VAL-001`). Após a correção em `EncyclopediaViewModel.kt` e a criação de `EncyclopediaViewModelTest.kt` (+5 testes), a suíte completa passou a contabilizar **238 testes aprovados em 25 suítes** (`0` falhas, `0` erros, `0` ignorados), resultado novamente confirmado integralmente pelos 25 relatórios XML gerados em `app/build/test-results/testDebugUnitTest/`. Em todas as execuções, o Gradle produz os relatórios XML em `app/build/test-results/testDebugUnitTest/` e os relatórios HTML em `app/build/reports/tests/testDebugUnitTest/`. Ambos os diretórios pertencem à estrutura de saída do Gradle dentro de `app/build/`, ignorada pelo controle de versão Git conforme `app/.gitignore`. Por constituírem artefatos transitórios de build, tais relatórios não permanecem necessariamente disponíveis após limpezas, rebuilds ou reinicializações do ambiente; sua ausência em inspeções posteriores não invalida os resultados históricos aqui registrados, podendo os relatórios XML e HTML ser regenerados mediante nova execução de `gradle :app:testDebugUnitTest`.
 
 ### Detalhamento Real das 25 Suítes Executadas na JVM
 | # | Suíte / Classe (`app/src/test`) | Testes | Falhas | Erros | Ignorados | Status | Escopo Verificado |
@@ -125,11 +128,11 @@ A verificação técnica da Versão 1.0 Demonstrativa apoia-se em duas frentes p
 - **Status atual:** **`COMPILADO, NÃO EXECUTADO`**
 - **Execução em dispositivo ou emulador (`:app:connectedDebugAndroidTest`):** **`PENDENTE`** (não executada neste ambiente por ausência de emulador Android e de acesso ADB).
 
-### Arquivos da Suíte Instrumentada Identificados no Repositório
+### Arquivos da Suíte Instrumentada Identificados no Repositório (5 arquivos Kotlin / 3 métodos `@Test`)
 | Arquivo (`app/src/androidTest/java/com/example/`) | Papel / Escopo | Status Atual |
 |---|---|---|
-| `StartupSeedHiltInstrumentedTest.kt` | Fluxo ponta a ponta com Hilt real (`MainActivity`), banco Room em memória (`TestDatabaseModule`), `MockWebServer` local (`TestNetworkModule` retornando `HTTP 200 []`), verificação idempotente do seed `DEMO-001`..`DEMO-020` e navegação até `DictionaryScreen`. | **`COMPILADO, NÃO EXECUTADO`** |
-| `ExampleInstrumentedTest.kt` | Verificação de `BuildConfig.APPLICATION_ID` no `targetContext` instrumentado. | **`COMPILADO, NÃO EXECUTADO`** |
+| `StartupSeedHiltInstrumentedTest.kt` (`2` `@Test`) | Fluxo ponta a ponta com Hilt real (`MainActivity`), banco Room em memória (`TestDatabaseModule`), `MockWebServer` local (`TestNetworkModule` retornando `HTTP 200 []`), verificação idempotente do seed `DEMO-001`..`DEMO-020` e navegação até `DictionaryScreen`. | **`COMPILADO, NÃO EXECUTADO`** |
+| `ExampleInstrumentedTest.kt` (`1` `@Test`) | Verificação de `BuildConfig.APPLICATION_ID` no `targetContext` instrumentado. | **`COMPILADO, NÃO EXECUTADO`** |
 | `HiltTestRunner.kt`, `di/TestDatabaseModule.kt`, `di/TestNetworkModule.kt` | Infraestrutura de execução Hilt para `androidTest`. | **`COMPILADO, NÃO EXECUTADO`** |
 
 - Na etapa de validação de regressão (Etapa 29.7), a tarefa `:app:assembleDebugAndroidTest` gerou o APK `app-debug-androidTest.apk`. Ressalta-se que, após execuções posteriores no diretório de build (como a tentativa de empacotamento Release na Etapa 30.0), apenas `app/build/outputs/apk/debug/` permaneceu listado em `app/build/outputs/apk/`, mantendo-se o registro de compilação prévia bem-sucedida e a **ausência total de execução instrumentada**.
@@ -188,8 +191,9 @@ As verificações de interface Compose ocorreram na JVM com **Robolectric (`sdk 
 
 | Artefato / Build | Comando / Referência | Resultado Verificado | Observações e Restrições |
 |---|---|---|---|
-| **APK Debug v1.0** | `:app:assembleDebug` (`app/build/outputs/apk/debug/app-debug.apk` e cópia em `.build-outputs/Parintintin-v1.0-debug.apk`) | **`APROVADO`** *(artefato gerado e inspecionado)* | Tamanho verificado na recuperação: `22.753.989` bytes; `applicationId = com.aistudio.parintintin.kagwah`; `versionCode = 1`; `versionName = "1.0"`; assinatura Debug v2 válida (`output-metadata.json`). **Não equivale à validação completa em dispositivos reais.** |
-| **APK de Testes Instrumentados** | `:app:assembleDebugAndroidTest` (`app-debug-androidTest.apk`) | **`COMPILADO, NÃO EXECUTADO`** | Compilado com sucesso na etapa de validação de regressão (Etapa 29.7); execução pendente em ambiente com emulador/ADB. |
+| **APK Debug v1.0 Atual (Raiz e `.build-outputs`)** | `:app:assembleDebug` (`Voz-Ancestral-debug.apk` na raiz, `app/build/outputs/apk/debug/app-debug.apk` e `.build-outputs/app-debug.apk`) | **`APROVADO`** *(artefato gerado e inspecionado)* | Três cópias idênticas (SHA-256 `965183144f9aae41efd263e2467062fd28565d52d58007e71f96eeb8de68f633`), tamanho exato de `22.218.647` bytes; `applicationId = com.aistudio.parintintin.kagwah`; `versionCode = 1`; `versionName = "1.0"`; `minSdkVersionForDexing = 24`; assinatura Debug v2 válida (`output-metadata.json`). **Não equivale à validação completa em dispositivos reais.** |
+| **APK Debug v1.0 Histórico** | `.build-outputs/Parintintin-v1.0-debug.apk` *(compilação anterior)* | **`APROVADO`** *(artefato histórico preservado)* | Tamanho de `22.753.989` bytes (SHA-256 `3930eb1520316cde1c3b8250013767faaf548965737b5dfd7e9a643d28cf4092`), referente à compilação anterior registrada antes da geração de `Voz-Ancestral-debug.apk`. |
+| **APK de Testes Instrumentados** | `:app:assembleDebugAndroidTest` (`app-debug-androidTest.apk`) | **`COMPILADO, NÃO EXECUTADO`** | Compilado com sucesso na etapa de validação de regressão (Etapa 29.7); diretório `androidTest` não está mais presente em `app/build/outputs/apk/` após builds posteriores; execução pendente em ambiente com emulador/ADB. |
 | **APK Release Assinado** | `:app:assembleRelease` (`app/build.gradle.kts`) | **`NÃO VALIDADO` / `PENDENTE`** | Na auditoria da Etapa 30.0, o build falhou na tarefa `:app:packageRelease` por ausência do arquivo `my-upload-key.jks` e das variáveis de ambiente `KEYSTORE_PATH`, `STORE_PASSWORD` e `KEY_PASSWORD`. **Não há APK Release assinado nem publicação/distribuição oficial.** |
 
 ---
@@ -219,7 +223,7 @@ Os itens abaixo encontram-se explicitamente sem execução comprovada até o mom
 2. **Dados estritamente demonstrativos (`DEMO-001`..`DEMO-020`):** todos os 20 registros locais são termos e expressões fictícios em português; os testes comprovam o comportamento de armazenamento/pesquisa/filtro, mas **não validam autenticidade linguística da língua Parintintin**.
 3. **Servidor oficial não confirmado e sincronização parcial de escopo:** a URL `https://archive.parintintin.org/` não teve disponibilidade operacional confirmada na auditoria, o manifesto remoto não está integrado e não há política definida de exclusão de registros.
 4. **Módulo futuro ainda inativo na navegação (`EncyclopediaScreen.kt`):** o saneamento técnico `TEC-001` em `EncyclopediaViewModel.kt` (relançamento explícito de `CancellationException` no operador `.catch`) foi concluído e validado em `EncyclopediaViewModelTest.kt` (5 testes); entretanto, a tela `EncyclopediaScreen` permanece fora da barra de navegação e sem sincronização na v1.0 (`FUT-005`), sem testes de UI Compose para essa tela.
-5. **Ausência de artefato Release assinado:** o APK recuperado (`.build-outputs/Parintintin-v1.0-debug.apk`) destina-se apenas a testes em build Debug e não substitui assinatura Release para distribuição externa.
+5. **Ausência de artefato Release assinado:** os APKs Debug disponíveis (`Voz-Ancestral-debug.apk` na raiz e cópia histórica `.build-outputs/Parintintin-v1.0-debug.apk`) destinam-se apenas a testes em build Debug e não substituem assinatura Release para distribuição externa.
 
 ---
 
@@ -227,12 +231,12 @@ Os itens abaixo encontram-se explicitamente sem execução comprovada até o mom
 
 | Dimensão Avaliada | Evidência / Quantitativo | Classificação Oficial |
 |---|---|---|
-| **Testes Automatizados na JVM: domínio, Room, Seed, `MockWebServer`, Robolectric e Compose (`gradle :app:testDebugUnitTest`)** | **25 suítes \| 238 testes \| 0 falhas \| 0 erros \| 0 ignorados** | **`APROVADO`** |
-| **Compilação da suíte instrumentada (`:app:assembleDebugAndroidTest`)** | `StartupSeedHiltInstrumentedTest`, `ExampleInstrumentedTest` (`app-debug-androidTest.apk`) | **`COMPILADO, NÃO EXECUTADO`** |
+| **Testes Automatizados na JVM: domínio, Room, Seed, `MockWebServer`, Robolectric e Compose (`gradle :app:testDebugUnitTest`)** | **25 suítes \| 238 testes \| 0 falhas \| 0 erros \| 0 ignorados** *(reexecutado e confirmado em 22/11/2026 com `JAVA_TOOL_OPTIONS="-Duser.home=/home/appuser"`)* | **`APROVADO`** |
+| **Compilação da suíte instrumentada (`:app:assembleDebugAndroidTest`)** | `StartupSeedHiltInstrumentedTest` (`2` `@Test`), `ExampleInstrumentedTest` (`1` `@Test`) (`3` `@Test` no total) | **`COMPILADO, NÃO EXECUTADO`** |
 | **Execução dos testes instrumentados em dispositivo/emulador (`:app:connectedDebugAndroidTest`)** | Sem emulador/ADB no ambiente | **`PENDENTE`** *(não executado)* |
-| **Geração e integridade do APK Debug v1.0** | `app-debug.apk` / `Parintintin-v1.0-debug.apk` (`22.753.989` bytes, assinatura Debug v2 válida) | **`APROVADO`** *(build Debug)* |
+| **Geração e integridade do APK Debug v1.0** | `Voz-Ancestral-debug.apk` / `app/build/outputs/apk/debug/app-debug.apk` / `.build-outputs/app-debug.apk` (`22.218.647` bytes; histórico `.build-outputs/Parintintin-v1.0-debug.apk` com `22.753.989` bytes) | **`APROVADO`** *(build Debug)* |
 | **APK Release assinado e publicação oficial** | Falha em `:app:packageRelease` por ausência de `my-upload-key.jks` e variáveis de assinatura | **`NÃO VALIDADO`** / **`PENDENTE`** |
-| **Integração operacional com backend oficial e manifesto remoto** | Base URL `https://archive.parintintin.org/` sem disponibilidade confirmada; `/v1/manifest.json` não integrado | **`NÃO VALIDADO`** |
+| **Integração operacional com backend oficial e manifesto remoto** | Base URL `https://archive.parintintin.org/` sem disponibilidade confirmada; `/v1/manifest.json` (`getArchiveManifest()`) não integrado | **`NÃO VALIDADO`** |
 | **Testes manuais em hardware real, TalkBack físico, *benchmarks*, *memory leaks* e cobertura percentual** | Sem execução presencial, sem profiling e sem relatório JaCoCo | **`NÃO VALIDADO`** / **`PENDENTE`** |
 
 ---
@@ -242,5 +246,5 @@ Os itens abaixo encontram-se explicitamente sem execução comprovada até o mom
 - **Natureza do registro:** consolidação documental retrospectiva correspondente à **Versão 1.0 Demonstrativa** do projeto **Voz Ancestral** (`Acervo Provisório`), alinhada aos documentos `SPECIFICATION.md`, `PLANNING.md`, `TASKS.md` e `docs/api-v1-contract.md`.
 - **Atualizações futuras previstas:** este documento deverá ser atualizado somente quando houver novas execuções comprovadas (como execução de `:app:connectedDebugAndroidTest` em dispositivo/emulador externo, testes presenciais com TalkBack, geração de APK Release assinado ou futura homologação contra backend oficial ativo).
 - **Preservação:** a criação deste relatório não alterou código-fonte, arquivos Gradle, testes automatizados nem os documentos anteriores (`SPECIFICATION.md`, `PLANNING.md`, `TASKS.md`, `docs/api-v1-contract.md`).
-- **Atualização após conclusão de `TEC-001`:** mantendo preservado o registro histórico inicial da v1.0 (**24 suítes e 233 testes aprovados**), a atualização mais recente deste relatório incorpora a conclusão da tarefa `TEC-001` em `EncyclopediaViewModel.kt` e os **5 testes aprovados** de `EncyclopediaViewModelTest.kt`, elevando a execução mais recente da suíte completa `:app:testDebugUnitTest` para **25 suítes e 238 testes aprovados** (`0` falhas, `0` erros, `0` ignorados), sem execução de `androidTest` por ausência de emulador Android/ADB.
+- **Atualização após conclusão de `TEC-001` e reauditoria documental:** mantendo preservado o registro histórico inicial da v1.0 (**24 suítes e 233 testes aprovados**), o consolidado mais recente da suíte completa `:app:testDebugUnitTest` contabiliza **25 suítes e 238 testes aprovados** (`0` falhas, `0` erros, `0` ignorados), revalidados em 22/11/2026 com os 25 arquivos XML gerados em `app/build/test-results/testDebugUnitTest/`, permanecendo `androidTest` (3 métodos `@Test` em 2 arquivos de teste) sem execução por ausência de emulador Android/ADB.
 - **Natureza transitória dos relatórios gerados pelo Gradle:** enquanto este arquivo `TEST_RESULTS.md` preserva no repositório tanto o registro histórico inicial (24 suítes e 233 testes aprovados) quanto o consolidado mais recente (25 suítes e 238 testes aprovados), os arquivos XML (`app/build/test-results/testDebugUnitTest/`) e HTML (`app/build/reports/tests/testDebugUnitTest/`) ficam em `app/build/` — fora do controle de versão Git (`app/.gitignore`) —, podendo deixar de existir após limpezas, rebuilds ou reinicializações do ambiente sem invalidar os resultados históricos registrados e sendo regeneráveis por uma nova execução de `gradle :app:testDebugUnitTest`.

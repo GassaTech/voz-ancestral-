@@ -24,6 +24,15 @@
 | `GET` | `/v1/dictionary.json` | Lista completa de verbetes do dicionário | Implementado em `OfflineFirstDictionaryRepository` e **integrado** ao fluxo efetivo de `ArchiveSyncRepositoryImpl.syncArchive()` |
 | `GET` | `/v1/articles.json` | Lista completa de artigos culturais da enciclopédia | Documentado no contrato, declarado no Retrofit (`getCulturalArticles()`) e implementado em `OfflineFirstEncyclopediaRepository`, porém **não integrado** ao fluxo de `ArchiveSyncRepositoryImpl.syncArchive()` na versão 1.0 |
 
+### 1.1. Distinção Obrigatória de Estado Real (Cliente vs. Produção)
+
+| Nível Verificado | Situação Comprovada na Versão 1.0 |
+|---|---|
+| **1. Cliente Retrofit/OkHttp/Moshi implementado** | **SIM.** `NetworkModule`, `ParintintinApiService`, `ArchiveDtos` e `RemoteArchiveDataSource` estão implementados e apontam para `https://archive.parintintin.org/`. |
+| **2. Requisições realmente executadas** | **APENAS EM TESTES LOCAIS (`MockWebServer`).** Não há evidência de execução contra o domínio externo em ambiente real. |
+| **3. Respostas remotas recebidas** | **APENAS RESPOSTAS SIMULADAS.** As respostas `HTTP 200`, `HTTP 200 []`, `404`/`500` e timeouts foram obtidas exclusivamente via `MockWebServer` (`ParintintinApiContractTest`, `RemoteArchiveDataSourceTest`, `DictionaryOfflineIntegrationTest`); a disponibilidade operacional de `https://archive.parintintin.org/` **não foi confirmada**. |
+| **4. Sincronização realmente concluída** | **NÃO COMPROVADA EM PRODUÇÃO.** Em ambiente controlado (`MockWebServer`), o fluxo completo executa apenas `GET /v1/dictionary.json`. `getArchiveManifest()` (`/v1/manifest.json`) permanece sem integração em `ArchiveSyncRepositoryImpl.syncArchive()`, e `/v1/articles.json` permanece fora da sincronização na v1.0. |
+
 ---
 
 ## 2. Especificação dos Endpoints e Estrutura JSON
