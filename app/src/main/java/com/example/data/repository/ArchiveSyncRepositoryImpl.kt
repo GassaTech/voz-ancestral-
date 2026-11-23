@@ -1,13 +1,14 @@
 package com.example.data.repository
 
 import com.example.core.common.AppResult
+import com.example.core.common.ApplicationScope
 import com.example.core.common.DispatcherProvider
 import com.example.data.local.dao.SyncMetadataDao
 import com.example.data.local.entity.SyncMetadataEntity
 import com.example.data.local.seed.DictionarySeedUpdater
 import com.example.data.local.seed.SeedUpdateOutcomeStatus
 import com.example.data.mapper.toDomainSyncState
-import com.example.di.ApplicationScope
+import com.example.data.remote.datasource.RemoteArchiveDataSource
 import com.example.domain.connectivity.NetworkConnectivityObserver
 import com.example.domain.model.ArchiveStats
 import com.example.domain.model.RemoteSyncOutcome
@@ -36,6 +37,7 @@ import kotlinx.coroutines.withContext
 class ArchiveSyncRepositoryImpl @Inject constructor(
     private val dictionaryRepository: DictionaryRepository,
     private val encyclopediaRepository: EncyclopediaRepository,
+    private val remoteArchiveDataSource: RemoteArchiveDataSource,
     private val syncMetadataDao: SyncMetadataDao,
     private val dictionarySeedUpdater: DictionarySeedUpdater,
     private val networkConnectivityObserver: NetworkConnectivityObserver,
@@ -193,6 +195,15 @@ class ArchiveSyncRepositoryImpl @Inject constructor(
 
             try {
                 runSeedUpdateSafely()
+                val manifest = when (val manifestResult = remoteArchiveDataSource.fetchArchiveManifest()) {
+                    is AppResult.Success -> manifestResult.data
+                    is AppResult.Error -> {
+                        return@withContext recordRemoteError(
+                            error = manifestResult,
+                            restoreOnCancel = restoreOnCancel
+                        )
+                    }
+                }
                 val entriesResult = dictionaryRepository.syncFromRemote()
 
                 when (entriesResult) {
@@ -220,8 +231,7 @@ class ArchiveSyncRepositoryImpl @Inject constructor(
                                         // Na versão 1.0 a enciclopédia não participa da sincronização;
                                         // mantém null em vez de registrar contagem fictícia (ex.: 0).
                                         lastSuccessfulArticlesCount = null,
-                                        // Limitação conhecida: versão real do manifesto ainda não integrada.
-                                        lastSuccessfulRemoteVersion = MANIFEST_VERSION_UNAVAILABLE
+                                        lastSuccessfulRemoteVersion = manifest.version
                                     )
                                 )
                                 transientOverride.value = TransientSyncOverride.PendingRoomEmission(
@@ -251,31 +261,10 @@ class ArchiveSyncRepositoryImpl @Inject constructor(
                         }
                     }
 
-                    is AppResult.Error -> {
-                        val failureType = classifyCurrentConnectivity()
-                        val attemptSnapshot = nextAttemptSnapshot()
-                        val now = attemptSnapshot.nextEpochMillis
-                        val reason = entriesResult.message
-                            .takeIf { it.isNotBlank() }
-                            ?: DEFAULT_OFFLINE_REASON
-                        lastClassifiedFailure = ClassifiedFailure(
-                            attemptEpochMillis = now,
-                            failureType = failureType
-                        )
-                        persistOfflineFallback(
-                            now = now,
-                            reason = reason,
-                            failureType = failureType,
-                            lastSuccessfulSyncEpochMillis = attemptSnapshot.persistedMetadata
-                                ?.lastSuccessfulSyncEpochMillis,
-                            restoreOnCancel = restoreOnCancel
-                        )
-                        AppResult.Error(
-                            message = reason,
-                            cause = entriesResult.cause,
-                            remoteErrorKind = entriesResult.remoteErrorKind
-                        )
-                    }
+                    is AppResult.Error -> recordRemoteError(
+                        error = entriesResult,
+                        restoreOnCancel = restoreOnCancel
+                    )
                 }
             } catch (ce: CancellationException) {
                 transientOverride.value = restoreOnCancel
@@ -427,9 +416,36 @@ class ArchiveSyncRepositoryImpl @Inject constructor(
         }
     }
 
+    private suspend fun recordRemoteError(
+        error: AppResult.Error,
+        restoreOnCancel: TransientSyncOverride
+    ): AppResult.Error {
+        val failureType = classifyCurrentConnectivity()
+        val attemptSnapshot = nextAttemptSnapshot()
+        val now = attemptSnapshot.nextEpochMillis
+        val reason = error.message
+            .takeIf { it.isNotBlank() }
+            ?: DEFAULT_OFFLINE_REASON
+        lastClassifiedFailure = ClassifiedFailure(
+            attemptEpochMillis = now,
+            failureType = failureType
+        )
+        persistOfflineFallback(
+            now = now,
+            reason = reason,
+            failureType = failureType,
+            lastSuccessfulSyncEpochMillis = attemptSnapshot.persistedMetadata
+                ?.lastSuccessfulSyncEpochMillis,
+            restoreOnCancel = restoreOnCancel
+        )
+        return AppResult.Error(
+            message = reason,
+            cause = error.cause,
+            remoteErrorKind = error.remoteErrorKind
+        )
+    }
+
     companion object {
-        // TODO: Obter versão real de ParintintinApiService.getArchiveManifest() quando integrado.
-        internal const val MANIFEST_VERSION_UNAVAILABLE = "manifesto_nao_integrado"
         private const val DEFAULT_OFFLINE_REASON = "Modo offline ativo. Dados locais preservados."
         private const val DEFAULT_METADATA_READ_ERROR_REASON =
             "Falha ao consultar metadados de sincronização no banco local."

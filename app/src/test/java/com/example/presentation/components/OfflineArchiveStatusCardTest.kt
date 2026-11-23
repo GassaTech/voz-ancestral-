@@ -174,6 +174,35 @@ class OfflineArchiveStatusCardTest {
     }
 
     @Test
+    fun `estado Synced na v1 com articlesCount nulo exibe contagem de verbetes sincronizados`() {
+        val epochMillis = 1_700_000_000_000L
+        val expectedFormatted = formatSyncTimestamp(
+            epochMillis = epochMillis,
+            locale = BRAZILIAN_PORTUGUESE_LOCALE,
+            timeZone = TimeZone.getDefault()
+        )
+
+        composeTestRule.setContent {
+            ParintintinTheme {
+                OfflineArchiveStatusCard(
+                    stats = sampleStats,
+                    syncState = SyncState.Synced(
+                        lastSyncedEpochMillis = epochMillis,
+                        entriesCount = 42,
+                        articlesCount = null
+                    ),
+                    onManualSync = {}
+                )
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Acervo sincronizado").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Última sincronização em $expectedFormatted.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Sincronizados: 42 verbetes.").assertIsDisplayed()
+    }
+
+    @Test
     fun `estado OfflineFallback NO_INTERNET oculta mensagem tecnica exibe texto especifico chips locais e botao Tentar novamente`() {
         val epochMillis = 1_700_000_050_000L
         val expectedAttempt = formatSyncTimestamp(

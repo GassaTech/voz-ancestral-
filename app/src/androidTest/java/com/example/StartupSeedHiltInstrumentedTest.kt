@@ -23,7 +23,7 @@ import com.example.data.local.seed.DictionarySeedSpec
 import com.example.data.local.seed.DictionarySeedUpdater
 import com.example.data.local.seed.SeedSha256Calculator
 import com.example.data.local.seed.SeedUpdateOutcomeStatus
-import com.example.di.ApplicationScope
+import com.example.core.common.ApplicationScope
 import com.example.domain.model.SyncState
 import com.example.domain.repository.SyncStatusRepository
 import dagger.hilt.android.testing.HiltAndroidRule
@@ -115,6 +115,12 @@ class StartupSeedHiltInstrumentedTest {
             MockResponse()
                 .setResponseCode(200)
                 .setHeader("Content-Type", "application/json; charset=utf-8")
+                .setBody("""{"version":"1.0.0","entries_count":0,"articles_count":0}""")
+        )
+        mockWebServer.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setHeader("Content-Type", "application/json; charset=utf-8")
                 .setBody("[]")
         )
 
@@ -127,7 +133,7 @@ class StartupSeedHiltInstrumentedTest {
             composeTestRule.onNodeWithTag("home_hero_banner").assertIsDisplayed()
 
             // Aguarda deterministicamente a conclusão do fluxo automático:
-            // HomeViewModel.init -> ArchiveSyncCoordinator -> ArchiveSyncRepository -> Seed -> HTTP 200 [] -> RemoteEmpty
+            // HomeViewModel.init -> ArchiveSyncCoordinator -> ArchiveSyncRepository -> Seed -> manifest -> HTTP 200 [] -> RemoteEmpty
             val resolvedSyncState = runBlocking {
                 withTimeout(SYNC_TIMEOUT_MILLIS) {
                     syncStatusRepository.syncState.first { it is SyncState.RemoteEmpty }
@@ -136,9 +142,11 @@ class StartupSeedHiltInstrumentedTest {
 
             assertNull(resolvedSyncState.lastSyncedEpochMillis)
             assertNull(resolvedSyncState.entriesCount)
-            assertEquals(1, mockWebServer.requestCount)
-            val recordedRequest = mockWebServer.takeRequest(1, TimeUnit.SECONDS)
-            assertEquals("/v1/dictionary.json", recordedRequest?.path)
+            assertEquals(2, mockWebServer.requestCount)
+            val manifestRequest = mockWebServer.takeRequest(1, TimeUnit.SECONDS)
+            assertEquals("/v1/manifest.json", manifestRequest?.path)
+            val dictionaryRequest = mockWebServer.takeRequest(1, TimeUnit.SECONDS)
+            assertEquals("/v1/dictionary.json", dictionaryRequest?.path)
 
             // Valida persistência direta no Room via DAOs injetados pelo Hilt
             runBlocking {
@@ -228,6 +236,12 @@ class StartupSeedHiltInstrumentedTest {
 
     @Test
     fun idempotenciaComSeedJaAplicadoRetornaAlreadyUpToDateSemDuplicarRegistros() {
+        mockWebServer.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setHeader("Content-Type", "application/json; charset=utf-8")
+                .setBody("""{"version":"1.0.0","entries_count":0,"articles_count":0}""")
+        )
         mockWebServer.enqueue(
             MockResponse()
                 .setResponseCode(200)

@@ -2,6 +2,7 @@ package com.example.di
 
 import android.content.Context
 import android.net.ConnectivityManager
+import com.example.core.common.ApplicationScope
 import com.example.data.connectivity.AndroidNetworkConnectivityObserver
 import com.example.domain.connectivity.NetworkConnectivityObserver
 import dagger.Binds

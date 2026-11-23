@@ -91,11 +91,92 @@ class RemoteArchiveDataSourceTest {
         }
     }
 
+    @Test
+    fun `fetchArchiveManifest retorna sucesso para manifesto valido`() = runTest {
+        val expected = ArchiveManifestDto(version = "1.4.2", entriesCount = 40, articlesCount = 0)
+        val dataSource = RemoteArchiveDataSource(
+            ConfigurableApiService(manifestProvider = { expected })
+        )
+
+        val result = dataSource.fetchArchiveManifest()
+
+        assertEquals(AppResult.Success(expected), result)
+    }
+
+    @Test
+    fun `fetchArchiveManifest rejeita versao em branco ou contagens negativas como DESERIALIZATION_ERROR`() = runTest {
+        val invalidManifests = listOf(
+            ArchiveManifestDto(version = "", entriesCount = 10, articlesCount = 0),
+            ArchiveManifestDto(version = "   ", entriesCount = 10, articlesCount = 0),
+            ArchiveManifestDto(version = "1.0.0", entriesCount = -1, articlesCount = 0),
+            ArchiveManifestDto(version = "1.0.0", entriesCount = 10, articlesCount = -2)
+        )
+
+        invalidManifests.forEach { invalid ->
+            val dataSource = RemoteArchiveDataSource(
+                ConfigurableApiService(manifestProvider = { invalid })
+            )
+            val result = dataSource.fetchArchiveManifest()
+            assertTrue(result is AppResult.Error)
+            assertEquals(RemoteErrorKind.DESERIALIZATION_ERROR, (result as AppResult.Error).remoteErrorKind)
+        }
+    }
+
+    @Test
+    fun `fetchArchiveManifest classifica falhas de rede HTTP e relanca CancellationException`() = runTest {
+        val networkResult = RemoteArchiveDataSource(
+            FailingApiService(SocketTimeoutException("timeout manifesto"))
+        ).fetchArchiveManifest()
+        assertTrue(networkResult is AppResult.Error)
+        assertEquals(RemoteErrorKind.TIMEOUT, (networkResult as AppResult.Error).remoteErrorKind)
+
+        val cancelSource = RemoteArchiveDataSource(
+            FailingApiService(CancellationException("Cancelado no manifesto"))
+        )
+        try {
+            cancelSource.fetchArchiveManifest()
+            fail("Era esperado relançar CancellationException")
+        } catch (_: CancellationException) {
+            // Esperado
+        }
+    }
+
+    @Test
+    fun `fetchCulturalArticles classifica falhas e relanca CancellationException`() = runTest {
+        val httpError = HttpException(
+            Response.error<List<CulturalArticleDto>>(
+                503,
+                "{}".toResponseBody("application/json".toMediaType())
+            )
+        )
+        val errorResult = RemoteArchiveDataSource(FailingApiService(httpError)).fetchCulturalArticles()
+        assertTrue(errorResult is AppResult.Error)
+        assertEquals(RemoteErrorKind.HTTP_SERVER_ERROR, (errorResult as AppResult.Error).remoteErrorKind)
+
+        val cancelSource = RemoteArchiveDataSource(
+            FailingApiService(CancellationException("Cancelado nos artigos"))
+        )
+        try {
+            cancelSource.fetchCulturalArticles()
+            fail("Era esperado relançar CancellationException")
+        } catch (_: CancellationException) {
+            // Esperado
+        }
+    }
+
     private class FailingApiService(
         private val failure: Throwable
     ) : ParintintinApiService {
         override suspend fun getArchiveManifest(): ArchiveManifestDto = throw failure
         override suspend fun getDictionaryEntries(): List<DictionaryEntryDto> = throw failure
         override suspend fun getCulturalArticles(): List<CulturalArticleDto> = throw failure
+    }
+
+    private class ConfigurableApiService(
+        private val manifestProvider: suspend () -> ArchiveManifestDto
+    ) : ParintintinApiService {
+        override suspend fun getArchiveManifest(): ArchiveManifestDto = manifestProvider()
+        override suspend fun getDictionaryEntries(): List<DictionaryEntryDto> = emptyList()
+        override suspend fun getCulturalArticles(): List<CulturalArticleDto> = emptyList()
     }
 }

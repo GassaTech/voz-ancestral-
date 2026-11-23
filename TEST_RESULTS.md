@@ -63,7 +63,7 @@ As informações abaixo correspondem exclusivamente às configurações e biblio
 
 *Nota sobre cobertura:* Não há plugin ou relatório JaCoCo/cobertura percentual configurado ou gerado no projeto; portanto, **nenhum percentual de cobertura de código é declarado**.
 
-*Nota sobre resolução de artefato do Robolectric neste container:* ao executar `gradle :app:testDebugUnitTest` como usuário `root` (`HOME=/root`) sem variável auxiliar, 14 suítes Robolectric falharam com `java.lang.AssertionError: Failed to fetch maven artifact org.robolectric:android-all-instrumented:16-robolectric-13921718-i7` porque o cache local pré-baixado reside em `/home/appuser/.m2/repository/` e o acesso externo ao Maven Central é bloqueado neste container. Ao definir `JAVA_TOOL_OPTIONS="-Duser.home=/home/appuser"`, o trabalhador JVM resolveu o cache offline normalmente e todas as 25 suítes foram aprovadas.
+*Nota sobre resolução de artefato do Robolectric neste container:* ao executar `gradle :app:testDebugUnitTest` como usuário `root` (`HOME=/root`) sem variável auxiliar, as suítes Robolectric falham com `java.lang.AssertionError: Failed to fetch maven artifact org.robolectric:android-all-instrumented:16-robolectric-13921718-i7` porque o cache local pré-baixado reside em `/home/appuser/.m2/repository/` e o acesso externo ao Maven Central é bloqueado neste container. Ao definir `JAVA_TOOL_OPTIONS="-Duser.home=/home/appuser"`, o trabalhador JVM resolve o cache offline normalmente e todas as **27 suítes** (**252 testes**) são aprovadas.
 
 *Nota sobre persistência de relatórios de build:* Nas execuções verificadas, os relatórios XML são gerados em `app/build/test-results/testDebugUnitTest/` e os relatórios HTML do Gradle em `app/build/reports/tests/testDebugUnitTest/`. Ambos os diretórios integram a estrutura de saída do Gradle dentro de `app/build/`, diretório ignorado pelo Git (`app/.gitignore`).
 
@@ -79,19 +79,18 @@ A verificação técnica da Versão 1.0 Demonstrativa apoia-se em duas frentes p
 
 ## 6. Testes Automatizados Executados na JVM
 
-- **Comando executado (reexecução verificada em 22/11/2026 com cache Robolectric em `/home/appuser/.m2`):** `JAVA_TOOL_OPTIONS="-Duser.home=/home/appuser" gradle :app:testDebugUnitTest` *(em ambientes onde o `HOME` do usuário atual já contém o cache Maven/Gradle ou possui acesso normal a repositórios, `gradle :app:testDebugUnitTest` ou `sh gradlew :app:testDebugUnitTest` executa diretamente sem `JAVA_TOOL_OPTIONS`)*
-- **Execução prévia no mesmo ambiente sem `JAVA_TOOL_OPTIONS` (registrada por transparência):** `gradle :app:testDebugUnitTest` sob `HOME=/root` falhou em 14 suítes Robolectric (`137` testes concluídos, `14` falhas de `MavenArtifactFetcher` para `org.robolectric:android-all-instrumented:16-robolectric-13921718-i7`) por diferença de diretório `user.home`.
+- **Comando executado (reexecução final com cache Robolectric em `/home/appuser/.m2`):** `JAVA_TOOL_OPTIONS="-Duser.home=/home/appuser" gradle :app:testDebugUnitTest :app:assembleDebugAndroidTest :app:assembleDebug` *(em ambientes onde o `HOME` do usuário atual já contém o cache Maven/Gradle ou possui acesso normal a repositórios, `gradle :app:testDebugUnitTest` ou `./gradlew :app:testDebugUnitTest` executa diretamente sem `JAVA_TOOL_OPTIONS`)*
 - **Status geral da execução válida:** `BUILD SUCCESSFUL` — **`APROVADO`**
-- **Totais consolidados (confirmados pelos 25 arquivos XML em `app/build/test-results/testDebugUnitTest/`):**
-  - **25 suítes de testes**
-  - **238 testes aprovados**
+- **Totais consolidados (confirmados pelos 27 arquivos XML em `app/build/test-results/testDebugUnitTest/`):**
+  - **27 suítes de testes**
+  - **252 testes aprovados**
   - **0 falhas (`failures="0"`)**
   - **0 erros (`errors="0"`)**
   - **0 testes ignorados (`skipped="0"`)**
 
-> **Registro histórico anterior e natureza transitória dos relatórios:** Antes da conclusão de `TEC-001`, a execução histórica inicial da Versão 1.0 Demonstrativa registrou **233 testes aprovados em 24 suítes** via `gradle :app:testDebugUnitTest` (`VAL-001`). Após a correção em `EncyclopediaViewModel.kt` e a criação de `EncyclopediaViewModelTest.kt` (+5 testes), a suíte completa passou a contabilizar **238 testes aprovados em 25 suítes** (`0` falhas, `0` erros, `0` ignorados), resultado novamente confirmado integralmente pelos 25 relatórios XML gerados em `app/build/test-results/testDebugUnitTest/`. Em todas as execuções, o Gradle produz os relatórios XML em `app/build/test-results/testDebugUnitTest/` e os relatórios HTML em `app/build/reports/tests/testDebugUnitTest/`. Ambos os diretórios pertencem à estrutura de saída do Gradle dentro de `app/build/`, ignorada pelo controle de versão Git conforme `app/.gitignore`. Por constituírem artefatos transitórios de build, tais relatórios não permanecem necessariamente disponíveis após limpezas, rebuilds ou reinicializações do ambiente; sua ausência em inspeções posteriores não invalida os resultados históricos aqui registrados, podendo os relatórios XML e HTML ser regenerados mediante nova execução de `gradle :app:testDebugUnitTest`.
+> **Registro histórico evolutivo e natureza transitória dos relatórios:** A execução inicial histórica da v1.0 contabilizou **233 testes aprovados em 24 suítes** (`VAL-001`), evoluindo posteriormente para **238 testes aprovados em 25 suítes** após `TEC-001` (`EncyclopediaViewModelTest`) e, na consolidação técnica final desta entrega, para **252 testes aprovados em 27 suítes** (`+14` testes com a integração de `/v1/manifest.json`, cobertura de `ArchiveMappersTest`, `ArchiveUseCasesAndClassifierTest` e ramo v1.0 de `OfflineArchiveStatusCard`). Os relatórios XML (`app/build/test-results/testDebugUnitTest/`) e HTML (`app/build/reports/tests/testDebugUnitTest/`) ficam em `app/build/` (diretório ignorado pelo Git), podendo ser regenerados a qualquer momento via `gradle :app:testDebugUnitTest`.
 
-### Detalhamento Real das 25 Suítes Executadas na JVM
+### Detalhamento Real das 27 Suítes Executadas na JVM
 | # | Suíte / Classe (`app/src/test`) | Testes | Falhas | Erros | Ignorados | Status | Escopo Verificado |
 |---|---|---|---|---|---|---|---|
 | 1 | `ExampleUnitTest` | 1 | 0 | 0 | 0 | `APROVADO` | Teste unitário básico de sanidade na JVM. |
@@ -104,22 +103,24 @@ A verificação técnica da Versão 1.0 Demonstrativa apoia-se em duas frentes p
 | 8 | `SeedSha256CalculatorTest` | 5 | 0 | 0 | 0 | `APROVADO` | Cálculo hexadecimal SHA-256 sem normalização e rejeição de arquivo vazio (`EmptySeedFileException`). |
 | 9 | `SeedVersionComparatorTest` | 9 | 0 | 0 | 0 | `APROVADO` | Regras de versão e hash (`SEED_NOT_APPLIED`, `SEED_UPDATED`, `SEED_UP_TO_DATE`, `INCONSISTENT_VERSION`). |
 | 10 | `VersionedDictionarySeedUpdaterTest` | 12 | 0 | 0 | 0 | `APROVADO` | Atualização transacional idempotente do seed, lotes de 500 IDs, preservação de favoritos e bloqueio pós-sync oficial. |
-| 11 | `ParintintinApiContractTest` | 17 | 0 | 0 | 0 | `APROVADO` | Adaptadores Moshi gerados via KSP e contrato JSON/HTTP de `/v1/manifest.json`, `/v1/dictionary.json` e `/v1/articles.json`. |
-| 12 | `RemoteArchiveDataSourceTest` | 3 | 0 | 0 | 0 | `APROVADO` | Tratamento de exceções HTTP/JSON/IO e propagação de `CancellationException`. |
-| 13 | `ArchiveSyncRepositoryImplTest` | 33 | 0 | 0 | 0 | `APROVADO` | Fluxos de `SyncState` (`Loading`, `Syncing`, `Synced`, `RemoteEmpty`, `OfflineFallback`), classificação de falhas e monotonicidade temporal. |
-| 14 | `OfflineFirstDictionaryRepositoryTest` | 9 | 0 | 0 | 0 | `APROVADO` | Consulta Room, `toggleFavorite`, `RemoteSyncOutcome.Empty` e preservação de favoritos em `upsertAll`. |
-| 15 | `OfflineFirstEncyclopediaRepositoryTest` | 6 | 0 | 0 | 0 | `APROVADO` | Contrato offline-first de repositório da Enciclopédia *(estrutura preparatória não exposta na v1.0)*. |
-| 16 | `ArchiveSyncCoordinatorImplTest` | 10 | 0 | 0 | 0 | `APROVADO` | Deduplicação de auto-sync, junção `JoinedInFlight`, isolamento em `@ApplicationScope` e cancelamento seguro. |
-| 17 | `DictionaryOfflineIntegrationTest` | 10 | 0 | 0 | 0 | `APROVADO` | Fluxo integrado Room + Seed + `DictionaryViewModel` + `MockWebServer` + `SyncFailureClassifier`. |
-| 18 | `OfflineArchiveStatusCardTest` | 12 | 0 | 0 | 0 | `APROVADO` | Renderização de todos os estados de `SyncState` e `SyncFailureType` e acionamento do botão manual. |
-| 19 | `ResponsiveComponentsTest` | 9 | 0 | 0 | 0 | `APROVADO` | Adaptação responsiva de componentes (`280.dp`, `320.dp`, `fontScale 1.5f`) sem *overflow*. |
-| 20 | `DictionaryScreenTest` | 23 | 0 | 0 | 0 | `APROVADO` | Pesquisa, limpeza, filtros combinados, selos demonstrativos, estados vazio/erro e semântica de acessibilidade. |
-| 21 | `DictionaryViewModelTest` | 17 | 0 | 0 | 0 | `APROVADO` | *Debounce* de `150 ms`, combinação de filtros, estados `Loading`/`Empty`/`Success`/`Error` e cancelamento. |
-| 22 | `HomeScreenTest` | 7 | 0 | 0 | 0 | `APROVADO` | Banner v1.0, card permanente `"MODO DEMONSTRATIVO"`, layout em `280.dp` e módulo planejado. |
-| 23 | `HomeViewModelTest` | 14 | 0 | 0 | 0 | `APROVADO` | Disparo de auto-sync, sincronização manual, estatísticas locais e sobrevivência no `@ApplicationScope`. |
-| 24 | `ParintintinNavHostTest` | 2 | 0 | 0 | 0 | `APROVADO` | Navegação restrita a **Início** e **Dicionário** na barra inferior e alternância sem placeholders. |
-| 25 | `EncyclopediaViewModelTest` | 5 | 0 | 0 | 0 | `APROVADO` | Falhas comuns com fallback, propagação explícita de `CancellationException` *upstream*, cancelamento estruturado em `flatMapLatest` e recuperação via `onRetry()` *(estrutura preparatória não exposta na v1.0)*. |
-| — | **Total Consolidado (`25` suítes)** | **238** | **0** | **0** | **0** | **`APROVADO`** | **100% dos testes JVM executados aprovados.** |
+| 11 | `ArchiveMappersTest` | 4 | 0 | 0 | 0 | `APROVADO` | Conversão DTO↔Entity↔Domínio, fallback de enums desconhecidos e mapeamento de todos os estados `SyncMetadataEntity`. |
+| 12 | `ParintintinApiContractTest` | 17 | 0 | 0 | 0 | `APROVADO` | Adaptadores Moshi gerados via KSP e contrato JSON/HTTP de `/v1/manifest.json`, `/v1/dictionary.json` e `/v1/articles.json`. |
+| 13 | `RemoteArchiveDataSourceTest` | 7 | 0 | 0 | 0 | `APROVADO` | `fetchArchiveManifest()` (sucesso, rejeição de versão vazia/contagens negativas, erros/cancelamento), `fetchDictionaryEntries()` e `fetchCulturalArticles()`. |
+| 14 | `ArchiveSyncRepositoryImplTest` | 36 | 0 | 0 | 0 | `APROVADO` | Fluxos de `SyncState` (`Loading`, `Syncing`, `Synced`, `RemoteEmpty`, `OfflineFallback`), integração/falha/cancelamento do manifesto remoto, classificação de falhas e monotonicidade temporal. |
+| 15 | `OfflineFirstDictionaryRepositoryTest` | 9 | 0 | 0 | 0 | `APROVADO` | Consulta Room, `toggleFavorite`, `RemoteSyncOutcome.Empty` e preservação de favoritos em `upsertAll`. |
+| 16 | `OfflineFirstEncyclopediaRepositoryTest` | 6 | 0 | 0 | 0 | `APROVADO` | Contrato offline-first de repositório da Enciclopédia *(estrutura preparatória não exposta na v1.0)*. |
+| 17 | `ArchiveSyncCoordinatorImplTest` | 10 | 0 | 0 | 0 | `APROVADO` | Deduplicação de auto-sync, junção `JoinedInFlight`, isolamento em `@ApplicationScope` e cancelamento seguro. |
+| 18 | `ArchiveUseCasesAndClassifierTest` | 2 | 0 | 0 | 0 | `APROVADO` | `SyncFailureClassifier` e delegação completa dos casos de uso em `ArchiveUseCases.kt`. |
+| 19 | `DictionaryOfflineIntegrationTest` | 10 | 0 | 0 | 0 | `APROVADO` | Fluxo integrado Room + Seed + manifesto/dicionário via `MockWebServer` + `DictionaryViewModel` + `SyncFailureClassifier`. |
+| 20 | `OfflineArchiveStatusCardTest` | 13 | 0 | 0 | 0 | `APROVADO` | Renderização de todos os estados de `SyncState` (incluindo `Synced` v1.0 com `articlesCount = null`) e `SyncFailureType`, além do botão manual. |
+| 21 | `ResponsiveComponentsTest` | 9 | 0 | 0 | 0 | `APROVADO` | Adaptação responsiva de componentes (`IntroNoticeCard`, banners e chips) em larguras estreitas (`280.dp`, `320.dp`) e escalas de fonte ampliadas (`fontScale 1.5f`). |
+| 22 | `DictionaryScreenTest` | 23 | 0 | 0 | 0 | `APROVADO` | Pesquisa, limpeza, filtros combinados, selos demonstrativos, estados vazio/erro e semântica de acessibilidade. |
+| 23 | `DictionaryViewModelTest` | 17 | 0 | 0 | 0 | `APROVADO` | *Debounce* de `150 ms`, combinação de filtros, estados `Loading`/`Empty`/`Success`/`Error` e cancelamento. |
+| 24 | `HomeScreenTest` | 7 | 0 | 0 | 0 | `APROVADO` | Banner v1.0, card permanente `"MODO DEMONSTRATIVO"`, layout em `280.dp` e módulo planejado. |
+| 25 | `HomeViewModelTest` | 14 | 0 | 0 | 0 | `APROVADO` | Disparo de auto-sync, sincronização manual, estatísticas locais e sobrevivência no `@ApplicationScope`. |
+| 26 | `ParintintinNavHostTest` | 2 | 0 | 0 | 0 | `APROVADO` | Navegação restrita a **Início** e **Dicionário** na barra inferior e alternância sem placeholders. |
+| 27 | `EncyclopediaViewModelTest` | 5 | 0 | 0 | 0 | `APROVADO` | Falhas comuns com fallback, propagação explícita de `CancellationException` *upstream*, cancelamento estruturado em `flatMapLatest` e recuperação via `onRetry()` *(estrutura preparatória não exposta na v1.0)*. |
+| — | **Total Consolidado (`27` suítes)** | **252** | **0** | **0** | **0** | **`APROVADO`** | **100% dos testes JVM executados aprovados.** |
 
 ---
 
@@ -131,11 +132,11 @@ A verificação técnica da Versão 1.0 Demonstrativa apoia-se em duas frentes p
 ### Arquivos da Suíte Instrumentada Identificados no Repositório (5 arquivos Kotlin / 3 métodos `@Test`)
 | Arquivo (`app/src/androidTest/java/com/example/`) | Papel / Escopo | Status Atual |
 |---|---|---|
-| `StartupSeedHiltInstrumentedTest.kt` (`2` `@Test`) | Fluxo ponta a ponta com Hilt real (`MainActivity`), banco Room em memória (`TestDatabaseModule`), `MockWebServer` local (`TestNetworkModule` retornando `HTTP 200 []`), verificação idempotente do seed `DEMO-001`..`DEMO-020` e navegação até `DictionaryScreen`. | **`COMPILADO, NÃO EXECUTADO`** |
+| `StartupSeedHiltInstrumentedTest.kt` (`2` `@Test`) | Fluxo ponta a ponta com Hilt real (`MainActivity`), banco Room em memória (`TestDatabaseModule`), `MockWebServer` local (`TestNetworkModule` respondendo `/v1/manifest.json` e `HTTP 200 []` em `/v1/dictionary.json`), verificação idempotente do seed `DEMO-001`..`DEMO-020` e navegação até `DictionaryScreen`. | **`COMPILADO, NÃO EXECUTADO`** |
 | `ExampleInstrumentedTest.kt` (`1` `@Test`) | Verificação de `BuildConfig.APPLICATION_ID` no `targetContext` instrumentado. | **`COMPILADO, NÃO EXECUTADO`** |
 | `HiltTestRunner.kt`, `di/TestDatabaseModule.kt`, `di/TestNetworkModule.kt` | Infraestrutura de execução Hilt para `androidTest`. | **`COMPILADO, NÃO EXECUTADO`** |
 
-- Na etapa de validação de regressão (Etapa 29.7), a tarefa `:app:assembleDebugAndroidTest` gerou o APK `app-debug-androidTest.apk`. Ressalta-se que, após execuções posteriores no diretório de build (como a tentativa de empacotamento Release na Etapa 30.0), apenas `app/build/outputs/apk/debug/` permaneceu listado em `app/build/outputs/apk/`, mantendo-se o registro de compilação prévia bem-sucedida e a **ausência total de execução instrumentada**.
+- Compilação verificada via `:app:assembleDebugAndroidTest` gerando `app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk` (`1.056.983` bytes, SHA-256 `29d870b8a55cc4b2f882c0125c838fcc3c64346565a4022cf93b6d9874d4f8bd`). A execução permanece pendente de dispositivo físico ou emulador com ADB.
 - **Estes testes NÃO são apresentados como aprovados nem como executados.**
 
 ---
@@ -147,9 +148,9 @@ Os testes de integração e de comunicação de rede executados na JVM utilizara
 | Suíte | Quantidade de Testes | Status | O que Comprova | O que NÃO Comprova |
 |---|---|---|---|---|
 | `ParintintinApiContractTest` | 17 | **`APROVADO`** *(ambiente controlado)* | Desserialização Moshi (codegen KSP) de `ArchiveManifestDto`, `DictionaryEntryDto` e `CulturalArticleDto`, tolerância a campos extras, rejeição de campos obrigatórios ausentes/nulos, erros HTTP `404`/`500` e JSON malformado/truncado. | Não comprova que `https://archive.parintintin.org/` esteja ativo ou servindo esses schemas em produção. |
-| `RemoteArchiveDataSourceTest` | 3 | **`APROVADO`** *(ambiente controlado)* | Conversão segura de falhas de rede/HTTP/parse em `AppResult.Error` e propagação de `CancellationException`. | Não testa latência, TLS real ou comportamento de servidor externo em produção. |
-| `DictionaryOfflineIntegrationTest` | 10 | **`APROVADO`** *(Room + `MockWebServer`)* | Integração entre `VersionedDictionarySeedUpdater`, Room (em memória e arquivo SQLite temporário), `OfflineFirstDictionaryRepository`, `ArchiveSyncRepositoryImpl`, `DictionaryViewModel`, `SyncFailureClassifier` e respostas simuladas (`HTTP 500`, `HTTP 200 []`, `HTTP 200` com payload sintético). | Não comprova sincronização remota real contra o backend oficial nem integração do manifesto `/v1/manifest.json`. |
-| `ArchiveSyncRepositoryImplTest` & `ArchiveSyncCoordinatorImplTest` | 33 + 10 = 43 | **`APROVADO`** *(ambiente controlado)* | Transições de `SyncState`, preservação do histórico oficial, deduplicação de auto-sync/manual sync e monotonicidade temporal. | Não valida sincronização de artigos da Enciclopédia (fora da v1.0) nem operação em produção. |
+| `RemoteArchiveDataSourceTest` | 7 | **`APROVADO`** *(ambiente controlado)* | Validação de manifesto (`version` não vazia e contagens `>= 0`), conversão segura de falhas de rede/HTTP/parse em `AppResult.Error` (manifesto, dicionário e artigos) e propagação de `CancellationException`. | Não testa latência, TLS real ou comportamento de servidor externo em produção. |
+| `DictionaryOfflineIntegrationTest` | 10 | **`APROVADO`** *(Room + `MockWebServer`)* | Integração entre `VersionedDictionarySeedUpdater`, Room (em memória e arquivo SQLite temporário), fluxo `/v1/manifest.json` + `/v1/dictionary.json`, `ArchiveSyncRepositoryImpl` (gravando `lastSuccessfulRemoteVersion`), `DictionaryViewModel` e `SyncFailureClassifier`. | Não comprova sincronização remota real contra o backend oficial nem exclusão remota. |
+| `ArchiveSyncRepositoryImplTest` & `ArchiveSyncCoordinatorImplTest` | 36 + 10 = 46 | **`APROVADO`** *(ambiente controlado)* | Transições de `SyncState`, consulta e falha/cancelamento do manifesto remoto, preservação do histórico oficial, deduplicação de auto-sync/manual sync e monotonicidade temporal. | Não valida sincronização de artigos da Enciclopédia (fora da v1.0) nem operação em produção. |
 | `AndroidConnectivityPlatformRobolectricTest` & `AndroidNetworkConnectivityObserverTest` | 1 + 9 = 10 | **`APROVADO`** *(Robolectric / fake platform)* | Leitura de `ConnectivityManager`, classificação `Offline` / `ConnectedUnvalidated` / `Online` e descarte de callback via `AutoCloseable`. | Não substitui teste de transição Wi-Fi/dados móveis reais em aparelho físico. |
 
 ---
@@ -177,7 +178,7 @@ As verificações de interface Compose ocorreram na JVM com **Robolectric (`sdk 
 |---|---|---|---|
 | `HomeScreenTest` | 7 | **`APROVADO`** *(Robolectric + Compose Test)* | Exibição do banner `"VERSÃO 1.0 • DEMONSTRATIVA"`, card permanente `"MODO DEMONSTRATIVO"` sem interação prévia, hierarquia sem *overflow* em `280.dp`, módulos planejados com selo `"Planejado"` e cartão expansível de detalhes. |
 | `DictionaryScreenTest` | 23 | **`APROVADO`** *(Robolectric + Compose Test)* | Campo de pesquisa, botão limpar, chips de `SemanticCategory` e `GrammaticalClass`, contagem total/filtrada, `stickyHeader` `"MODO DEMONSTRATIVO"`, selos `"Termo demonstrativo"` e `"Nota demonstrativa"`, estados vazio/erro e semântica de acessibilidade (headings/descrições). |
-| `OfflineArchiveStatusCardTest` | 12 | **`APROVADO`** *(Robolectric + Compose Test)* | Estados `Loading`, `Idle`, `Syncing`, `Synced`, `RemoteEmpty` e `OfflineFallback` para `NO_INTERNET`, `UNVALIDATED_NETWORK` e `SERVER_UNAVAILABLE`, além do botão manual de sincronização. |
+| `OfflineArchiveStatusCardTest` | 13 | **`APROVADO`** *(Robolectric + Compose Test)* | Estados `Loading`, `Idle`, `Syncing`, `Synced` (com e sem `articlesCount`), `RemoteEmpty` e `OfflineFallback` para `NO_INTERNET`, `UNVALIDATED_NETWORK` e `SERVER_UNAVAILABLE`, além do botão manual de sincronização. |
 | `ResponsiveComponentsTest` | 9 | **`APROVADO`** *(Robolectric + Compose Test)* | Adaptação de componentes (`IntroNoticeCard`, banners e chips) em larguras estreitas (`280.dp`, `320.dp`) e escalas de fonte ampliadas (`fontScale 1.5f`). |
 | `ParintintinNavHostTest` | 2 | **`APROVADO`** *(Robolectric + Compose Test)* | Garantia de que a barra inferior expõe apenas **Início** (`bottom_nav_home`) e **Dicionário** (`bottom_nav_dictionary`), sem `Encyclopedia`, `Favorites` ou `Archive`, e sem exibir placeholders. |
 | `HomeViewModelTest` & `DictionaryViewModelTest` | 14 + 17 = 31 | **`APROVADO`** *(JVM / Coroutines Test)* | Disparo único de auto-sync, sincronização manual, *debounce* de `150 ms` na busca e combinação de filtros reativos. |
@@ -191,39 +192,40 @@ As verificações de interface Compose ocorreram na JVM com **Robolectric (`sdk 
 
 | Artefato / Build | Comando / Referência | Resultado Verificado | Observações e Restrições |
 |---|---|---|---|
-| **APK Debug v1.0 Atual (Raiz e `.build-outputs`)** | `:app:assembleDebug` (`Voz-Ancestral-debug.apk` na raiz, `app/build/outputs/apk/debug/app-debug.apk` e `.build-outputs/app-debug.apk`) | **`APROVADO`** *(artefato gerado e inspecionado)* | Três cópias idênticas (SHA-256 `965183144f9aae41efd263e2467062fd28565d52d58007e71f96eeb8de68f633`), tamanho exato de `22.218.647` bytes; `applicationId = com.aistudio.parintintin.kagwah`; `versionCode = 1`; `versionName = "1.0"`; `minSdkVersionForDexing = 24`; assinatura Debug v2 válida (`output-metadata.json`). **Não equivale à validação completa em dispositivos reais.** |
-| **APK Debug v1.0 Histórico** | `.build-outputs/Parintintin-v1.0-debug.apk` *(compilação anterior)* | **`APROVADO`** *(artefato histórico preservado)* | Tamanho de `22.753.989` bytes (SHA-256 `3930eb1520316cde1c3b8250013767faaf548965737b5dfd7e9a643d28cf4092`), referente à compilação anterior registrada antes da geração de `Voz-Ancestral-debug.apk`. |
-| **APK de Testes Instrumentados** | `:app:assembleDebugAndroidTest` (`app-debug-androidTest.apk`) | **`COMPILADO, NÃO EXECUTADO`** | Compilado com sucesso na etapa de validação de regressão (Etapa 29.7); diretório `androidTest` não está mais presente em `app/build/outputs/apk/` após builds posteriores; execução pendente em ambiente com emulador/ADB. |
-| **APK Release Assinado** | `:app:assembleRelease` (`app/build.gradle.kts`) | **`NÃO VALIDADO` / `PENDENTE`** | Na auditoria da Etapa 30.0, o build falhou na tarefa `:app:packageRelease` por ausência do arquivo `my-upload-key.jks` e das variáveis de ambiente `KEYSTORE_PATH`, `STORE_PASSWORD` e `KEY_PASSWORD`. **Não há APK Release assinado nem publicação/distribuição oficial.** |
+| **APK Debug v1.0 Final (Artefato Único na Raiz)** | `:app:assembleDebug` (`Voz-Ancestral-debug.apk` na raiz, cópia idêntica de `app/build/outputs/apk/debug/app-debug.apk`) | **`APROVADO`** *(artefato gerado e inspecionado)* | SHA-256 `e633f1c268fada603fb5c9a61d2010887a78fd826c0c9cdf6273708ecf25e36d`, tamanho exato de `22.692.801` bytes; `applicationId = com.aistudio.parintintin.kagwah`; `versionCode = 1`; `versionName = "1.0"`; `minSdk = 24`; assinatura `debugConfig`. Diretório antigo `.build-outputs/` removido para evitar múltiplos APKs conflitantes. |
+| **APK de Testes Instrumentados** | `:app:assembleDebugAndroidTest` (`app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk`) | **`COMPILADO, NÃO EXECUTADO`** | Tamanho de `1.056.983` bytes (SHA-256 `29d870b8a55cc4b2f882c0125c838fcc3c64346565a4022cf93b6d9874d4f8bd`); execução pendente em ambiente com emulador/ADB. |
+| **APK Release Assinado** | `:app:assembleRelease` (`app/build.gradle.kts`) | **`NÃO VALIDADO` / `PENDENTE`** | O build `:app:packageRelease` depende do arquivo `my-upload-key.jks` e das variáveis de ambiente `KEYSTORE_PATH`, `STORE_PASSWORD` e `KEY_PASSWORD` externos ao container. (`signingConfigs` preservado intacto em `app/build.gradle.kts`.) |
 
 ---
 
-## 12. Testes e Cenários Não Executados
+## 12. Testes e Cenários Não Executados e Checklist Externo Obrigatório
 
-Os itens abaixo encontram-se explicitamente sem execução comprovada até o momento:
+Os itens abaixo permanecem sem execução comprovada neste container headless e **devem ser validados pelo avaliador/desenvolvedor em dispositivo Android ou emulador real**:
 
 | Cenário / Atividade | Classificação | Motivo / Condição Pendente |
 |---|---|---|
 | **Execução de `StartupSeedHiltInstrumentedTest` e `ExampleInstrumentedTest` (`:app:connectedDebugAndroidTest`)** | **`COMPILADO, NÃO EXECUTADO`** / **`PENDENTE`** | Ausência de emulador Android e de acesso `adb` no container de execução. |
-| **Comunicação e sincronização contra backend oficial (`https://archive.parintintin.org/`)** | **`NÃO VALIDADO`** | Disponibilidade operacional do servidor oficial não confirmada durante a auditoria; testes de rede utilizaram apenas `MockWebServer`. |
-| **Consumo do manifesto remoto (`/v1/manifest.json`)** | **`NÃO VALIDADO`** | Endpoint declarado em `ParintintinApiService`, porém ainda não integrado ao fluxo de `ArchiveSyncRepositoryImpl`. |
+| **Comunicação contra servidor oficial ativo (`https://archive.parintintin.org/`)** | **`NÃO VALIDADO`** | Disponibilidade operacional do backend externo não confirmada; cliente testado contra `MockWebServer`. |
 | **Sincronização remota da Enciclopédia Cultural (`/v1/articles.json`)** | **`NÃO VALIDADO`** | Módulo excluído de `ArchiveSyncRepositoryImpl.syncArchive()` e da barra inferior na v1.0. |
-| **Validação manual em aparelho Android físico (fluxo offline-first, alternância Wi-Fi/4G real, rotação, multi-janela)** | **`NÃO VALIDADO`** / **`PENDENTE`** | Nenhum teste manual em hardware físico foi executado neste ambiente. |
-| **Auditoria prática de acessibilidade com TalkBack em dispositivo físico** | **`NÃO VALIDADO`** / **`PENDENTE`** | Verificações atuais cobrem apenas semântica Compose via Robolectric. |
-| **Testes de desempenho (*benchmarks* de renderização, tempo de inicialização e consumo de CPU/memória)** | **`NÃO VALIDADO`** | Sem *profiling* ou suíte Macrobenchmark configurada ou executada. |
-| **Testes instrumentais específicos de detecção de *memory leaks* (ex.: LeakCanary / análise de heap)** | **`NÃO VALIDADO`** | Apenas padrões estruturais (`WhileSubscribed(5000)`, `AutoCloseable`) e testes de ciclo de vida de scope/callback na JVM foram verificados. |
-| **Empacotamento e instalação de APK/AAB Release assinado** | **`NÃO VALIDADO`** / **`PENDENTE`** | Keystore Release dedicada e credenciais ausentes no ambiente. |
-| **Medição de cobertura percentual de código (ex.: JaCoCo)** | **`NÃO VALIDADO`** | Nenhum relatório de cobertura foi gerado; nenhum percentual é declarado. |
+| **Validação manual em aparelho Android físico, TalkBack, *benchmarks* e *memory leaks*** | **`NÃO VALIDADO`** / **`PENDENTE`** | Sem dispositivo físico/hardware, profiling ou JaCoCo configurados neste ambiente. |
+| **Empacotamento Release assinado** | **`NÃO VALIDADO`** / **`PENDENTE`** | Keystore Release dedicada e credenciais ausentes no ambiente. |
+
+### Checklist Prático de Testes Externos para o Responsável
+1. **Instalação e abertura inicial do APK:** instalar `Voz-Ancestral-debug.apk` em dispositivo/emulador (API 24+) via `adb install -r Voz-Ancestral-debug.apk`, abrir o app e confirmar ausência de *crashes* iniciais e presença dos 20 verbetes `DEMO-001`..`DEMO-020`.
+2. **Comportamento Offline-First e modo avião:** ativar modo avião, reabrir o app, tocar em `"Tentar novamente"` na Home e confirmar transição para `"Sem conexão com a internet"` mantendo os 20 verbetes acessíveis na aba **Dicionário** com busca e filtros funcionando.
+3. **Recuperação de rede:** desativar modo avião, acionar sincronização manual e observar no Logcat (`adb logcat -s AndroidRuntime:E`) se não há exceções não tratadas ao receber resposta ou erro do servidor configurado.
+4. **Responsividade e acessibilidade:** testar rotação retrato/paisagem, fonte ampliada do sistema e leitura básica com **TalkBack** nos cartões da Home, chips de filtro e lista do Dicionário, capturando screenshots para a entrega acadêmica.
+5. **Suíte instrumentada:** conectar dispositivo/emulador com ADB e executar `gradle :app:connectedDebugAndroidTest`.
 
 ---
 
 ## 13. Limitações e Riscos Conhecidos
 
-1. **Ausência de falha na JVM não comprova ausência de defeitos no aplicativo completo:** os 238 testes aprovados em 25 suítes na JVM (incluindo Robolectric) não substituem a execução instrumentada (`:app:connectedDebugAndroidTest`) nem testes exploratórios em dispositivos Android reais.
+1. **Ausência de falha na JVM não comprova ausência de defeitos no dispositivo completo:** os 252 testes aprovados em 27 suítes na JVM (incluindo Robolectric) não substituem a execução instrumentada (`:app:connectedDebugAndroidTest`) nem testes exploratórios em dispositivos Android reais.
 2. **Dados estritamente demonstrativos (`DEMO-001`..`DEMO-020`):** todos os 20 registros locais são termos e expressões fictícios em português; os testes comprovam o comportamento de armazenamento/pesquisa/filtro, mas **não validam autenticidade linguística da língua Parintintin**.
-3. **Servidor oficial não confirmado e sincronização parcial de escopo:** a URL `https://archive.parintintin.org/` não teve disponibilidade operacional confirmada na auditoria, o manifesto remoto não está integrado e não há política definida de exclusão de registros.
-4. **Módulo futuro ainda inativo na navegação (`EncyclopediaScreen.kt`):** o saneamento técnico `TEC-001` em `EncyclopediaViewModel.kt` (relançamento explícito de `CancellationException` no operador `.catch`) foi concluído e validado em `EncyclopediaViewModelTest.kt` (5 testes); entretanto, a tela `EncyclopediaScreen` permanece fora da barra de navegação e sem sincronização na v1.0 (`FUT-005`), sem testes de UI Compose para essa tela.
-5. **Ausência de artefato Release assinado:** os APKs Debug disponíveis (`Voz-Ancestral-debug.apk` na raiz e cópia histórica `.build-outputs/Parintintin-v1.0-debug.apk`) destinam-se apenas a testes em build Debug e não substituem assinatura Release para distribuição externa.
+3. **Servidor oficial externo sem disponibilidade confirmada:** embora `/v1/manifest.json` e `/v1/dictionary.json` já estejam integrados no cliente e validados com `MockWebServer`, `https://archive.parintintin.org/` não possui confirmação de operação em produção nem política definida de exclusão remota.
+4. **Módulo futuro ainda inativo na navegação (`EncyclopediaScreen.kt`):** o saneamento `TEC-001` em `EncyclopediaViewModel.kt` foi concluído e validado em `EncyclopediaViewModelTest.kt`; entretanto, `EncyclopediaScreen` permanece fora da barra de navegação e sem sincronização na v1.0 (`FUT-005`).
+5. **Ausência de artefato Release assinado:** `Voz-Ancestral-debug.apk` é um build Debug e não substitui assinatura Release dedicada para publicação externa.
 
 ---
 
@@ -231,20 +233,17 @@ Os itens abaixo encontram-se explicitamente sem execução comprovada até o mom
 
 | Dimensão Avaliada | Evidência / Quantitativo | Classificação Oficial |
 |---|---|---|
-| **Testes Automatizados na JVM: domínio, Room, Seed, `MockWebServer`, Robolectric e Compose (`gradle :app:testDebugUnitTest`)** | **25 suítes \| 238 testes \| 0 falhas \| 0 erros \| 0 ignorados** *(reexecutado e confirmado em 22/11/2026 com `JAVA_TOOL_OPTIONS="-Duser.home=/home/appuser"`)* | **`APROVADO`** |
-| **Compilação da suíte instrumentada (`:app:assembleDebugAndroidTest`)** | `StartupSeedHiltInstrumentedTest` (`2` `@Test`), `ExampleInstrumentedTest` (`1` `@Test`) (`3` `@Test` no total) | **`COMPILADO, NÃO EXECUTADO`** |
+| **Testes Automatizados na JVM (`gradle :app:testDebugUnitTest`)** | **27 suítes \| 252 testes \| 0 falhas \| 0 erros \| 0 ignorados** *(com `JAVA_TOOL_OPTIONS="-Duser.home=/home/appuser"`)* | **`APROVADO`** |
+| **Compilação da suíte instrumentada (`:app:assembleDebugAndroidTest`)** | `app-debug-androidTest.apk` (`1.056.983` bytes; `3` `@Test` entre `StartupSeedHiltInstrumentedTest` e `ExampleInstrumentedTest`) | **`COMPILADO, NÃO EXECUTADO`** |
 | **Execução dos testes instrumentados em dispositivo/emulador (`:app:connectedDebugAndroidTest`)** | Sem emulador/ADB no ambiente | **`PENDENTE`** *(não executado)* |
-| **Geração e integridade do APK Debug v1.0** | `Voz-Ancestral-debug.apk` / `app/build/outputs/apk/debug/app-debug.apk` / `.build-outputs/app-debug.apk` (`22.218.647` bytes; histórico `.build-outputs/Parintintin-v1.0-debug.apk` com `22.753.989` bytes) | **`APROVADO`** *(build Debug)* |
-| **APK Release assinado e publicação oficial** | Falha em `:app:packageRelease` por ausência de `my-upload-key.jks` e variáveis de assinatura | **`NÃO VALIDADO`** / **`PENDENTE`** |
-| **Integração operacional com backend oficial e manifesto remoto** | Base URL `https://archive.parintintin.org/` sem disponibilidade confirmada; `/v1/manifest.json` (`getArchiveManifest()`) não integrado | **`NÃO VALIDADO`** |
-| **Testes manuais em hardware real, TalkBack físico, *benchmarks*, *memory leaks* e cobertura percentual** | Sem execução presencial, sem profiling e sem relatório JaCoCo | **`NÃO VALIDADO`** / **`PENDENTE`** |
+| **Geração e integridade do APK Debug v1.0** | Artefato único na raiz `Voz-Ancestral-debug.apk` == `app/build/outputs/apk/debug/app-debug.apk` (`22.692.801` bytes, SHA-256 `e633f1c2...e36d`) | **`APROVADO`** *(build Debug)* |
+| **Integração de `/v1/manifest.json` no cliente** | Validado em `RemoteArchiveDataSourceTest`, `ArchiveSyncRepositoryImplTest` e `DictionaryOfflineIntegrationTest` com `MockWebServer` | **`APROVADO`** *(cliente / simulado)* |
+| **APK Release, backend oficial em produção, testes em dispositivo real, TalkBack, *benchmarks*, *memory leaks* e cobertura percentual** | Sem keystore externa, sem servidor operacional confirmado, sem dispositivo/ADB e sem JaCoCo | **`NÃO VALIDADO`** / **`PENDENTE`** |
 
 ---
 
 ## 15. Histórico e Observações
 
-- **Natureza do registro:** consolidação documental retrospectiva correspondente à **Versão 1.0 Demonstrativa** do projeto **Voz Ancestral** (`Acervo Provisório`), alinhada aos documentos `SPECIFICATION.md`, `PLANNING.md`, `TASKS.md` e `docs/api-v1-contract.md`.
-- **Atualizações futuras previstas:** este documento deverá ser atualizado somente quando houver novas execuções comprovadas (como execução de `:app:connectedDebugAndroidTest` em dispositivo/emulador externo, testes presenciais com TalkBack, geração de APK Release assinado ou futura homologação contra backend oficial ativo).
-- **Preservação:** a criação deste relatório não alterou código-fonte, arquivos Gradle, testes automatizados nem os documentos anteriores (`SPECIFICATION.md`, `PLANNING.md`, `TASKS.md`, `docs/api-v1-contract.md`).
-- **Atualização após conclusão de `TEC-001` e reauditoria documental:** mantendo preservado o registro histórico inicial da v1.0 (**24 suítes e 233 testes aprovados**), o consolidado mais recente da suíte completa `:app:testDebugUnitTest` contabiliza **25 suítes e 238 testes aprovados** (`0` falhas, `0` erros, `0` ignorados), revalidados em 22/11/2026 com os 25 arquivos XML gerados em `app/build/test-results/testDebugUnitTest/`, permanecendo `androidTest` (3 métodos `@Test` em 2 arquivos de teste) sem execução por ausência de emulador Android/ADB.
-- **Natureza transitória dos relatórios gerados pelo Gradle:** enquanto este arquivo `TEST_RESULTS.md` preserva no repositório tanto o registro histórico inicial (24 suítes e 233 testes aprovados) quanto o consolidado mais recente (25 suítes e 238 testes aprovados), os arquivos XML (`app/build/test-results/testDebugUnitTest/`) e HTML (`app/build/reports/tests/testDebugUnitTest/`) ficam em `app/build/` — fora do controle de versão Git (`app/.gitignore`) —, podendo deixar de existir após limpezas, rebuilds ou reinicializações do ambiente sem invalidar os resultados históricos registrados e sendo regeneráveis por uma nova execução de `gradle :app:testDebugUnitTest`.
+- **Evolução documentada da cobertura JVM:** registro inicial da v1.0 (**233 testes / 24 suítes**), ampliação após `TEC-001` (**238 testes / 25 suítes**) e consolidação final após integração de `/v1/manifest.json`, mappers, casos de uso/classificador e card `Synced` (**252 testes / 27 suítes**, `0` falhas, `0` erros, `0` ignorados).
+- **Natureza transitória dos relatórios do Gradle:** os arquivos XML e HTML ficam em `app/build/` (fora do Git) e podem ser regenerados executando `gradle :app:testDebugUnitTest`.
+- **Atualizações futuras previstas:** este relatório deverá receber nova atualização quando os testes externos do checklist (dispositivo físico, TalkBack, `:app:connectedDebugAndroidTest`, servidor oficial em produção ou build Release) forem efetivamente executados.

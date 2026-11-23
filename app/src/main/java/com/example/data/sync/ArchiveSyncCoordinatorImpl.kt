@@ -1,7 +1,7 @@
 package com.example.data.sync
 
 import com.example.core.common.AppResult
-import com.example.di.ApplicationScope
+import com.example.core.common.ApplicationScope
 import com.example.domain.repository.SyncStatusRepository
 import com.example.domain.sync.ArchiveSyncCoordinator
 import com.example.domain.sync.ArchiveSyncOutcome

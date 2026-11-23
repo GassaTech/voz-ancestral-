@@ -20,8 +20,8 @@
 
 | Método | Caminho | Finalidade | Status de integração no cliente (v1.0) |
 |---|---|---|---|
-| `GET` | `/v1/manifest.json` | Metadados de versão e contagens esperadas do snapshot | Declarado no Retrofit (`getArchiveManifest()`), **ainda não chamado** no fluxo de `ArchiveSyncRepositoryImpl.syncArchive()` |
-| `GET` | `/v1/dictionary.json` | Lista completa de verbetes do dicionário | Implementado em `OfflineFirstDictionaryRepository` e **integrado** ao fluxo efetivo de `ArchiveSyncRepositoryImpl.syncArchive()` |
+| `GET` | `/v1/manifest.json` | Metadados de versão e contagens esperadas do snapshot | **Integrado** via `RemoteArchiveDataSource.fetchArchiveManifest()` e chamado em `ArchiveSyncRepositoryImpl.syncArchive()` antes de `/v1/dictionary.json`, validando `version` não vazia e contagens `>= 0` e gravando `lastSuccessfulRemoteVersion` |
+| `GET` | `/v1/dictionary.json` | Lista completa de verbetes do dicionário | Implementado em `OfflineFirstDictionaryRepository` e **integrado** ao fluxo efetivo de `ArchiveSyncRepositoryImpl.syncArchive()` após a leitura do manifesto |
 | `GET` | `/v1/articles.json` | Lista completa de artigos culturais da enciclopédia | Documentado no contrato, declarado no Retrofit (`getCulturalArticles()`) e implementado em `OfflineFirstEncyclopediaRepository`, porém **não integrado** ao fluxo de `ArchiveSyncRepositoryImpl.syncArchive()` na versão 1.0 |
 
 ### 1.1. Distinção Obrigatória de Estado Real (Cliente vs. Produção)
@@ -30,8 +30,8 @@
 |---|---|
 | **1. Cliente Retrofit/OkHttp/Moshi implementado** | **SIM.** `NetworkModule`, `ParintintinApiService`, `ArchiveDtos` e `RemoteArchiveDataSource` estão implementados e apontam para `https://archive.parintintin.org/`. |
 | **2. Requisições realmente executadas** | **APENAS EM TESTES LOCAIS (`MockWebServer`).** Não há evidência de execução contra o domínio externo em ambiente real. |
-| **3. Respostas remotas recebidas** | **APENAS RESPOSTAS SIMULADAS.** As respostas `HTTP 200`, `HTTP 200 []`, `404`/`500` e timeouts foram obtidas exclusivamente via `MockWebServer` (`ParintintinApiContractTest`, `RemoteArchiveDataSourceTest`, `DictionaryOfflineIntegrationTest`); a disponibilidade operacional de `https://archive.parintintin.org/` **não foi confirmada**. |
-| **4. Sincronização realmente concluída** | **NÃO COMPROVADA EM PRODUÇÃO.** Em ambiente controlado (`MockWebServer`), o fluxo completo executa apenas `GET /v1/dictionary.json`. `getArchiveManifest()` (`/v1/manifest.json`) permanece sem integração em `ArchiveSyncRepositoryImpl.syncArchive()`, e `/v1/articles.json` permanece fora da sincronização na v1.0. |
+| **3. Respostas remotas recebidas** | **APENAS RESPOSTAS SIMULADAS.** As respostas `HTTP 200`, `HTTP 200 []`, `404`/`500` e timeouts para `/v1/manifest.json` e `/v1/dictionary.json` foram obtidas exclusivamente via `MockWebServer` (`ParintintinApiContractTest`, `RemoteArchiveDataSourceTest`, `DictionaryOfflineIntegrationTest`); a disponibilidade operacional de `https://archive.parintintin.org/` **não foi confirmada**. |
+| **4. Sincronização realmente concluída** | **NÃO COMPROVADA EM PRODUÇÃO.** Em ambiente controlado (`MockWebServer`), o fluxo completo executa sequencialmente `GET /v1/manifest.json` e `GET /v1/dictionary.json`, gravando `version` em `sync_metadata`; `/v1/articles.json` permanece fora da sincronização na v1.0. |
 
 ---
 
@@ -206,7 +206,8 @@ Para evitar ambiguidades entre o que o aplicativo **já valida hoje** e o que é
    - Em cada repositório (`OfflineFirstDictionaryRepository` e `OfflineFirstEncyclopediaRepository`), a leitura de `getFavoriteIds()` / `getBookmarkedIds()`, o mapeamento para entidades Room e o `upsertAll(...)` executam atomicamente dentro de `database.withTransaction`, preservando os flags locais `is_favorite` e `is_bookmarked`.
 4. **Tolerância a campos JSON desconhecidos:**
    - Propriedades JSON adicionais não mapeadas nos DTOs são ignoradas automaticamente (`reader.skipName(); reader.skipValue()`), permitindo evolução aditiva retrocompatível dos payloads da v1.
-5. **Tratamento de falhas HTTP e de desserialização:**
+5. **Validação estrutural básica do manifesto e tratamento de falhas HTTP/parse:**
+   - `RemoteArchiveDataSource.fetchArchiveManifest()` valida que `version` não é vazia (`isNotBlank()`) e que `entriesCount >= 0` e `articlesCount >= 0` (rejeitando violações com `RemoteErrorKind.DESERIALIZATION_ERROR`).
    - Exceções HTTP (`HttpException` para `4xx`/`5xx`) e falhas de leitura/desserialização (`JsonDataException`, `JsonEncodingException`, `EOFException`) são capturadas em `RemoteArchiveDataSource` e convertidas em `AppResult.Error`, propagando normalmente `CancellationException`.
 6. **Persistência independente por repositório:**
    - Cada repositório realiza sua própria transação Room isoladamente para seu respectivo conjunto de dados (dicionário ou enciclopédia).
@@ -215,12 +216,12 @@ Para evitar ambiguidades entre o que o aplicativo **já valida hoje** e o que é
 
 Os itens abaixo definem regras esperadas do servidor e dos dados publicados; **o cliente atual ainda não executa validações automáticas para eles**:
 
-1. **Versão não vazia no manifesto (`version`):**
-   - Propõe-se que `version` seja sempre uma string não vazia (recomendado SemVer como `"1.0.0"` ou identificador monotônico de publicação). O cliente atual ainda não lê `/v1/manifest.json` nem valida se `version` está vazia ou segue determinado padrão.
+1. **Padronização semântica de `version` e comparação incremental no cliente:**
+   - Propõe-se que `version` siga um formato acordado (ex.: SemVer `"1.0.0"` ou identificador monotônico) e que futuras versões possam evitar downloads redundantes comparando `remoteVersion` com `lastSuccessfulRemoteVersion`. Atualmente o cliente valida que `version` não está em branco e persiste o valor recebido, mas ainda não realiza *skip* condicional de `/v1/dictionary.json`.
 2. **IDs únicos e estáveis entre versões (`id`):**
    - Propõe-se que cada registro em `/v1/dictionary.json` e `/v1/articles.json` tenha `id` único no array e estável entre publicações. Como o Room usa `@PrimaryKey` com `OnConflictStrategy.REPLACE`, IDs duplicados na mesma resposta sobrescrevem uns aos outros silenciosamente e alterações de `id` entre versões fazem o usuário perder `is_favorite` / `is_bookmarked` — não há verificação explícita de duplicidade pelo cliente.
 3. **Contagens do manifesto iguais ao tamanho dos arrays:**
-   - Propõe-se que `manifest.entries_count == dictionary.json.length` e `manifest.articles_count == articles.json.length`. Atualmente o cliente não compara esses números.
+   - Propõe-se que `manifest.entries_count == dictionary.json.length` e `manifest.articles_count == articles.json.length`. Atualmente o cliente valida apenas que `entries_count >= 0` e `articles_count >= 0`, sem comparar esses valores contra o tamanho do array recebido.
 4. **Timestamps semanticamente válidos (`updated_at_epoch_millis`):**
    - Propõe-se que `updated_at_epoch_millis` represente o instante real da última atualização em UTC, expresso em **milissegundos** desde `1970-01-01T00:00:00Z` (não em segundos nem em strings ISO-8601). O cliente valida apenas que o valor JSON é numérico e compatível com `Long`, sem validação semântica de intervalo ou unidade.
 5. **Campos textuais vazios vs nulos e elementos de `body_paragraphs`:**
@@ -253,7 +254,7 @@ Os itens abaixo definem regras esperadas do servidor e dos dados publicados; **o
 ### 6.1. Relação entre versão do manifesto e conteúdo
 
 - **Requisito proposto para o futuro backend:** os arquivos `/v1/manifest.json`, `/v1/dictionary.json` e `/v1/articles.json` devem ser publicados de forma consistente entre si, representando um mesmo snapshot do acervo.
-- **Comportamento atual no cliente (versão 1.0):** o aplicativo ainda **não consulta** `GET /v1/manifest.json` durante a sincronização e registra `lastSuccessfulRemoteVersion = "manifesto_nao_integrado"` nos metadados locais. Na versão 1.0, o fluxo `ArchiveSyncRepositoryImpl.syncArchive()` sincroniza **exclusivamente** o dicionário remoto (`GET /v1/dictionary.json` via `dictionaryRepository.syncFromRemote()`), e a enciclopédia **não participa** desse fluxo. A existência do endpoint `GET /v1/articles.json` no contrato e na interface `ParintintinApiService`, bem como a presença de `RemoteArchiveDataSource.fetchCulturalArticles()` e `OfflineFirstEncyclopediaRepository`, constitui estrutura preparatória e **não** significa que a sincronização da enciclopédia esteja integrada à versão 1.0.
+- **Comportamento atual no cliente (versão 1.0):** `ArchiveSyncRepositoryImpl.syncArchive()` consulta primeiramente `GET /v1/manifest.json` (via `RemoteArchiveDataSource.fetchArchiveManifest()`) e, após validação estrutural básica (`version` não em branco e contagens `>= 0`), executa `GET /v1/dictionary.json` (via `dictionaryRepository.syncFromRemote()`), gravando `lastSuccessfulRemoteVersion = manifest.version` nos metadados locais quando há verbetes sincronizados. A enciclopédia (`/v1/articles.json`) **não participa** desse fluxo na versão 1.0 (a presença de `RemoteArchiveDataSource.fetchCulturalArticles()` e `OfflineFirstEncyclopediaRepository` constitui apenas estrutura preparatória).
 
 ### 6.2. Quando a versão do manifesto deve ser incrementada *(Requisito proposto)*
 
@@ -263,19 +264,20 @@ Como parte do contrato proposto para o servidor, a propriedade `version` em `/v1
 - Correções de categorias/tópicos;
 - Eventual remoção de registros (conforme política a ser definida).
 
-Publicações sem alteração de conteúdo devem manter o mesmo valor de `version`. *(Atualmente o cliente ainda não compara essa versão antes de sincronizar.)*
+Publicações sem alteração de conteúdo devem manter o mesmo valor de `version`. *(O cliente já registra `manifest.version` em `sync_metadata`, mas ainda não pula o download de `/v1/dictionary.json` quando `version` permanece igual.)*
 
 ### 6.3. Comportamento esperado diante de falhas e execução da sincronização
 
 - **Comportamento efetivamente implementado no aplicativo na versão 1.0 (Offline-First):**
   - `ArchiveSyncRepositoryImpl.syncArchive()` executa sob `syncMutex.withLock` em `dispatchers.io`, colocando `syncState` em `SyncState.Syncing`.
   - Primeiro executa `runSeedUpdateSafely()` (`dictionarySeedUpdater.updateIfNeeded()`), isolando eventuais falhas locais do seed para não bloquear a tentativa de sincronização remota.
-  - Em seguida, invoca **exclusivamente** `dictionaryRepository.syncFromRemote()` (`OfflineFirstDictionaryRepository`), **não** disparando `encyclopediaRepository.syncFromRemote()` na versão 1.0 (`encyclopediaRepository` é injetado em `ArchiveSyncRepositoryImpl` e utilizado atualmente apenas em `observeArchiveStats()`).
+  - Em seguida, consulta `remoteArchiveDataSource.fetchArchiveManifest()` (`GET /v1/manifest.json`). Se o manifesto falhar ou for inválido (`AppResult.Error`), a sincronização é encerrada com `OfflineFallback` sem chamar `/v1/dictionary.json` e preservando dados e histórico locais.
+  - Com manifesto válido, invoca **exclusivamente** `dictionaryRepository.syncFromRemote()` (`OfflineFirstDictionaryRepository`), **não** disparando `encyclopediaRepository.syncFromRemote()` na versão 1.0 (`encyclopediaRepository` é injetado em `ArchiveSyncRepositoryImpl` e utilizado atualmente apenas em `observeArchiveStats()`).
   - Em caso de sucesso com verbetes (`AppResult.Success(RemoteSyncOutcome.Synced(entriesCount))`):
     - `OfflineFirstDictionaryRepository.syncFromRemote()` persiste os verbetes dentro de transação Room própria (`database.withTransaction`), preservando `is_favorite`.
-    - `ArchiveSyncRepositoryImpl` grava `SyncMetadataEntity` via `syncMetadataDao.upsert(...)` com `lastAttemptStatus = STATUS_SYNCED`, `lastSuccessfulSyncEpochMillis = now`, `lastSuccessfulEntriesCount = outcome.entriesCount`, `lastSuccessfulArticlesCount = null` (mantido `null` explicitamente na v1.0 por ausência de sincronização da enciclopédia) e `lastSuccessfulRemoteVersion = "manifesto_nao_integrado"`, transitando `syncState` para `SyncState.Synced`.
+    - `ArchiveSyncRepositoryImpl` grava `SyncMetadataEntity` via `syncMetadataDao.upsert(...)` com `lastAttemptStatus = STATUS_SYNCED`, `lastSuccessfulSyncEpochMillis = now`, `lastSuccessfulEntriesCount = outcome.entriesCount`, `lastSuccessfulArticlesCount = null` (mantido `null` explicitamente na v1.0 por ausência de sincronização da enciclopédia) e `lastSuccessfulRemoteVersion = manifest.version`, transitando `syncState` para `SyncState.Synced`.
   - Em caso de lista remota vazia (`AppResult.Success(RemoteSyncOutcome.Empty)`), aplica o tratamento detalhado na Seção 6.4 (`SyncState.RemoteEmpty`).
-  - Em caso de falha remota (`AppResult.Error`) ou exceção não canceladora:
+  - Em caso de falha remota (`AppResult.Error`) no manifesto ou no dicionário, ou exceção não canceladora:
     - Nenhum dado é gravado em `dictionary_entries`, preservando integralmente os registros e favoritos locais existentes.
     - `ArchiveSyncRepositoryImpl` classifica a conectividade atual via `SyncFailureClassifier.classify(networkConnectivityObserver.connectivityState.value)` (`NO_INTERNET`, `UNVALIDATED_NETWORK` ou `SERVER_UNAVAILABLE`), persiste `STATUS_OFFLINE_FALLBACK` via `syncMetadataDao.recordAttemptFailure(...)` preservando intactos `lastSuccessfulSyncEpochMillis`, `lastSuccessfulEntriesCount`, `lastSuccessfulArticlesCount` e `lastSuccessfulRemoteVersion`, e transita `syncState` para `SyncState.OfflineFallback` (ou mantém fallback em memória caso a escrita no Room falhe).
     - `CancellationException` nunca é convertida em falha offline: o estado transitório é restaurado e o cancelamento é propagado.
@@ -301,12 +303,12 @@ Publicações sem alteração de conteúdo devem manter o mesmo valor de `versio
 
 ## 7. Decisões de Contrato Pendentes para Definição Futura
 
-Antes de homologar o backend operacional e integrar o manifesto no aplicativo, precisam ser definidas:
+Antes de homologar o backend operacional em produção, precisam ser definidas:
 
 1. **Política de exclusão de registros removidos no servidor:**
    - Definir se a API trabalhará por **snapshot completo** (onde ausência na lista significa remoção no cliente, respeitando regra explícita para respostas `[]` acidentais) ou por **tombstones** (ex.: campo `is_deleted: Boolean` / `deleted_at_epoch_millis`), além do tratamento para itens excluídos que estavam favoritados pelo usuário.
-2. **Formato definitivo e granularidade de `version` no manifesto:**
-   - Confirmar se `version` será SemVer (`"1.0.0"`), timestamp/revision string ou hash de conteúdo, e se o cliente fará apenas comparação por igualdade/diferença (`remoteVersion != localVersion`) ou comparação semântica.
+2. **Formato definitivo e otimização incremental por `version` no manifesto:**
+   - Confirmar se `version` será SemVer (`"1.0.0"`), timestamp/revision string ou hash de conteúdo, e se o cliente passará a pular o download completo quando `remoteVersion == lastSuccessfulRemoteVersion`.
 3. **Validação cruzada de contagens (`entries_count` / `articles_count`):**
    - Definir se uma divergência entre o manifesto e o tamanho real das listas retornadas deve ser tratada como erro de integridade ou apenas alerta/telemetria (considerando risco de inconsistência transitória durante deploy de arquivos estáticos).
 4. **Suporte a cache condicional HTTP (`ETag` / `If-None-Match` / `304 Not Modified`):**

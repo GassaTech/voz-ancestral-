@@ -1,7 +1,7 @@
 package com.example.data.connectivity
 
 import android.net.ConnectivityManager
-import com.example.di.ApplicationScope
+import com.example.core.common.ApplicationScope
 import com.example.domain.connectivity.NetworkConnectivityObserver
 import com.example.domain.model.DeviceConnectivityState
 import javax.inject.Singleton

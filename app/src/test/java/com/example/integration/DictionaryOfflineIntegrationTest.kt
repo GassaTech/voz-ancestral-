@@ -374,6 +374,11 @@ class DictionaryOfflineIntegrationTest {
             enqueue(MockResponse().setResponseCode(500).setBody("Offline 2"))
             enqueue(
                 MockResponse().setResponseCode(200).setBody(
+                    """{"version":"1.2.0","entries_count":2,"articles_count":0}"""
+                )
+            )
+            enqueue(
+                MockResponse().setResponseCode(200).setBody(
                     """
                     [
                       ${syntheticJsonEntry(
@@ -449,6 +454,7 @@ class DictionaryOfflineIntegrationTest {
                 stack.syncRepository.syncState.first { it is SyncState.Synced }
             }
             assertTrue(database.syncMetadataDao().getMetadataOnce()?.lastSuccessfulSyncEpochMillis != null)
+            assertEquals("1.2.0", database.syncMetadataDao().getMetadataOnce()?.lastSuccessfulRemoteVersion)
 
             val entriesAfterOfficial = stack.dictionaryRepository.observeEntries().first().associateBy { it.id }
             assertEquals(5, entriesAfterOfficial.size)
@@ -477,7 +483,7 @@ class DictionaryOfflineIntegrationTest {
             """.trimIndent()
             val fourthSync = stack.syncRepository.syncArchive()
             assertTrue(fourthSync is AppResult.Error)
-            assertEquals(4, server.requestCount)
+            assertEquals(5, server.requestCount)
 
             val entriesAfterBlockedSeed = stack.dictionaryRepository.observeEntries().first().associateBy { it.id }
             assertEquals("termo_oficial_alpha", entriesAfterBlockedSeed.getValue("int_seed_1").parintintinWord)
@@ -492,6 +498,11 @@ class DictionaryOfflineIntegrationTest {
     fun `6 - atualizacao de seed antigo preserva favoritos antes e depois da sincronizacao oficial`() = runBlocking {
         val server = MockWebServer().apply {
             enqueue(MockResponse().setResponseCode(500).setBody("Offline"))
+            enqueue(
+                MockResponse().setResponseCode(200).setBody(
+                    """{"version":"1.3.0","entries_count":1,"articles_count":0}"""
+                )
+            )
             enqueue(
                 MockResponse().setResponseCode(200).setBody(
                     """
@@ -593,6 +604,11 @@ class DictionaryOfflineIntegrationTest {
         val serverInvalidSeed = MockWebServer().apply {
             enqueue(
                 MockResponse().setResponseCode(200).setBody(
+                    """{"version":"1.0.1","entries_count":1,"articles_count":0}"""
+                )
+            )
+            enqueue(
+                MockResponse().setResponseCode(200).setBody(
                     """
                     [
                       ${syntheticJsonEntry(
@@ -617,7 +633,7 @@ class DictionaryOfflineIntegrationTest {
 
         val invalidSeedSync = stackInvalidSeed.syncRepository.syncArchive()
         assertTrue(invalidSeedSync is AppResult.Success)
-        assertEquals(1, serverInvalidSeed.requestCount)
+        assertEquals(2, serverInvalidSeed.requestCount)
         withTimeout(5_000L) {
             stackInvalidSeed.syncRepository.syncState.first { it is SyncState.Synced }
         }
@@ -627,6 +643,11 @@ class DictionaryOfflineIntegrationTest {
 
         // Sub-cenário B: falha transacional na persistência do seed faz rollback completo e prossegue para HTTP 200
         val serverRollback = MockWebServer().apply {
+            enqueue(
+                MockResponse().setResponseCode(200).setBody(
+                    """{"version":"1.0.2","entries_count":1,"articles_count":0}"""
+                )
+            )
             enqueue(
                 MockResponse().setResponseCode(200).setBody(
                     """
@@ -682,7 +703,7 @@ class DictionaryOfflineIntegrationTest {
 
         val rollbackSync = stackRollback.syncRepository.syncArchive()
         assertTrue(rollbackSync is AppResult.Success)
-        assertEquals(1, serverRollback.requestCount)
+        assertEquals(2, serverRollback.requestCount)
         withTimeout(5_000L) {
             stackRollback.syncRepository.syncState.first { it is SyncState.Synced }
         }
@@ -699,8 +720,11 @@ class DictionaryOfflineIntegrationTest {
     fun `8 - resposta HTTP 200 vazia nao bloqueia futuras atualizacoes do seed e preserva metadados oficiais anteriores`() = runBlocking {
         var currentSeedJson = syntheticSeedArrayJson()
         val server = MockWebServer().apply {
+            enqueue(MockResponse().setResponseCode(200).setBody("""{"version":"1.0.0","entries_count":0,"articles_count":0}"""))
             enqueue(MockResponse().setResponseCode(200).setBody("[]"))
+            enqueue(MockResponse().setResponseCode(200).setBody("""{"version":"1.0.0","entries_count":0,"articles_count":0}"""))
             enqueue(MockResponse().setResponseCode(200).setBody("[]"))
+            enqueue(MockResponse().setResponseCode(200).setBody("""{"version":"1.4.0","entries_count":2,"articles_count":0}"""))
             enqueue(
                 MockResponse().setResponseCode(200).setBody(
                     """
@@ -721,6 +745,7 @@ class DictionaryOfflineIntegrationTest {
                     """.trimIndent()
                 )
             )
+            enqueue(MockResponse().setResponseCode(200).setBody("""{"version":"1.4.0","entries_count":0,"articles_count":0}"""))
             enqueue(MockResponse().setResponseCode(200).setBody("[]"))
             start()
         }
@@ -819,6 +844,7 @@ class DictionaryOfflineIntegrationTest {
         assertEquals(SyncMetadataEntity.STATUS_REMOTE_EMPTY, metadataAfterFourth?.lastAttemptStatus)
         assertEquals(officialSyncEpoch, metadataAfterFourth?.lastSuccessfulSyncEpochMillis)
         assertEquals(2, metadataAfterFourth?.lastSuccessfulEntriesCount)
+        assertEquals("1.4.0", metadataAfterFourth?.lastSuccessfulRemoteVersion)
 
         val finalEntries = stack.dictionaryRepository.observeEntries().first().associateBy { it.id }
         assertEquals("termo_oficial_publicado", finalEntries.getValue("int_seed_1").parintintinWord)
@@ -893,6 +919,7 @@ class DictionaryOfflineIntegrationTest {
     @Test
     fun `10 - sincronizacao oficial com favorito preservado seguida de HTTP 500 preserva timestamp oficial favoritos e HTTP 200 vazio segue RemoteEmpty`() = runBlocking {
         val server = MockWebServer().apply {
+            enqueue(MockResponse().setResponseCode(200).setBody("""{"version":"1.6.0","entries_count":1,"articles_count":0}"""))
             enqueue(
                 MockResponse().setResponseCode(200).setBody(
                     """
@@ -908,6 +935,7 @@ class DictionaryOfflineIntegrationTest {
                 )
             )
             enqueue(MockResponse().setResponseCode(500).setBody("Server Down"))
+            enqueue(MockResponse().setResponseCode(200).setBody("""{"version":"1.6.0","entries_count":0,"articles_count":0}"""))
             enqueue(MockResponse().setResponseCode(200).setBody("[]"))
             start()
         }
@@ -1037,6 +1065,7 @@ class DictionaryOfflineIntegrationTest {
         val syncRepository = ArchiveSyncRepositoryImpl(
             dictionaryRepository = dictionaryRepository,
             encyclopediaRepository = encyclopediaRepository,
+            remoteArchiveDataSource = remoteDataSource,
             syncMetadataDao = database.syncMetadataDao(),
             dictionarySeedUpdater = seedUpdater,
             networkConnectivityObserver = connectivityObserver,

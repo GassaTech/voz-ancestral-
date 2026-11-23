@@ -3,6 +3,7 @@ package com.example.data.remote.datasource
 import com.example.core.common.AppResult
 import com.example.core.common.RemoteErrorKind
 import com.example.data.remote.api.ParintintinApiService
+import com.example.data.remote.dto.ArchiveManifestDto
 import com.example.data.remote.dto.CulturalArticleDto
 import com.example.data.remote.dto.DictionaryEntryDto
 import com.squareup.moshi.JsonDataException
@@ -21,6 +22,30 @@ import retrofit2.HttpException
 class RemoteArchiveDataSource @Inject constructor(
     private val apiService: ParintintinApiService
 ) {
+    suspend fun fetchArchiveManifest(): AppResult<ArchiveManifestDto> =
+        try {
+            val manifest = apiService.getArchiveManifest()
+            when {
+                manifest.version.isBlank() -> AppResult.Error(
+                    message = "Manifesto remoto inválido: versão ausente ou vazia.",
+                    remoteErrorKind = RemoteErrorKind.DESERIALIZATION_ERROR
+                )
+                manifest.entriesCount < 0 || manifest.articlesCount < 0 -> AppResult.Error(
+                    message = "Manifesto remoto inválido: contagens não podem ser negativas.",
+                    remoteErrorKind = RemoteErrorKind.DESERIALIZATION_ERROR
+                )
+                else -> AppResult.Success(manifest)
+            }
+        } catch (ce: CancellationException) {
+            throw ce
+        } catch (e: Exception) {
+            AppResult.Error(
+                message = e.localizedMessage ?: "Falha ao consultar manifesto remoto do acervo.",
+                cause = e,
+                remoteErrorKind = classifyException(e)
+            )
+        }
+
     suspend fun fetchDictionaryEntries(): AppResult<List<DictionaryEntryDto>> =
         try {
             AppResult.Success(apiService.getDictionaryEntries())

@@ -51,7 +51,8 @@ A navegação principal da Versão 1.0 Demonstrativa disponibiliza exclusivament
   - Caso já exista sincronização oficial registrada (`lastSuccessfulSyncEpochMillis != null`), novas atualizações do seed demonstrativo são bloqueadas (`BLOCKED_BY_OFFICIAL_SYNC`).
 - **Estados de Conectividade e Sincronização:**
   - Observação contínua da rede via `ConnectivityManager.NetworkCallback` (`AndroidNetworkConnectivityObserver`) e coordenação com deduplicação em `@ApplicationScope` (`ArchiveSyncCoordinatorImpl`).
-  - Transições tipadas de `SyncState` (`Loading`, `Idle`, `Syncing`, `Synced`, `RemoteEmpty` e `OfflineFallback`) e classificação de falhas entre `NO_INTERNET`, `UNVALIDATED_NETWORK` e `SERVER_UNAVAILABLE`.
+  - Consumo prévio do manifesto remoto (`GET /v1/manifest.json` via `RemoteArchiveDataSource.fetchArchiveManifest()`) antes de `GET /v1/dictionary.json`, persistindo `lastSuccessfulRemoteVersion` em `SyncMetadataEntity`.
+  - Transições tipadas de `SyncState` (`Loading`, `Idle`, `Syncing`, `Synced`, `RemoteEmpty` e `OfflineFallback`), exibição de verbetes sincronizados na UI (`home_sync_synced_entries_only`) e classificação de falhas entre `NO_INTERNET`, `UNVALIDATED_NETWORK` e `SERVER_UNAVAILABLE`.
 
 ---
 
@@ -60,10 +61,10 @@ A navegação principal da Versão 1.0 Demonstrativa disponibiliza exclusivament
 - **Registros fictícios em português:** os 20 registros `DEMO-001` a `DEMO-020` presentes em `dictionary_seed.json` são termos e expressões demonstrativos fictícios em português (ex.: *Riolume*, *Folhaverde*, *Brisamata*).
 - **Ausência de vocabulário autêntico:** nenhum dos verbetes desta versão representa vocabulário autêntico da língua Parintintin.
 - **Ausência de áudio e pronúncia autêntica:** todos os registros possuem `phonetic_ipa`, `example_parintintin` e `example_portuguese` vazios e não há arquivos sonoros, URLs de áudio ou reprodutor de mídia implementado.
-- **Sincronização restrita ao dicionário e manifesto pendente:** `ArchiveSyncRepositoryImpl.syncArchive()` sincroniza apenas `/v1/dictionary.json`; o método `getArchiveManifest()` (`/v1/manifest.json`) está declarado em `ParintintinApiService.kt`, mas **não é chamado** no fluxo atual, a Enciclopédia permanece fora da sincronização e não há política implementada de exclusão remota de registros. Além disso, o ramo `home_sync_synced_counts` em `PreserveComponents.kt` (`entriesCount != null && articlesCount != null`) é inalcançável na v1.0 porque `articlesCount` permanece `null`.
-- **Disponibilidade do servidor oficial não confirmada (4 níveis):** o cliente Retrofit/OkHttp/Moshi está implementado e aponta para `https://archive.parintintin.org/` (documentado em [`docs/api-v1-contract.md`](docs/api-v1-contract.md)), porém **não há comprovação de requisições executadas em produção, respostas reais recebidas ou sincronização concluída contra o servidor externo**. Os testes HTTP utilizaram exclusivamente `MockWebServer`.
+- **Sincronização restrita ao dicionário na v1.0:** `ArchiveSyncRepositoryImpl.syncArchive()` consulta `GET /v1/manifest.json` e sincroniza `GET /v1/dictionary.json`; `/v1/articles.json` (Enciclopédia Cultural) permanece fora da sincronização na v1.0, a otimização de cache para pular download quando a versão do manifesto não muda ainda não é aplicada e não há política implementada de exclusão remota de registros. *(O card `OfflineArchiveStatusCard` já exibe corretamente `"Sincronizados: X verbetes."` via `home_sync_synced_entries_only` quando `articlesCount == null`.)*
+- **Disponibilidade do servidor oficial não confirmada:** o cliente Retrofit/OkHttp/Moshi está implementado e aponta para `https://archive.parintintin.org/` (documentado em [`docs/api-v1-contract.md`](docs/api-v1-contract.md)), porém **não há comprovação de requisições executadas em produção, respostas reais recebidas ou sincronização concluída contra o servidor externo**. Os testes HTTP utilizaram exclusivamente `MockWebServer`.
 - **Funcionalidades fora da v1.0:** **Enciclopédia Cultural**, **interface funcional de Favoritos**, **tela de detalhes dos verbetes**, **reprodução de áudio** e **Acervo Oficial** não estão disponíveis ao usuário nesta versão.
-- **Artefato de distribuição e execução em dispositivo:** o build **Debug** v1.0 foi gerado e verificado em `Voz-Ancestral-debug.apk` (na raiz, idêntico a `app/build/outputs/apk/debug/app-debug.apk` e `.build-outputs/app-debug.apk`, `22.218.647` bytes; mantendo-se também o build histórico `.build-outputs/Parintintin-v1.0-debug.apk` de `22.753.989` bytes). Não há assinatura **Release** configurada no ambiente, nem execução comprovada em aparelho Android físico neste container.
+- **Artefato de distribuição e execução em dispositivo:** o APK **Debug** final v1.0 foi consolidado como artefato único na raiz em `Voz-Ancestral-debug.apk` (`22.692.801` bytes, SHA-256 `e633f1c268fada603fb5c9a61d2010887a78fd826c0c9cdf6273708ecf25e36d`, idêntico a `app/build/outputs/apk/debug/app-debug.apk`). Não há assinatura **Release** configurada no ambiente, nem execução comprovada em aparelho Android físico neste container.
 
 ---
 
@@ -94,27 +95,26 @@ O aplicativo adota **Clean Architecture** combinada ao padrão **MVVM**:
 
 - **`presentation` e `ui.theme`:** telas e componentes Jetpack Compose (`HomeScreen`, `DictionaryScreen`, `PreserveComponents`, `ParintintinNavHost`, `ParintintinBottomBar`), tema Material 3 e `@HiltViewModel`s (`HomeViewModel`, `DictionaryViewModel`) expondo estados imutáveis via `StateFlow`. *(Inclui o pacote preparatório `encyclopedia`, não exposto na navegação da v1.0.)*
 - **`domain`:** modelos puros Kotlin (`DictionaryEntry`, `CulturalArticle`, `SyncState`, `DeviceConnectivityState`), contratos de repositório e conectividade, casos de uso (`ArchiveUseCases`), coordenador de sincronização (`ArchiveSyncCoordinator`) e classificador de falhas (`SyncFailureClassifier`), sem dependência de Android SDK, Room ou Retrofit.
-- **`data`:** implementações concretas de persistência local (`ParintintinDatabase`, DAOs, migrações e engine de seed `VersionedDictionarySeedUpdater`), cliente HTTP/Moshi (`ParintintinApiService`, `RemoteArchiveDataSource`), observador `ConnectivityManager` (`AndroidNetworkConnectivityObserver`) e repositórios offline-first (`OfflineFirstDictionaryRepository`, `ArchiveSyncRepositoryImpl`, além do preparatório `OfflineFirstEncyclopediaRepository`). Registra-se apenas o acoplamento pontual de classes de `data` ao qualificador `@ApplicationScope` definido no pacote `di`.
-- **`di` e `core.common`:** módulos Hilt (`DatabaseModule`, `NetworkModule`, `RepositoryModule`, `SeedModule`, `SyncModule`, `ConnectivityModule`, `CoroutinesModule`) e utilitários compartilhados (`AppResult`, `DispatcherProvider`).
+- **`data`:** implementações concretas de persistência local (`ParintintinDatabase`, DAOs, migrações e engine de seed `VersionedDictionarySeedUpdater`), cliente HTTP/Moshi (`ParintintinApiService`, `RemoteArchiveDataSource`), observador `ConnectivityManager` (`AndroidNetworkConnectivityObserver`) e repositórios offline-first (`OfflineFirstDictionaryRepository`, `ArchiveSyncRepositoryImpl`, além do preparatório `OfflineFirstEncyclopediaRepository`). A camada `data` depende apenas de `domain` e `core.common`, sem referências diretas ao pacote `di`.
+- **`di` e `core.common`:** módulos Hilt (`DatabaseModule`, `NetworkModule`, `RepositoryModule`, `SeedModule`, `SyncModule`, `ConnectivityModule`, `CoroutinesModule`) e utilitários/qualificadores compartilhados (`AppResult`, `DispatcherProvider`, `CoroutinesQualifiers` com `@ApplicationScope`).
 
 ### Estrutura Real do Repositório
 
 ```text
 .
-├── .build-outputs/                   # Cópias preservadas de APK Debug (app-debug.apk e histórico Parintintin-v1.0-debug.apk)
 ├── .env.example                      # Modelo de variáveis locais (apenas placeholder comentado na v1.0)
-├── .gitignore                        # Regras de exclusão Git (nota: *.apk e .build-outputs/ não estão listados)
+├── .gitignore                        # Regras de exclusão Git (inclui *.apk, *.aab e /.build-outputs/)
 ├── AI_USAGE.md                       # Registro transparente do uso de ferramentas de IA
 ├── PLANNING.md                       # Planejamento retrospectivo, fases, marcos e riscos
 ├── README.md                         # Apresentação geral do repositório (este arquivo)
 ├── SPECIFICATION.md                  # Especificação funcional, não funcional e técnica
 ├── TASKS.md                          # Decomposição rastreável de tarefas (DOC/VAL/TEC/FUT)
-├── TEST_RESULTS.md                   # Consolidação auditável de testes e artefatos
-├── Voz-Ancestral-debug.apk           # APK Debug v1.0 instalável copiado na raiz
+├── TEST_RESULTS.md                   # Consolidação auditável de testes, artefatos e checklist externo
+├── Voz-Ancestral-debug.apk           # APK Debug v1.0 instalável único entregue na raiz
 ├── build.gradle.kts                  # Configuração Gradle de nível raiz
 ├── debug.keystore.base64             # Material de keystore Debug do ambiente
 ├── gradle.properties                 # Parâmetros de build JVM/Gradle/Kotlin
-├── gradlew                           # Script wrapper Unix (neste container sem bit +x; executar via `sh gradlew` ou `chmod +x`)
+├── gradlew                           # Script wrapper Unix executável (-rwxr-xr-x)
 ├── gradlew.bat                       # Script wrapper Windows
 ├── metadata.json                     # Metadados do projeto no ambiente AI Studio
 ├── settings.gradle.kts               # Definição do projeto AcervoProvisorio (:app)
@@ -153,8 +153,8 @@ O aplicativo adota **Clean Architecture** combinada ao padrão **MVVM**:
         │   │   └── ui/theme/
         │   └── res/                  # Drawables, fontes locais, mipmaps, strings e XMLs
         ├── debug/                    # Manifesto e recursos específicos de Debug
-        ├── test/                     # 25 suítes automatizadas executáveis na JVM (238 testes)
-        └── androidTest/              # 5 arquivos Kotlin / 3 @Test (compilados anteriormente, não executados)
+        ├── test/                     # 27 suítes automatizadas executáveis na JVM (252 testes)
+        └── androidTest/              # 5 arquivos Kotlin / 3 @Test (recompilados via :app:assembleDebugAndroidTest, não executados)
 ```
 
 ---
@@ -189,36 +189,41 @@ cd voz-ancestral-
 
 ### 3. Sincronizar o Gradle
 - No Android Studio, execute **Sync Project with Gradle Files** para resolver dependências e configurar o projeto no Gradle (o processamento de anotações via KSP ocorre durante as tarefas de build pertinentes, como compilação e testes).
-- *Observação sobre o Gradle Wrapper:* o repositório inclui `gradlew`, `gradlew.bat`, `gradle/wrapper/gradle-wrapper.jar` e `gradle/wrapper/gradle-wrapper.properties` (`gradle-9.3.1-bin.zip`). Neste container Linux, o arquivo `gradlew` encontra-se sem permissão de execução (`-rw-r--r--`); portanto, em sistemas Unix, execute `chmod +x gradlew && ./gradlew ...`, utilize `sh gradlew ...` ou use diretamente o executável `gradle` instalado no sistema.
+- *Gradle Wrapper:* o repositório inclui `gradlew` (com permissão de execução `-rwxr-xr-x`), `gradlew.bat`, `gradle/wrapper/gradle-wrapper.jar` e `gradle/wrapper/gradle-wrapper.properties` (`gradle-9.3.1-bin.zip`). Em sistemas Unix, utilize `./gradlew ...` (ou `gradle ...` diretamente no terminal).
 
 ### 4. Compilar e instalar o APK Debug
 - **Via Android Studio:** selecione um emulador ou dispositivo físico conectado via USB/ADB (API `24` ou superior) e clique em **Run (`app`)**.
 - **Via linha de comando (build Debug):**
   ```bash
-  gradle :app:assembleDebug
+  ./gradlew :app:assembleDebug
   ```
-  *(ou `sh gradlew :app:assembleDebug`).* O APK Debug gerado ficará disponível em `app/build/outputs/apk/debug/app-debug.apk`. Uma cópia já compilada e verificada deste APK Debug v1.0 está disponível diretamente na raiz em `Voz-Ancestral-debug.apk`.
-- **Assinatura Release:** o build `:app:assembleRelease` requer keystore própria (`KEYSTORE_PATH` / `my-upload-key.jks`) e variáveis de assinatura (`STORE_PASSWORD`, `KEY_PASSWORD`) não incluídas no repositório.
+  *(ou `gradle :app:assembleDebug`).* O APK Debug gerado ficará disponível em `app/build/outputs/apk/debug/app-debug.apk`. Uma cópia já compilada e verificada deste APK Debug v1.0 está disponível como artefato único na raiz em `Voz-Ancestral-debug.apk` (`22.692.801` bytes).
+- **Assinatura Release:** o build `:app:assembleRelease` requer keystore própria (`KEYSTORE_PATH` / `my-upload-key.jks`) e variáveis de assinatura (`STORE_PASSWORD`, `KEY_PASSWORD`) não incluídas no repositório. *(As configurações `signingConfigs` e `buildTypes` em `app/build.gradle.kts` encontram-se preservadas.)*
 
-### 5. Executar os testes automatizados na JVM
+### 5. Executar os testes automatizados na JVM e preparar testes instrumentados
 ```bash
-gradle :app:testDebugUnitTest
+./gradlew :app:testDebugUnitTest
 ```
-*(Em ambientes onde o cache offline do Robolectric esteja armazenado no diretório de usuário `/home/appuser/.m2` enquanto o shell executa como `root`, como ocorre neste container, utilize `JAVA_TOOL_OPTIONS="-Duser.home=/home/appuser" gradle :app:testDebugUnitTest`.)*
+*(Em ambientes headless onde o cache offline do Robolectric esteja armazenado em `/home/appuser/.m2` enquanto o shell executa como `root`, utilize `JAVA_TOOL_OPTIONS="-Duser.home=/home/appuser" gradle :app:testDebugUnitTest`.)*
+
+Para executar a suíte instrumentada em um emulador ou aparelho Android conectado via ADB:
+```bash
+./gradlew :app:connectedDebugAndroidTest
+```
 
 ---
 
 ## 9. Testes e Validação
 
-Os resultados detalhados de verificação estão documentados em [`TEST_RESULTS.md`](TEST_RESULTS.md):
+Os resultados detalhados de verificação e o **checklist completo de testes manuais em dispositivo físico** estão documentados em [`TEST_RESULTS.md`](TEST_RESULTS.md):
 
 - **Testes automatizados na JVM (`gradle :app:testDebugUnitTest`) — APROVADOS:**
-  - **238 testes aprovados em 25 suítes** (`0` falhas, `0` erros e `0` ignorados), revalidados em 22/11/2026 com `JAVA_TOOL_OPTIONS="-Duser.home=/home/appuser"`. *(Nota: sem essa variável sob `HOME=/root` neste container isolado, 14 suítes Robolectric falham ao tentar baixar `android-all-instrumented` por ausência de acesso ao Maven Central.)*
-  - Abrangem lógica pura de domínio, validação e hash SHA-256 do seed, migrações e persistência SQLite/Room, desserialização e contratos HTTP com `MockWebServer`, observação de conectividade, coordenação de sincronização, ViewModels, navegação e UI Compose via Robolectric (`sdk = 36`).
-- **Testes instrumentados Android (`app/src/androidTest`) — COMPILADOS, NÃO EXECUTADOS:**
-  - Os 5 arquivos em `app/src/androidTest` (`StartupSeedHiltInstrumentedTest` com `2` `@Test`, `ExampleInstrumentedTest` com `1` `@Test`, além de `HiltTestRunner`, `TestDatabaseModule` e `TestNetworkModule` — totalizando `3` métodos `@Test`) foram compilados em etapa anterior via `:app:assembleDebugAndroidTest`, mas **não foram executados** em emulador ou dispositivo físico neste ambiente devido à ausência de emulador e de acesso ADB.
-- **Pendências externas de validação:**
-  - Execução de `gradle :app:connectedDebugAndroidTest` em dispositivo ou emulador real, testes manuais em hardware físico, auditoria prática com TalkBack, *benchmarks* de desempenho e validação contra servidor oficial ativo permanecem pendentes.
+  - **252 testes aprovados em 27 suítes** (`0` falhas, `0` erros e `0` ignorados), executados com `JAVA_TOOL_OPTIONS="-Duser.home=/home/appuser"`. *(Evolução auditada: `233/24` → `238/25` → `252/27`.)*
+  - Abrangem lógica pura de domínio, mappers, casos de uso, validação e hash SHA-256 do seed, migrações e persistência SQLite/Room, desserialização e contratos HTTP (`/v1/manifest.json` e `/v1/dictionary.json`) com `MockWebServer`, observação de conectividade, coordenação de sincronização, ViewModels, navegação e UI Compose via Robolectric (`sdk = 36`).
+- **Testes instrumentados Android (`app/src/androidTest`) — RECOMPILADOS, NÃO EXECUTADOS:**
+  - Os 5 arquivos em `app/src/androidTest` (`StartupSeedHiltInstrumentedTest` com `2` `@Test`, `ExampleInstrumentedTest` com `1` `@Test`, além de `HiltTestRunner`, `TestDatabaseModule` e `TestNetworkModule` — totalizando `3` métodos `@Test`) foram atualizados e recompilados via `:app:assembleDebugAndroidTest` (`app-debug-androidTest.apk`, `1.056.983` bytes), mas **não foram executados** em emulador ou dispositivo físico neste container devido à ausência de emulador e de acesso ADB.
+- **Pendências externas de validação (a executar manualmente pelo avaliador/usuário):**
+  - Instalação de `Voz-Ancestral-debug.apk` em aparelho Android ou emulador, execução de `:app:connectedDebugAndroidTest`, testes de uso real offline/modo avião/sincronização manual, rotação/fontes grandes, auditoria prática com TalkBack e verificação contra servidor oficial quando disponível (roteiro passo a passo em [`TEST_RESULTS.md`](TEST_RESULTS.md), Seção 12).
 
 ---
 
@@ -228,10 +233,10 @@ Os resultados detalhados de verificação estão documentados em [`TEST_RESULTS.
 |---|---|
 | [`SPECIFICATION.md`](SPECIFICATION.md) | Especificação funcional, requisitos (`RF`, `RNF`), regras de negócio (`RN`), arquitetura e limitações da v1.0. |
 | [`PLANNING.md`](PLANNING.md) | Planejamento retrospectivo, metodologia SDD, 11 fases, 10 marcos (`M1`–`M10`), riscos e prioridades. |
-| [`TASKS.md`](TASKS.md) | Decomposição rastreável das 23 tarefas entre documentação (`DOC`), validação (`VAL`), saneamento técnico (`TEC`) e evolução futura (`FUT`). |
-| [`TEST_RESULTS.md`](TEST_RESULTS.md) | Registro auditável das 25 suítes JVM (238 testes, preservando o histórico anterior de 24 suítes / 233 testes), compilação de `androidTest`, verificação do APK Debug e cenários não validados. |
+| [`TASKS.md`](TASKS.md) | Decomposição rastreável das 26 tarefas entre documentação (`DOC`), validação (`VAL`), saneamento técnico (`TEC`) e evolução futura (`FUT`). |
+| [`TEST_RESULTS.md`](TEST_RESULTS.md) | Registro auditável das 27 suítes JVM (252 testes, preservando os marcos anteriores de 233/24 e 238/25), recompilação de `androidTest`, verificação do APK Debug único e checklist externo de testes em dispositivo. |
 | [`AI_USAGE.md`](AI_USAGE.md) | Registro transparente do uso de ferramentas de Inteligência Artificial, responsabilidades humanas e limites acadêmicos. |
-| [`docs/api-v1-contract.md`](docs/api-v1-contract.md) | Especificação proposta para o futuro contrato JSON/HTTP da API v1. |
+| [`docs/api-v1-contract.md`](docs/api-v1-contract.md) | Proposta de contrato JSON/HTTP da API v1 alinhada ao consumo de `/v1/manifest.json` e `/v1/dictionary.json` no cliente. |
 
 ---
 
@@ -239,9 +244,9 @@ Os resultados detalhados de verificação estão documentados em [`TEST_RESULTS.
 
 | Situação | Itens Abrangidos |
 |---|---|
-| **Implementado (v1.0 Demonstrativa)** | Telas **Início** e **Dicionário**, busca textual com *debounce*, filtros por categoria semântica e classe gramatical, banco Room v3 com migrações, seed demonstrativo versionado por SHA-256 (`DEMO-001`..`DEMO-020`), observação de conectividade, coordenação de sincronização offline-first e 238 testes aprovados na JVM. |
-| **Parcialmente Implementado / Estruturas Preparatórias** | Módulo `Encyclopedia` presente no código sem exposição na barra inferior nem sincronização (saneamento `TEC-001` de `CancellationException` concluído e validado em `EncyclopediaViewModel.kt`); campos/use cases de favoritos e detalhes sem UI na v1.0; endpoint `/v1/manifest.json` declarado sem integração; suíte `androidTest` apenas compilada. |
-| **Planejado (Pós-v1.0)** | Obtenção de conteúdo linguístico e cultural autêntico devidamente validado e autorizado; disponibilização operacional de backend HTTPS oficial; integração do manifesto e definição da política de exclusão remota; ativação da Enciclopédia Cultural, interface de Favoritos, tela de Detalhes e reprodução de áudio; execução em dispositivo físico e empacotamento Release assinado. |
+| **Implementado (v1.0 Demonstrativa)** | Telas **Início** e **Dicionário**, busca textual com *debounce*, filtros por categoria semântica e classe gramatical, banco Room v3 com migrações, seed demonstrativo versionado por SHA-256 (`DEMO-001`..`DEMO-020`), observação de conectividade, consumo cliente de `/v1/manifest.json` + `/v1/dictionary.json`, coordenação offline-first desacoplada de `di`, exibição de verbetes sincronizados na Home e **252 testes aprovados em 27 suítes JVM**. |
+| **Parcialmente Implementado / Estruturas Preparatórias** | Módulo `Encyclopedia` presente no código sem exposição na barra inferior nem sincronização (`TEC-001` concluído e validado); campos/use cases de favoritos e detalhes sem UI na v1.0; suíte `androidTest` recompilada (`app-debug-androidTest.apk`) aguardando dispositivo/emulador para execução. |
+| **Planejado (Pós-v1.0)** | Obtenção de conteúdo linguístico e cultural autêntico devidamente validado e autorizado; disponibilização operacional de backend HTTPS oficial; otimização de cache por versão de manifesto e política de exclusão remota; ativação da Enciclopédia Cultural, interface de Favoritos, tela de Detalhes e reprodução de áudio; execução em dispositivo físico e empacotamento Release assinado. |
 
 ---
 

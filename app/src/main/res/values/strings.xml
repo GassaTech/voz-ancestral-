@@ -26,6 +26,7 @@
     <string name="home_sync_synced_title">Acervo sincronizado</string>
     <string name="home_sync_synced_body">Última sincronização em %1$s.</string>
     <string name="home_sync_synced_counts">Sincronizados: %1$d verbetes e %2$d artigos.</string>
+    <string name="home_sync_synced_entries_only">Sincronizados: %1$d verbetes.</string>
     <string name="home_sync_offline_no_internet_title">Sem conexão com a internet</string>
     <string name="home_sync_offline_no_internet_body">O aplicativo continua utilizando os dados disponíveis localmente. A sincronização poderá ser tentada novamente quando houver conexão.</string>
     <string name="home_sync_offline_unvalidated_title">Conexão ainda não validada</string>

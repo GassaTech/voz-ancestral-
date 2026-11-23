@@ -434,14 +434,21 @@ fun OfflineArchiveStatusCard(
 
     val secondaryDetail = when (syncState) {
         is SyncState.Synced -> {
-            if (syncState.entriesCount != null && syncState.articlesCount != null) {
-                stringResource(
-                    R.string.home_sync_synced_counts,
-                    syncState.entriesCount,
-                    syncState.articlesCount
-                )
-            } else {
-                null
+            when {
+                syncState.entriesCount != null && syncState.articlesCount != null -> {
+                    stringResource(
+                        R.string.home_sync_synced_counts,
+                        syncState.entriesCount,
+                        syncState.articlesCount
+                    )
+                }
+                syncState.entriesCount != null -> {
+                    stringResource(
+                        R.string.home_sync_synced_entries_only,
+                        syncState.entriesCount
+                    )
+                }
+                else -> null
             }
         }
         is SyncState.RemoteEmpty -> {

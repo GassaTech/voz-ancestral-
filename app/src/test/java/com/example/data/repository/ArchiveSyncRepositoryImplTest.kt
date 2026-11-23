@@ -9,6 +9,11 @@ import com.example.data.local.seed.DictionarySeedSpec
 import com.example.data.local.seed.DictionarySeedUpdater
 import com.example.data.local.seed.SeedUpdateOutcome
 import com.example.data.local.seed.SeedUpdateOutcomeStatus
+import com.example.data.remote.api.ParintintinApiService
+import com.example.data.remote.datasource.RemoteArchiveDataSource
+import com.example.data.remote.dto.ArchiveManifestDto
+import com.example.data.remote.dto.CulturalArticleDto
+import com.example.data.remote.dto.DictionaryEntryDto
 import com.example.domain.connectivity.NetworkConnectivityObserver
 import com.example.domain.model.CulturalArticle
 import com.example.domain.model.CulturalTopic
@@ -172,7 +177,7 @@ class ArchiveSyncRepositoryImplTest {
         assertEquals(12, syncDao.lastSaved?.lastSuccessfulEntriesCount)
         assertNull(syncDao.lastSaved?.lastSuccessfulArticlesCount)
         assertEquals(
-            ArchiveSyncRepositoryImpl.MANIFEST_VERSION_UNAVAILABLE,
+            "1.0.0",
             syncDao.lastSaved?.lastSuccessfulRemoteVersion
         )
     }
@@ -288,7 +293,7 @@ class ArchiveSyncRepositoryImplTest {
             lastSuccessfulSyncEpochMillis = 1_700_000_010_000L,
             lastSuccessfulEntriesCount = null,
             lastSuccessfulArticlesCount = null,
-            lastSuccessfulRemoteVersion = ArchiveSyncRepositoryImpl.MANIFEST_VERSION_UNAVAILABLE
+            lastSuccessfulRemoteVersion = "1.0.0"
         )
         val syncDao = FakeSyncMetadataDao(
             initialEntity = persistedSynced,
@@ -317,7 +322,7 @@ class ArchiveSyncRepositoryImplTest {
             lastSuccessfulSyncEpochMillis = 1_700_000_000_000L,
             lastSuccessfulEntriesCount = 20,
             lastSuccessfulArticlesCount = 8,
-            lastSuccessfulRemoteVersion = ArchiveSyncRepositoryImpl.MANIFEST_VERSION_UNAVAILABLE
+            lastSuccessfulRemoteVersion = "1.0.0"
         )
         val syncDao = FakeSyncMetadataDao(
             initialEntity = persistedFallback,
@@ -449,7 +454,7 @@ class ArchiveSyncRepositoryImplTest {
             lastSuccessfulSyncEpochMillis = 1_700_000_000_000L,
             lastSuccessfulEntriesCount = 14,
             lastSuccessfulArticlesCount = 6,
-            lastSuccessfulRemoteVersion = ArchiveSyncRepositoryImpl.MANIFEST_VERSION_UNAVAILABLE
+            lastSuccessfulRemoteVersion = "1.0.0"
         )
         val syncDao = FakeSyncMetadataDao(initialEntity = initialSynced)
         val repository = createRepository(
@@ -482,7 +487,7 @@ class ArchiveSyncRepositoryImplTest {
             lastSuccessfulSyncEpochMillis = 1_700_000_000_000L,
             lastSuccessfulEntriesCount = 11,
             lastSuccessfulArticlesCount = 4,
-            lastSuccessfulRemoteVersion = ArchiveSyncRepositoryImpl.MANIFEST_VERSION_UNAVAILABLE
+            lastSuccessfulRemoteVersion = "1.0.0"
         )
         val syncDao = FakeSyncMetadataDao(
             initialEntity = initialSynced,
@@ -515,7 +520,7 @@ class ArchiveSyncRepositoryImplTest {
             lastSuccessfulSyncEpochMillis = 1_700_000_000_000L,
             lastSuccessfulEntriesCount = 10,
             lastSuccessfulArticlesCount = 3,
-            lastSuccessfulRemoteVersion = ArchiveSyncRepositoryImpl.MANIFEST_VERSION_UNAVAILABLE
+            lastSuccessfulRemoteVersion = "1.0.0"
         )
         val syncDao = FakeSyncMetadataDao(
             initialEntity = initialSynced,
@@ -549,7 +554,7 @@ class ArchiveSyncRepositoryImplTest {
             lastSuccessfulSyncEpochMillis = futureReference,
             lastSuccessfulEntriesCount = 1,
             lastSuccessfulArticlesCount = 1,
-            lastSuccessfulRemoteVersion = ArchiveSyncRepositoryImpl.MANIFEST_VERSION_UNAVAILABLE
+            lastSuccessfulRemoteVersion = "1.0.0"
         )
         val syncDao = FakeSyncMetadataDao(initialEntity = persisted)
         val repository = createRepository(
@@ -1155,7 +1160,7 @@ class ArchiveSyncRepositoryImplTest {
             lastSuccessfulSyncEpochMillis = officialEpoch,
             lastSuccessfulEntriesCount = 30,
             lastSuccessfulArticlesCount = null,
-            lastSuccessfulRemoteVersion = ArchiveSyncRepositoryImpl.MANIFEST_VERSION_UNAVAILABLE
+            lastSuccessfulRemoteVersion = "1.0.0"
         )
         val syncDao = FakeSyncMetadataDao(initialEntity = initialSynced)
         val connectivityObserver = FakeNetworkConnectivityObserver(DeviceConnectivityState.Online)
@@ -1212,9 +1217,114 @@ class ArchiveSyncRepositoryImplTest {
         assertNull(syncDao.lastSaved?.lastFailureReason)
     }
 
+    @Test
+    fun `manifesto remoto valido grava version oficial em sync_metadata apos Synced`() = runTest {
+        val syncDao = FakeSyncMetadataDao()
+        val repository = createRepository(
+            dictionaryRepository = FakeDictionaryRepository(
+                syncResult = AppResult.Success(RemoteSyncOutcome.Synced(18))
+            ),
+            remoteArchiveDataSource = RemoteArchiveDataSource(
+                FakeManifestApiService(
+                    manifestProvider = {
+                        ArchiveManifestDto(version = "2.1.0", entriesCount = 18, articlesCount = 0)
+                    }
+                )
+            ),
+            syncDao = syncDao
+        )
+        advanceUntilIdle()
+
+        val result = repository.syncArchive()
+        advanceUntilIdle()
+
+        assertTrue(result is AppResult.Success)
+        assertEquals("2.1.0", syncDao.lastSaved?.lastSuccessfulRemoteVersion)
+        assertEquals(18, syncDao.lastSaved?.lastSuccessfulEntriesCount)
+        assertNull(syncDao.lastSaved?.lastSuccessfulArticlesCount)
+    }
+
+    @Test
+    fun `falha ou manifesto invalido registra OfflineFallback sem chamar dicionario e preserva historico oficial`() = runTest {
+        val officialEpoch = 1_700_000_000_000L
+        val initialSynced = SyncMetadataEntity(
+            lastAttemptEpochMillis = officialEpoch,
+            lastAttemptStatus = SyncMetadataEntity.STATUS_SYNCED,
+            lastFailureReason = null,
+            lastSuccessfulSyncEpochMillis = officialEpoch,
+            lastSuccessfulEntriesCount = 22,
+            lastSuccessfulArticlesCount = null,
+            lastSuccessfulRemoteVersion = "1.5.0"
+        )
+        val syncDao = FakeSyncMetadataDao(initialEntity = initialSynced)
+        var dictionarySyncCalls = 0
+        val repository = createRepository(
+            dictionaryRepository = FakeDictionaryRepository(
+                customSync = {
+                    dictionarySyncCalls += 1
+                    AppResult.Success(RemoteSyncOutcome.Synced(99))
+                }
+            ),
+            remoteArchiveDataSource = RemoteArchiveDataSource(
+                FakeManifestApiService(
+                    manifestProvider = {
+                        ArchiveManifestDto(version = " ", entriesCount = 10, articlesCount = 0)
+                    }
+                )
+            ),
+            syncDao = syncDao,
+            connectivityObserver = FakeNetworkConnectivityObserver(DeviceConnectivityState.Online)
+        )
+        repository.syncState.first { it is SyncState.Synced }
+
+        val result = repository.syncArchive()
+        advanceUntilIdle()
+
+        assertTrue(result is AppResult.Error)
+        assertEquals(RemoteErrorKind.DESERIALIZATION_ERROR, (result as AppResult.Error).remoteErrorKind)
+        assertEquals(0, dictionarySyncCalls)
+        val fallback = repository.syncState.value as SyncState.OfflineFallback
+        assertEquals(SyncFailureType.SERVER_UNAVAILABLE, fallback.failureType)
+        assertEquals(officialEpoch, fallback.lastSuccessfulSyncEpochMillis)
+        assertEquals("1.5.0", syncDao.lastSaved?.lastSuccessfulRemoteVersion)
+        assertEquals(22, syncDao.lastSaved?.lastSuccessfulEntriesCount)
+    }
+
+    @Test
+    fun `cancelamento ao consultar manifesto remoto restaura estado anterior sem chamar dicionario e relanca CancellationException`() = runTest {
+        val syncDao = FakeSyncMetadataDao()
+        var dictionarySyncCalls = 0
+        val repository = createRepository(
+            dictionaryRepository = FakeDictionaryRepository(
+                customSync = {
+                    dictionarySyncCalls += 1
+                    AppResult.Success(RemoteSyncOutcome.Synced(3))
+                }
+            ),
+            remoteArchiveDataSource = RemoteArchiveDataSource(
+                FakeManifestApiService(
+                    manifestProvider = { throw CancellationException("Cancelado ao obter manifesto") }
+                )
+            ),
+            syncDao = syncDao
+        )
+        advanceUntilIdle()
+
+        try {
+            repository.syncArchive()
+            fail("Era esperado relançar CancellationException")
+        } catch (_: CancellationException) {
+            advanceUntilIdle()
+            assertEquals(0, dictionarySyncCalls)
+            assertNull(syncDao.lastSaved)
+            assertEquals(SyncState.Idle, repository.syncState.value)
+        }
+    }
+
     private fun TestScope.createRepository(
         dictionaryRepository: DictionaryRepository = FakeDictionaryRepository(),
         encyclopediaRepository: EncyclopediaRepository = FakeEncyclopediaRepository(),
+        remoteArchiveDataSource: RemoteArchiveDataSource = RemoteArchiveDataSource(FakeManifestApiService()),
         syncDao: SyncMetadataDao = FakeSyncMetadataDao(),
         dictionarySeedUpdater: DictionarySeedUpdater = FakeDictionarySeedUpdater(),
         connectivityObserver: NetworkConnectivityObserver = FakeNetworkConnectivityObserver()
@@ -1225,12 +1335,23 @@ class ArchiveSyncRepositoryImplTest {
         return ArchiveSyncRepositoryImpl(
             dictionaryRepository = dictionaryRepository,
             encyclopediaRepository = encyclopediaRepository,
+            remoteArchiveDataSource = remoteArchiveDataSource,
             syncMetadataDao = syncDao,
             dictionarySeedUpdater = dictionarySeedUpdater,
             networkConnectivityObserver = connectivityObserver,
             dispatchers = TestDispatcherProvider(testDispatcher),
             applicationScope = applicationScope
         )
+    }
+
+    private class FakeManifestApiService(
+        private val manifestProvider: suspend () -> ArchiveManifestDto = {
+            ArchiveManifestDto(version = "1.0.0", entriesCount = 0, articlesCount = 0)
+        }
+    ) : ParintintinApiService {
+        override suspend fun getArchiveManifest(): ArchiveManifestDto = manifestProvider()
+        override suspend fun getDictionaryEntries(): List<DictionaryEntryDto> = emptyList()
+        override suspend fun getCulturalArticles(): List<CulturalArticleDto> = emptyList()
     }
 
     private class TestDispatcherProvider(
