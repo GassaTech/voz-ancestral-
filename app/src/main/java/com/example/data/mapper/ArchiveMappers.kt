@@ -83,8 +83,7 @@ fun SyncMetadataEntity?.toDomainSyncState(
             if (syncedAt != null) {
                 SyncState.Synced(
                     lastSyncedEpochMillis = syncedAt,
-                    entriesCount = lastSuccessfulEntriesCount,
-                    articlesCount = lastSuccessfulArticlesCount
+                    territoriesCount = lastSuccessfulEntriesCount
                 )
             } else {
                 SyncState.Idle
@@ -94,8 +93,7 @@ fun SyncMetadataEntity?.toDomainSyncState(
         SyncMetadataEntity.STATUS_REMOTE_EMPTY -> SyncState.RemoteEmpty(
             lastAttemptEpochMillis = lastAttemptEpochMillis,
             lastSyncedEpochMillis = lastSuccessfulSyncEpochMillis,
-            entriesCount = lastSuccessfulEntriesCount,
-            articlesCount = lastSuccessfulArticlesCount
+            territoriesCount = lastSuccessfulEntriesCount
         )
 
         SyncMetadataEntity.STATUS_OFFLINE_FALLBACK -> {

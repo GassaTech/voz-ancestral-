@@ -137,7 +137,7 @@ class ArchiveSyncRepositoryImplTest {
     }
 
     @Test
-    fun `4 - sucesso da sincronizacao territorial atualiza estado para Synced com articlesCount null`() = runTest {
+    fun `4 - sucesso da sincronizacao territorial atualiza estado para Synced com territoriesCount`() = runTest {
         val syncDao = FakeSyncMetadataDao()
         val repository = createRepository(
             indigenousLandRepository = FakeIndigenousLandRepository(
@@ -154,8 +154,7 @@ class ArchiveSyncRepositoryImplTest {
 
         assertTrue(result is AppResult.Success)
         val state = repository.syncState.value as SyncState.Synced
-        assertEquals(12, state.entriesCount)
-        assertNull(state.articlesCount)
+        assertEquals(12, state.territoriesCount)
         assertEquals(SyncMetadataEntity.STATUS_SYNCED, syncDao.lastSaved?.lastAttemptStatus)
         assertEquals(12, syncDao.lastSaved?.lastSuccessfulEntriesCount)
         assertNull(syncDao.lastSaved?.lastSuccessfulArticlesCount)
@@ -263,8 +262,7 @@ class ArchiveSyncRepositoryImplTest {
 
         val state = repository.syncState.value as SyncState.Synced
         assertEquals(1_700_000_010_000L, state.lastSyncedEpochMillis)
-        assertNull(state.entriesCount)
-        assertNull(state.articlesCount)
+        assertNull(state.territoriesCount)
     }
 
     @Test
@@ -375,7 +373,7 @@ class ArchiveSyncRepositoryImplTest {
         )
 
         val recovered = repository.syncState.first { it is SyncState.Synced } as SyncState.Synced
-        assertEquals(627, recovered.entriesCount)
+        assertEquals(627, recovered.territoriesCount)
 
         val result = repository.syncArchive()
         advanceUntilIdle()
@@ -425,8 +423,7 @@ class ArchiveSyncRepositoryImplTest {
             advanceUntilIdle()
             val restored = repository.syncState.value as SyncState.Synced
             assertEquals(1_700_000_000_000L, restored.lastSyncedEpochMillis)
-            assertEquals(14, restored.entriesCount)
-            assertNull(restored.articlesCount)
+            assertEquals(14, restored.territoriesCount)
         }
     }
 
@@ -557,8 +554,7 @@ class ArchiveSyncRepositoryImplTest {
 
         // Mesmo antes de o Flow do Room emitir, PendingRoomEmission já expõe Synced.
         val resolvedBeforeRoomEmit = repository.syncState.value as SyncState.Synced
-        assertEquals(15, resolvedBeforeRoomEmit.entriesCount)
-        assertNull(resolvedBeforeRoomEmit.articlesCount)
+        assertEquals(15, resolvedBeforeRoomEmit.territoriesCount)
 
         // Inicia segunda sincronização antes da emissão atrasada do Room da primeira tentativa.
         val secondJob = async { repository.syncArchive() }
@@ -576,8 +572,7 @@ class ArchiveSyncRepositoryImplTest {
         advanceUntilIdle()
 
         val finalState = repository.syncState.value as SyncState.Synced
-        assertEquals(22, finalState.entriesCount)
-        assertNull(finalState.articlesCount)
+        assertEquals(22, finalState.territoriesCount)
     }
 
     @Test
@@ -609,7 +604,7 @@ class ArchiveSyncRepositoryImplTest {
         assertEquals(1, seedUpdater.updateCallCount)
         assertEquals(listOf("seed", "remote"), callOrder)
         val synced = errorResultRepository.syncState.value as SyncState.Synced
-        assertEquals(7, synced.entriesCount)
+        assertEquals(7, synced.territoriesCount)
         assertEquals(SyncMetadataEntity.STATUS_SYNCED, syncDao.lastSaved?.lastAttemptStatus)
         assertNull(syncDao.lastSaved?.lastFailureReason)
 
@@ -804,7 +799,7 @@ class ArchiveSyncRepositoryImplTest {
             assertEquals("Contagem incorreta para status $status", 1, seedUpdater.updateCallCount)
             assertEquals("Ordem incorreta para status $status", listOf("seed", "remote"), callOrder)
             val state = repository.syncState.value as SyncState.Synced
-            assertEquals(14, state.entriesCount)
+            assertEquals(14, state.territoriesCount)
             assertNotNull(syncDao.lastSaved?.lastSuccessfulSyncEpochMillis)
         }
     }
@@ -827,8 +822,7 @@ class ArchiveSyncRepositoryImplTest {
 
         val state = repository.syncState.value as SyncState.RemoteEmpty
         assertNull(state.lastSyncedEpochMillis)
-        assertNull(state.entriesCount)
-        assertNull(state.articlesCount)
+        assertNull(state.territoriesCount)
 
         val saved = syncDao.lastSaved
         assertNotNull(saved)
@@ -867,8 +861,7 @@ class ArchiveSyncRepositoryImplTest {
         val state = repository.syncState.value as SyncState.RemoteEmpty
         assertTrue(state.lastAttemptEpochMillis > initialSynced.lastAttemptEpochMillis)
         assertEquals(1_700_000_000_000L, state.lastSyncedEpochMillis)
-        assertEquals(627, state.entriesCount)
-        assertNull(state.articlesCount)
+        assertEquals(627, state.territoriesCount)
 
         val saved = syncDao.lastSaved
         assertNotNull(saved)
@@ -910,7 +903,7 @@ class ArchiveSyncRepositoryImplTest {
         val recoveredNoHistory = repoWithoutHistory.syncState.value as SyncState.RemoteEmpty
         assertEquals(1_700_000_030_000L, recoveredNoHistory.lastAttemptEpochMillis)
         assertNull(recoveredNoHistory.lastSyncedEpochMillis)
-        assertNull(recoveredNoHistory.entriesCount)
+        assertNull(recoveredNoHistory.territoriesCount)
 
         val withHistory = SyncMetadataEntity(
             lastAttemptEpochMillis = 1_700_000_050_000L,
@@ -936,8 +929,7 @@ class ArchiveSyncRepositoryImplTest {
         val recoveredWithHistory = repoWithHistory.syncState.value as SyncState.RemoteEmpty
         assertEquals(1_700_000_050_000L, recoveredWithHistory.lastAttemptEpochMillis)
         assertEquals(1_700_000_010_000L, recoveredWithHistory.lastSyncedEpochMillis)
-        assertEquals(627, recoveredWithHistory.entriesCount)
-        assertNull(recoveredWithHistory.articlesCount)
+        assertEquals(627, recoveredWithHistory.territoriesCount)
     }
 
     @Test

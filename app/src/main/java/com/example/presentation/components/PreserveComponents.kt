@@ -434,21 +434,12 @@ fun OfflineArchiveStatusCard(
 
     val secondaryDetail = when (syncState) {
         is SyncState.Synced -> {
-            when {
-                syncState.entriesCount != null && syncState.articlesCount != null -> {
-                    stringResource(
-                        R.string.home_sync_synced_counts,
-                        syncState.entriesCount,
-                        syncState.articlesCount
-                    )
+            syncState.territoriesCount?.let { count ->
+                if (count == 1) {
+                    stringResource(R.string.home_sync_synced_territory_singular)
+                } else {
+                    stringResource(R.string.home_sync_synced_territories_count, count)
                 }
-                syncState.entriesCount != null -> {
-                    stringResource(
-                        R.string.home_sync_synced_entries_only,
-                        syncState.entriesCount
-                    )
-                }
-                else -> null
             }
         }
         is SyncState.RemoteEmpty -> {
@@ -633,6 +624,18 @@ fun OfflineArchiveStatusCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                StatusMetricChip(
+                    label = if (stats.totalTerritories == 1) {
+                        stringResource(R.string.home_offline_territory_singular)
+                    } else {
+                        stringResource(
+                            R.string.home_offline_territories_count,
+                            stats.totalTerritories
+                        )
+                    },
+                    accentColor = accentColor,
+                    modifier = Modifier.testTag("home_offline_territories_chip")
+                )
                 StatusMetricChip(
                     label = stringResource(R.string.home_offline_entries_count, stats.totalEntries),
                     accentColor = accentColor,

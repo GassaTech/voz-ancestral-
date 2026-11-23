@@ -210,8 +210,7 @@ class ArchiveSyncRepositoryImpl @Inject constructor(
                                 lastClassifiedFailure = null
                                 val syncedState = SyncState.Synced(
                                     lastSyncedEpochMillis = now,
-                                    entriesCount = outcome.entriesCount,
-                                    articlesCount = null
+                                    territoriesCount = outcome.territoriesCount
                                 )
                                 syncMetadataDao.upsert(
                                     SyncMetadataEntity(
@@ -220,7 +219,7 @@ class ArchiveSyncRepositoryImpl @Inject constructor(
                                         lastAttemptStatus = SyncMetadataEntity.STATUS_SYNCED,
                                         lastFailureReason = null,
                                         lastSuccessfulSyncEpochMillis = now,
-                                        lastSuccessfulEntriesCount = outcome.entriesCount,
+                                        lastSuccessfulEntriesCount = outcome.territoriesCount,
                                         lastSuccessfulArticlesCount = null,
                                         lastSuccessfulRemoteVersion = IBAMA_TERRITORIES_REMOTE_VERSION
                                     )
@@ -239,8 +238,7 @@ class ArchiveSyncRepositoryImpl @Inject constructor(
                                 val remoteEmptyState = SyncState.RemoteEmpty(
                                     lastAttemptEpochMillis = now,
                                     lastSyncedEpochMillis = previousMetadata?.lastSuccessfulSyncEpochMillis,
-                                    entriesCount = previousMetadata?.lastSuccessfulEntriesCount,
-                                    articlesCount = previousMetadata?.lastSuccessfulArticlesCount
+                                    territoriesCount = previousMetadata?.lastSuccessfulEntriesCount
                                 )
                                 transientOverride.value = TransientSyncOverride.PendingRoomEmission(
                                     attemptEpochMillis = now,

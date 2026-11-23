@@ -129,7 +129,7 @@ class ArchiveMappersTest {
             lastSuccessfulRemoteVersion = "1.0.0"
         ).toDomainSyncState("Offline")
         assertEquals(
-            SyncState.Synced(lastSyncedEpochMillis = 100L, entriesCount = 20, articlesCount = null),
+            SyncState.Synced(lastSyncedEpochMillis = 100L, territoriesCount = 20),
             syncedValid
         )
 
@@ -157,8 +157,7 @@ class ArchiveMappersTest {
             SyncState.RemoteEmpty(
                 lastAttemptEpochMillis = 200L,
                 lastSyncedEpochMillis = 100L,
-                entriesCount = 20,
-                articlesCount = null
+                territoriesCount = 20
             ),
             remoteEmpty
         )

@@ -706,7 +706,7 @@ class DictionaryOfflineIntegrationTest {
             stack.syncRepository.syncState.first { it is SyncState.RemoteEmpty }
         } as SyncState.RemoteEmpty
         assertNull(firstState.lastSyncedEpochMillis)
-        assertNull(firstState.entriesCount)
+        assertNull(firstState.territoriesCount)
 
         val metadataAfterFirst = database.syncMetadataDao().getMetadataOnce()
         assertEquals(SyncMetadataEntity.STATUS_REMOTE_EMPTY, metadataAfterFirst?.lastAttemptStatus)
@@ -744,7 +744,7 @@ class DictionaryOfflineIntegrationTest {
         val syncedState = withTimeout(5_000L) {
             stack.syncRepository.syncState.first { it is SyncState.Synced }
         } as SyncState.Synced
-        assertEquals(2, syncedState.entriesCount)
+        assertEquals(2, syncedState.territoriesCount)
 
         val officialSyncEpoch = database.syncMetadataDao().getMetadataOnce()?.lastSuccessfulSyncEpochMillis
         assertTrue(officialSyncEpoch != null)
@@ -779,7 +779,7 @@ class DictionaryOfflineIntegrationTest {
                 it is SyncState.RemoteEmpty && it.lastSyncedEpochMillis == officialSyncEpoch
             }
         } as SyncState.RemoteEmpty
-        assertEquals(2, stateAfterFourth.entriesCount)
+        assertEquals(2, stateAfterFourth.territoriesCount)
 
         val metadataAfterFourth = database.syncMetadataDao().getMetadataOnce()
         assertEquals(SyncMetadataEntity.STATUS_REMOTE_EMPTY, metadataAfterFourth?.lastAttemptStatus)
@@ -925,7 +925,7 @@ class DictionaryOfflineIntegrationTest {
             stack.syncRepository.syncState.first { it is SyncState.RemoteEmpty }
         } as SyncState.RemoteEmpty
         assertEquals(officialTimestamp, remoteEmptyState.lastSyncedEpochMillis)
-        assertEquals(1, remoteEmptyState.entriesCount)
+        assertEquals(1, remoteEmptyState.territoriesCount)
         assertEquals(1, stack.territoryRepository.countOnce())
         assertTrue(
             stack.dictionaryRepository.observeEntries().first()

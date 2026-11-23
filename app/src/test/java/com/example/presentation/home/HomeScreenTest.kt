@@ -365,8 +365,7 @@ class HomeScreenTest {
         // Synced mantém MODO DEMONSTRATIVO visível na Home
         currentSyncState = SyncState.Synced(
             lastSyncedEpochMillis = officialEpoch,
-            entriesCount = 20,
-            articlesCount = null
+            territoriesCount = 627
         )
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText("Acervo sincronizado").assertIsDisplayed()

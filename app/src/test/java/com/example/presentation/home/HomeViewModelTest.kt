@@ -201,8 +201,7 @@ class HomeViewModelTest {
 
         val synced = SyncState.Synced(
             lastSyncedEpochMillis = 1_700_000_050_000L,
-            entriesCount = 20,
-            articlesCount = 5
+            territoriesCount = 627
         )
         fakeRepository.syncStateFlow.value = synced
         advanceUntilIdle()
@@ -211,8 +210,7 @@ class HomeViewModelTest {
         val remoteEmpty = SyncState.RemoteEmpty(
             lastAttemptEpochMillis = 1_700_000_075_000L,
             lastSyncedEpochMillis = 1_700_000_050_000L,
-            entriesCount = 20,
-            articlesCount = 5
+            territoriesCount = 627
         )
         fakeRepository.syncStateFlow.value = remoteEmpty
         advanceUntilIdle()
@@ -263,8 +261,7 @@ class HomeViewModelTest {
             onManualSync = {
                 val synced = SyncState.Synced(
                     lastSyncedEpochMillis = 1_700_000_100_000L,
-                    entriesCount = 12,
-                    articlesCount = 3
+                    territoriesCount = 12
                 )
                 fakeRepository.syncStateFlow.value = synced
                 ArchiveSyncOutcome.Executed(AppResult.Success(Unit))
@@ -315,8 +312,7 @@ class HomeViewModelTest {
 
         fakeRepository.syncStateFlow.value = SyncState.Synced(
             lastSyncedEpochMillis = 1_700_000_200_000L,
-            entriesCount = 10,
-            articlesCount = 2
+            territoriesCount = 10
         )
         syncGate.complete(ArchiveSyncOutcome.Executed(AppResult.Success(Unit)))
         advanceUntilIdle()
@@ -347,8 +343,7 @@ class HomeViewModelTest {
 
         fakeRepository.syncStateFlow.value = SyncState.Synced(
             lastSyncedEpochMillis = 1_700_000_250_000L,
-            entriesCount = 7,
-            articlesCount = 3
+            territoriesCount = 7
         )
         syncGate.complete(ArchiveSyncOutcome.Executed(AppResult.Success(Unit)))
         advanceUntilIdle()
@@ -411,8 +406,7 @@ class HomeViewModelTest {
                 } else {
                     fakeRepository.syncStateFlow.value = SyncState.Synced(
                         lastSyncedEpochMillis = 1_700_000_310_000L,
-                        entriesCount = 15,
-                        articlesCount = 4
+                        territoriesCount = 15
                     )
                     ArchiveSyncOutcome.Executed(AppResult.Success(Unit))
                 }
@@ -450,8 +444,7 @@ class HomeViewModelTest {
                 } else {
                     val synced = SyncState.Synced(
                         lastSyncedEpochMillis = 1_700_000_400_000L,
-                        entriesCount = 18,
-                        articlesCount = 6
+                        territoriesCount = 18
                     )
                     fakeRepository.syncStateFlow.value = synced
                     ArchiveSyncOutcome.Executed(AppResult.Success(Unit))
@@ -518,8 +511,7 @@ class HomeViewModelTest {
 
             fakeRepository.syncStateFlow.value = SyncState.Synced(
                 lastSyncedEpochMillis = 1_700_000_500_000L,
-                entriesCount = 5,
-                articlesCount = 2
+                territoriesCount = 5
             )
             syncGate.complete(ArchiveSyncOutcome.Executed(AppResult.Success(Unit)))
             advanceUntilIdle()

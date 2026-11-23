@@ -39,7 +39,8 @@ class OfflineArchiveStatusCardTest {
         totalEntries = 42,
         favoriteEntries = 5,
         totalArticles = 12,
-        bookmarkedArticles = 3
+        bookmarkedArticles = 3,
+        totalTerritories = 627
     )
 
     @Test
@@ -135,7 +136,7 @@ class OfflineArchiveStatusCardTest {
     }
 
     @Test
-    fun `estado Synced exibe confirmacao data formatada chips locais e botao Sincronizar agora habilitado`() {
+    fun `estado Synced exibe confirmacao data formatada contagem territorial e botao Sincronizar agora habilitado`() {
         val epochMillis = 1_700_000_000_000L
         val expectedFormatted = formatSyncTimestamp(
             epochMillis = epochMillis,
@@ -150,8 +151,7 @@ class OfflineArchiveStatusCardTest {
                     stats = sampleStats,
                     syncState = SyncState.Synced(
                         lastSyncedEpochMillis = epochMillis,
-                        entriesCount = 42,
-                        articlesCount = 12
+                        territoriesCount = 627
                     ),
                     onManualSync = { manualClicks += 1 }
                 )
@@ -161,7 +161,8 @@ class OfflineArchiveStatusCardTest {
 
         composeTestRule.onNodeWithText("Acervo sincronizado").assertIsDisplayed()
         composeTestRule.onNodeWithText("Última sincronização em $expectedFormatted.").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Sincronizados: 42 verbetes e 12 artigos.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Sincronizadas: 627 Terras Indígenas.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Sincronizados:", substring = true).assertDoesNotExist()
         assertLocalChipsDisplayed()
 
         composeTestRule.onNodeWithTag("home_sync_button")
@@ -174,7 +175,7 @@ class OfflineArchiveStatusCardTest {
     }
 
     @Test
-    fun `estado Synced na v1 com articlesCount nulo exibe contagem de verbetes sincronizados`() {
+    fun `estado Synced com 1 Terra Indigena exibe texto no singular sem mencionar verbetes`() {
         val epochMillis = 1_700_000_000_000L
         val expectedFormatted = formatSyncTimestamp(
             epochMillis = epochMillis,
@@ -185,11 +186,10 @@ class OfflineArchiveStatusCardTest {
         composeTestRule.setContent {
             ParintintinTheme {
                 OfflineArchiveStatusCard(
-                    stats = sampleStats,
+                    stats = sampleStats.copy(totalTerritories = 1),
                     syncState = SyncState.Synced(
                         lastSyncedEpochMillis = epochMillis,
-                        entriesCount = 42,
-                        articlesCount = null
+                        territoriesCount = 1
                     ),
                     onManualSync = {}
                 )
@@ -199,7 +199,8 @@ class OfflineArchiveStatusCardTest {
 
         composeTestRule.onNodeWithText("Acervo sincronizado").assertIsDisplayed()
         composeTestRule.onNodeWithText("Última sincronização em $expectedFormatted.").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Sincronizados: 42 verbetes.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Sincronizada: 1 Terra Indígena.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("1 Terra Indígena local").assertIsDisplayed()
     }
 
     @Test
@@ -404,8 +405,7 @@ class OfflineArchiveStatusCardTest {
                     syncState = SyncState.RemoteEmpty(
                         lastAttemptEpochMillis = attemptEpochMillis,
                         lastSyncedEpochMillis = null,
-                        entriesCount = null,
-                        articlesCount = null
+                        territoriesCount = null
                     ),
                     onManualSync = { manualClicks += 1 }
                 )
@@ -453,8 +453,7 @@ class OfflineArchiveStatusCardTest {
                     syncState = SyncState.RemoteEmpty(
                         lastAttemptEpochMillis = attemptEpochMillis,
                         lastSyncedEpochMillis = officialEpochMillis,
-                        entriesCount = 42,
-                        articlesCount = 12
+                        territoriesCount = 627
                     ),
                     onManualSync = { manualClicks += 1 }
                 )
@@ -491,7 +490,8 @@ class OfflineArchiveStatusCardTest {
                     OfflineArchiveStatusCard(
                         stats = ArchiveStats(
                             totalEntries = 12345,
-                            totalArticles = 6789
+                            totalArticles = 6789,
+                            totalTerritories = 1234
                         ),
                         syncState = SyncState.OfflineFallback(
                             reason = "Timeout",
@@ -516,6 +516,8 @@ class OfflineArchiveStatusCardTest {
             .fetchSemanticsNode().boundsInRoot
         val detailBounds = composeTestRule.onNodeWithTag("home_sync_secondary_detail")
             .fetchSemanticsNode().boundsInRoot
+        val territoriesBounds = composeTestRule.onNodeWithTag("home_offline_territories_chip")
+            .fetchSemanticsNode().boundsInRoot
         val entriesBounds = composeTestRule.onNodeWithTag("home_offline_entries_chip")
             .fetchSemanticsNode().boundsInRoot
         val articlesBounds = composeTestRule.onNodeWithTag("home_offline_articles_chip")
@@ -527,14 +529,17 @@ class OfflineArchiveStatusCardTest {
         assert(bodyBounds.right <= cardBounds.right)
         assert(historyBounds.right <= cardBounds.right)
         assert(detailBounds.right <= cardBounds.right)
+        assert(territoriesBounds.right <= cardBounds.right)
         assert(entriesBounds.right <= cardBounds.right)
         assert(articlesBounds.right <= cardBounds.right)
         assert(buttonBounds.right <= cardBounds.right)
     }
 
     private fun assertLocalChipsDisplayed() {
+        composeTestRule.onNodeWithTag("home_offline_territories_chip").assertIsDisplayed()
         composeTestRule.onNodeWithTag("home_offline_entries_chip").assertIsDisplayed()
         composeTestRule.onNodeWithTag("home_offline_articles_chip").assertIsDisplayed()
+        composeTestRule.onNodeWithText("627 Terras Indígenas locais").assertIsDisplayed()
         composeTestRule.onNodeWithText("42 verbetes locais").assertIsDisplayed()
         composeTestRule.onNodeWithText("12 artigos locais").assertIsDisplayed()
     }

@@ -135,7 +135,7 @@ class StartupSeedHiltInstrumentedTest {
             } as SyncState.RemoteEmpty
 
             assertNull(resolvedSyncState.lastSyncedEpochMillis)
-            assertNull(resolvedSyncState.entriesCount)
+            assertNull(resolvedSyncState.territoriesCount)
             assertEquals(1, mockWebServer.requestCount)
             val territoriesRequest = mockWebServer.takeRequest(1, TimeUnit.SECONDS)
             assertTrue(territoriesRequest?.path?.startsWith("/query?") == true)

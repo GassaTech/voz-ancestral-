@@ -155,7 +155,7 @@ class TerritoriesSyncIntegrationTest {
         val syncedState = withTimeout(5_000L) {
             firstStack.syncRepository.syncState.first { it is SyncState.Synced }
         } as SyncState.Synced
-        assertEquals(3, syncedState.entriesCount)
+        assertEquals(3, syncedState.territoriesCount)
         assertEquals(3, ObserveArchiveStatsUseCase(firstStack.syncRepository)().first().totalTerritories)
         assertEquals(3, ObserveIndigenousLandsCountUseCase(firstStack.territoryRepository)().first())
 
@@ -173,7 +173,7 @@ class TerritoriesSyncIntegrationTest {
         val recoveredState = withTimeout(5_000L) {
             offlineStack.syncRepository.syncState.first { it is SyncState.Synced }
         } as SyncState.Synced
-        assertEquals(3, recoveredState.entriesCount)
+        assertEquals(3, recoveredState.territoriesCount)
 
         val allOffline = ObserveIndigenousLandsUseCase(offlineStack.territoryRepository)().first()
         assertEquals(3, allOffline.size)
@@ -260,7 +260,7 @@ class TerritoriesSyncIntegrationTest {
             stack.syncRepository.syncState.first { it is SyncState.RemoteEmpty }
         } as SyncState.RemoteEmpty
         assertEquals(officialEpoch, emptyState.lastSyncedEpochMillis)
-        assertEquals(2, emptyState.entriesCount)
+        assertEquals(2, emptyState.territoriesCount)
         assertEquals(2, stack.territoryRepository.countOnce())
         assertEquals(
             SyncMetadataEntity.STATUS_REMOTE_EMPTY,
