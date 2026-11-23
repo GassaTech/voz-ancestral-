@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.example.data.local.dao.DictionaryDao
 import com.example.data.local.dao.EncyclopediaDao
+import com.example.data.local.dao.IndigenousLandDao
 import com.example.data.local.dao.SeedMetadataDao
 import com.example.data.local.dao.SyncMetadataDao
 import com.example.data.local.database.ParintintinDatabase
@@ -49,4 +50,8 @@ object TestDatabaseModule {
     @Provides
     fun provideSeedMetadataDao(database: ParintintinDatabase): SeedMetadataDao =
         database.seedMetadataDao()
+
+    @Provides
+    fun provideIndigenousLandDao(database: ParintintinDatabase): IndigenousLandDao =
+        database.indigenousLandDao()
 }

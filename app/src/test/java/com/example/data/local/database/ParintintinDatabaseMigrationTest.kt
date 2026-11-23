@@ -6,6 +6,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.sqlite.db.SupportSQLiteOpenHelper
 import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import androidx.test.core.app.ApplicationProvider
+import com.example.data.local.entity.IndigenousLandEntity
 import com.example.data.local.entity.SeedMetadataEntity
 import com.example.data.local.entity.SyncMetadataEntity
 import kotlinx.coroutines.flow.first
@@ -75,17 +76,18 @@ class ParintintinDatabaseMigrationTest {
             )
         }
 
-        val databaseV3 = openMigratedDatabase(dbName)
-        val rawDb = databaseV3.openHelper.writableDatabase
+        val databaseV4 = openMigratedDatabase(dbName)
+        val rawDb = databaseV4.openHelper.writableDatabase
 
-        assertEquals(3, readUserVersion(rawDb))
+        assertEquals(4, readUserVersion(rawDb))
         assertSyncMetadataTableStructure(rawDb)
         assertSeedMetadataTableStructure(rawDb)
+        assertIndigenousLandsTableStructure(rawDb)
         assertFalse(tableExists(rawDb, "sync_metadata_new"))
 
-        assertSampleArchiveRowsPreserved(databaseV3)
+        assertSampleArchiveRowsPreserved(databaseV4)
 
-        val migratedMetadata = databaseV3.syncMetadataDao().getMetadataOnce()
+        val migratedMetadata = databaseV4.syncMetadataDao().getMetadataOnce()
         assertNotNull(migratedMetadata)
         assertEquals(SyncMetadataEntity.SINGLETON_ID, migratedMetadata?.id)
         assertEquals(v1SyncEpochMillis, migratedMetadata?.lastAttemptEpochMillis)
@@ -96,7 +98,7 @@ class ParintintinDatabaseMigrationTest {
         assertNull(migratedMetadata?.lastSuccessfulArticlesCount)
         assertEquals(v1RemoteVersion, migratedMetadata?.lastSuccessfulRemoteVersion)
 
-        val seedMetadata = databaseV3.seedMetadataDao().getMetadataOnce()
+        val seedMetadata = databaseV4.seedMetadataDao().getMetadataOnce()
         assertNotNull(seedMetadata)
         assertEquals(SeedMetadataEntity.SINGLETON_ID, seedMetadata?.id)
         assertEquals(SeedMetadataEntity.INITIAL_SEED_VERSION, seedMetadata?.appliedSeedVersion)
@@ -130,15 +132,16 @@ class ParintintinDatabaseMigrationTest {
             )
         }
 
-        val databaseV3 = openMigratedDatabase(dbName)
-        val rawDb = databaseV3.openHelper.writableDatabase
+        val databaseV4 = openMigratedDatabase(dbName)
+        val rawDb = databaseV4.openHelper.writableDatabase
 
-        assertEquals(3, readUserVersion(rawDb))
+        assertEquals(4, readUserVersion(rawDb))
         assertSyncMetadataTableStructure(rawDb)
         assertSeedMetadataTableStructure(rawDb)
-        assertSampleArchiveRowsPreserved(databaseV3)
+        assertIndigenousLandsTableStructure(rawDb)
+        assertSampleArchiveRowsPreserved(databaseV4)
 
-        val migratedMetadata = databaseV3.syncMetadataDao().getMetadataOnce()
+        val migratedMetadata = databaseV4.syncMetadataDao().getMetadataOnce()
         assertNotNull(migratedMetadata)
         assertEquals(SyncMetadataEntity.SINGLETON_ID, migratedMetadata?.id)
         assertEquals(v1AttemptEpochMillis, migratedMetadata?.lastAttemptEpochMillis)
@@ -158,15 +161,16 @@ class ParintintinDatabaseMigrationTest {
             insertSampleArchiveRows(db)
         }
 
-        val databaseV3 = openMigratedDatabase(dbName)
-        val rawDb = databaseV3.openHelper.writableDatabase
+        val databaseV4 = openMigratedDatabase(dbName)
+        val rawDb = databaseV4.openHelper.writableDatabase
 
-        assertEquals(3, readUserVersion(rawDb))
+        assertEquals(4, readUserVersion(rawDb))
         assertSyncMetadataTableStructure(rawDb)
         assertSeedMetadataTableStructure(rawDb)
-        assertSampleArchiveRowsPreserved(databaseV3)
-        assertNull(databaseV3.syncMetadataDao().getMetadataOnce())
-        assertNotNull(databaseV3.seedMetadataDao().getMetadataOnce())
+        assertIndigenousLandsTableStructure(rawDb)
+        assertSampleArchiveRowsPreserved(databaseV4)
+        assertNull(databaseV4.syncMetadataDao().getMetadataOnce())
+        assertNotNull(databaseV4.seedMetadataDao().getMetadataOnce())
     }
 
     @Test
@@ -226,14 +230,15 @@ class ParintintinDatabaseMigrationTest {
             )
         }
 
-        val databaseV3 = openMigratedDatabase(dbName)
-        val rawDb = databaseV3.openHelper.writableDatabase
+        val databaseV4 = openMigratedDatabase(dbName)
+        val rawDb = databaseV4.openHelper.writableDatabase
 
-        assertEquals(3, readUserVersion(rawDb))
+        assertEquals(4, readUserVersion(rawDb))
         assertSeedMetadataTableStructure(rawDb)
         assertSyncMetadataTableStructure(rawDb)
+        assertIndigenousLandsTableStructure(rawDb)
 
-        val seedMetadata = databaseV3.seedMetadataDao().getMetadataOnce()
+        val seedMetadata = databaseV4.seedMetadataDao().getMetadataOnce()
         assertNotNull(seedMetadata)
         assertEquals(SeedMetadataEntity.SINGLETON_ID, seedMetadata?.id)
         assertEquals(SeedMetadataEntity.INITIAL_SEED_VERSION, seedMetadata?.appliedSeedVersion)
@@ -241,7 +246,7 @@ class ParintintinDatabaseMigrationTest {
         assertEquals("[\"DEMO-001\",\"DEMO-002\"]", seedMetadata?.appliedSeedIdsJson)
         assertEquals(0L, seedMetadata?.updatedAtEpochMillis)
 
-        val dictionaryDao = databaseV3.dictionaryDao()
+        val dictionaryDao = databaseV4.dictionaryDao()
         val entries = dictionaryDao.observeEntries(
             query = "",
             category = null,
@@ -270,15 +275,15 @@ class ParintintinDatabaseMigrationTest {
         assertEquals(listOf("DEMO-002", "entry_test_1"), dictionaryDao.getFavoriteIds().sorted())
         assertEquals(2, dictionaryDao.observeFavoriteCount().first())
 
-        val articles = databaseV3.encyclopediaDao().observeArticles(
+        val articles = databaseV4.encyclopediaDao().observeArticles(
             query = "",
             topic = null,
             onlyBookmarked = false
         ).first()
         assertEquals(2, articles.size)
-        assertEquals(listOf("article_test_1"), databaseV3.encyclopediaDao().getBookmarkedIds())
+        assertEquals(listOf("article_test_1"), databaseV4.encyclopediaDao().getBookmarkedIds())
 
-        val syncMetadata = databaseV3.syncMetadataDao().getMetadataOnce()
+        val syncMetadata = databaseV4.syncMetadataDao().getMetadataOnce()
         assertEquals(v2AttemptEpochMillis, syncMetadata?.lastAttemptEpochMillis)
         assertEquals("manifest-v2", syncMetadata?.lastSuccessfulRemoteVersion)
         assertEquals(5, syncMetadata?.lastSuccessfulEntriesCount)
@@ -293,14 +298,15 @@ class ParintintinDatabaseMigrationTest {
             insertSampleArchiveRows(db)
         }
 
-        val databaseV3 = openMigratedDatabase(dbName)
-        val rawDb = databaseV3.openHelper.writableDatabase
+        val databaseV4 = openMigratedDatabase(dbName)
+        val rawDb = databaseV4.openHelper.writableDatabase
 
-        assertEquals(3, readUserVersion(rawDb))
+        assertEquals(4, readUserVersion(rawDb))
         assertSeedMetadataTableStructure(rawDb)
-        assertSampleArchiveRowsPreserved(databaseV3)
+        assertIndigenousLandsTableStructure(rawDb)
+        assertSampleArchiveRowsPreserved(databaseV4)
 
-        val seedMetadata = databaseV3.seedMetadataDao().getMetadataOnce()
+        val seedMetadata = databaseV4.seedMetadataDao().getMetadataOnce()
         assertNotNull(seedMetadata)
         assertEquals(SeedMetadataEntity.SINGLETON_ID, seedMetadata?.id)
         assertEquals(SeedMetadataEntity.INITIAL_SEED_VERSION, seedMetadata?.appliedSeedVersion)
@@ -310,8 +316,8 @@ class ParintintinDatabaseMigrationTest {
     }
 
     @Test
-    fun `banco novo v3 inicializa seed_metadata singleton e permite upsert e leitura via dao`() = runTest {
-        val dbName = newTestDbName("fresh_v3_seed_metadata")
+    fun `banco novo v4 inicializa seed_metadata singleton e tabela indigenous_lands`() = runTest {
+        val dbName = newTestDbName("fresh_v4_seed_metadata")
         val database = Room.databaseBuilder(context, ParintintinDatabase::class.java, dbName)
             .addMigrations(*ParintintinDatabase.MIGRATIONS)
             .addCallback(ParintintinDatabase.SEED_INITIALIZATION_CALLBACK)
@@ -320,8 +326,9 @@ class ParintintinDatabaseMigrationTest {
         openedDatabases += database
 
         val rawDb = database.openHelper.writableDatabase
-        assertEquals(3, readUserVersion(rawDb))
+        assertEquals(4, readUserVersion(rawDb))
         assertSeedMetadataTableStructure(rawDb)
+        assertIndigenousLandsTableStructure(rawDb)
 
         val seedMetadataDao = database.seedMetadataDao()
         val initialMetadata = seedMetadataDao.getMetadataOnce()
@@ -344,6 +351,99 @@ class ParintintinDatabaseMigrationTest {
 
         assertEquals(updatedMetadata, seedMetadataDao.getMetadataOnce())
         assertEquals(updatedMetadata, seedMetadataDao.observeMetadata().first())
+    }
+
+    @Test
+    fun `migracao 3 para 4 cria indigenous_lands com indices e preserva integralmente os dados da versao 3`() = runTest {
+        val dbName = newTestDbName("migration_3_to_4_territories")
+        val v3SyncEpochMillis = 1_700_123_456_000L
+
+        createV3Database(dbName) { db ->
+            insertSampleArchiveRows(db)
+            db.execSQL(
+                """
+                INSERT INTO `sync_metadata` (
+                    `id`,
+                    `last_attempt_epoch_millis`,
+                    `last_attempt_status`,
+                    `last_failure_reason`,
+                    `last_successful_sync_epoch_millis`,
+                    `last_successful_entries_count`,
+                    `last_successful_articles_count`,
+                    `last_successful_remote_version`
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """.trimIndent(),
+                arrayOf<Any?>(
+                    SyncMetadataEntity.SINGLETON_ID,
+                    v3SyncEpochMillis,
+                    SyncMetadataEntity.STATUS_SYNCED,
+                    null,
+                    v3SyncEpochMillis,
+                    2,
+                    2,
+                    "manifest-v3"
+                )
+            )
+            db.execSQL(
+                """
+                INSERT INTO `seed_metadata` (
+                    `id`,
+                    `applied_seed_version`,
+                    `applied_seed_hash`,
+                    `applied_seed_ids_json`,
+                    `updated_at_epoch_millis`
+                ) VALUES (?, ?, ?, ?, ?)
+                """.trimIndent(),
+                arrayOf<Any?>(
+                    SeedMetadataEntity.SINGLETON_ID,
+                    2,
+                    "hash-v3",
+                    "[\"entry_test_1\"]",
+                    v3SyncEpochMillis
+                )
+            )
+        }
+
+        val databaseV4 = openMigratedDatabase(dbName)
+        val rawDb = databaseV4.openHelper.writableDatabase
+
+        assertEquals(4, readUserVersion(rawDb))
+        assertIndigenousLandsTableStructure(rawDb)
+        assertSyncMetadataTableStructure(rawDb)
+        assertSeedMetadataTableStructure(rawDb)
+        assertSampleArchiveRowsPreserved(databaseV4)
+
+        val syncMetadata = databaseV4.syncMetadataDao().getMetadataOnce()
+        assertNotNull(syncMetadata)
+        assertEquals("manifest-v3", syncMetadata?.lastSuccessfulRemoteVersion)
+        assertEquals(v3SyncEpochMillis, syncMetadata?.lastSuccessfulSyncEpochMillis)
+
+        val seedMetadata = databaseV4.seedMetadataDao().getMetadataOnce()
+        assertNotNull(seedMetadata)
+        assertEquals(2, seedMetadata?.appliedSeedVersion)
+        assertEquals("hash-v3", seedMetadata?.appliedSeedHash)
+        assertEquals("[\"entry_test_1\"]", seedMetadata?.appliedSeedIdsJson)
+
+        val territory = IndigenousLandEntity(
+            id = "terrai:101",
+            objectId = 10L,
+            territoryCode = "101",
+            name = "Ipixuna",
+            rawEthnicity = "Parintintin, Kagwahiva",
+            ethnicities = listOf("Parintintin", "Kagwahiva"),
+            rawMunicipality = "Humaitá",
+            municipalities = listOf("Humaitá"),
+            rawStateUf = "AM",
+            statesUf = listOf("AM"),
+            surfaceArea = 215362.45,
+            phase = "Regularizada",
+            modality = "Tradicionalmente Ocupada",
+            updatedAtRaw = "2024-08-19"
+        )
+        databaseV4.indigenousLandDao().upsert(territory)
+
+        assertEquals(territory, databaseV4.indigenousLandDao().findByTerritoryCode("101"))
+        assertEquals(1, databaseV4.indigenousLandDao().countOnce())
     }
 
     private fun newTestDbName(prefix: String): String {
@@ -495,13 +595,98 @@ class ParintintinDatabaseMigrationTest {
         }
     }
 
+    private fun createV3Database(
+        dbName: String,
+        populate: (SupportSQLiteDatabase) -> Unit
+    ) {
+        val callback = object : SupportSQLiteOpenHelper.Callback(3) {
+            override fun onCreate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `dictionary_entries` (
+                        `id` TEXT NOT NULL,
+                        `parintintin_word` TEXT NOT NULL,
+                        `phonetic_ipa` TEXT NOT NULL,
+                        `portuguese_translation` TEXT NOT NULL,
+                        `grammatical_class` TEXT NOT NULL,
+                        `semantic_category` TEXT NOT NULL,
+                        `example_parintintin` TEXT NOT NULL,
+                        `example_portuguese` TEXT NOT NULL,
+                        `cultural_note` TEXT NOT NULL,
+                        `audio_url` TEXT,
+                        `is_favorite` INTEGER NOT NULL,
+                        `updated_at_epoch_millis` INTEGER NOT NULL,
+                        PRIMARY KEY(`id`)
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `cultural_articles` (
+                        `id` TEXT NOT NULL,
+                        `title` TEXT NOT NULL,
+                        `subtitle` TEXT NOT NULL,
+                        `summary` TEXT NOT NULL,
+                        `body_paragraphs` TEXT NOT NULL,
+                        `topic` TEXT NOT NULL,
+                        `reading_time_minutes` INTEGER NOT NULL,
+                        `source_reference` TEXT NOT NULL,
+                        `is_bookmarked` INTEGER NOT NULL,
+                        `updated_at_epoch_millis` INTEGER NOT NULL,
+                        PRIMARY KEY(`id`)
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `sync_metadata` (
+                        `id` TEXT NOT NULL,
+                        `last_attempt_epoch_millis` INTEGER NOT NULL,
+                        `last_attempt_status` TEXT NOT NULL,
+                        `last_failure_reason` TEXT,
+                        `last_successful_sync_epoch_millis` INTEGER,
+                        `last_successful_entries_count` INTEGER,
+                        `last_successful_articles_count` INTEGER,
+                        `last_successful_remote_version` TEXT,
+                        PRIMARY KEY(`id`)
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `seed_metadata` (
+                        `id` TEXT NOT NULL,
+                        `applied_seed_version` INTEGER NOT NULL,
+                        `applied_seed_hash` TEXT,
+                        `applied_seed_ids_json` TEXT,
+                        `updated_at_epoch_millis` INTEGER NOT NULL,
+                        PRIMARY KEY(`id`)
+                    )
+                    """.trimIndent()
+                )
+            }
+
+            override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+        }
+
+        val config = SupportSQLiteOpenHelper.Configuration.builder(context)
+            .name(dbName)
+            .callback(callback)
+            .build()
+
+        FrameworkSQLiteOpenHelperFactory().create(config).use { helper ->
+            val db = helper.writableDatabase
+            populate(db)
+        }
+    }
+
     private fun openMigratedDatabase(dbName: String): ParintintinDatabase {
         val db = Room.databaseBuilder(context, ParintintinDatabase::class.java, dbName)
             .addMigrations(*ParintintinDatabase.MIGRATIONS)
             .allowMainThreadQueries()
             .build()
         openedDatabases += db
-        // Força a abertura, execução das migrações aplicáveis e validação de schema do Room v3.
+        // Força a abertura, execução das migrações aplicáveis e validação de schema do Room v4.
         db.openHelper.writableDatabase
         return db
     }
@@ -714,6 +899,44 @@ class ParintintinDatabaseMigrationTest {
         )
 
         assertEquals(expectedColumns, columns)
+    }
+
+    private fun assertIndigenousLandsTableStructure(db: SupportSQLiteDatabase) {
+        val columns = readTableColumns(db, "indigenous_lands")
+
+        val expectedColumns = mapOf(
+            "id" to ColumnSpec(type = "TEXT", notNull = true, isPrimaryKey = true),
+            "objectid" to ColumnSpec(type = "INTEGER", notNull = false, isPrimaryKey = false),
+            "terrai_cod" to ColumnSpec(type = "TEXT", notNull = false, isPrimaryKey = false),
+            "terrai_nom" to ColumnSpec(type = "TEXT", notNull = false, isPrimaryKey = false),
+            "etnia_nome" to ColumnSpec(type = "TEXT", notNull = false, isPrimaryKey = false),
+            "ethnicities" to ColumnSpec(type = "TEXT", notNull = true, isPrimaryKey = false),
+            "municipio_" to ColumnSpec(type = "TEXT", notNull = false, isPrimaryKey = false),
+            "municipalities" to ColumnSpec(type = "TEXT", notNull = true, isPrimaryKey = false),
+            "uf_sigla" to ColumnSpec(type = "TEXT", notNull = false, isPrimaryKey = false),
+            "states_uf" to ColumnSpec(type = "TEXT", notNull = true, isPrimaryKey = false),
+            "superficie" to ColumnSpec(type = "REAL", notNull = false, isPrimaryKey = false),
+            "fase_ti" to ColumnSpec(type = "TEXT", notNull = false, isPrimaryKey = false),
+            "modalidade" to ColumnSpec(type = "TEXT", notNull = false, isPrimaryKey = false),
+            "data_atual" to ColumnSpec(type = "TEXT", notNull = false, isPrimaryKey = false)
+        )
+
+        assertEquals(expectedColumns, columns)
+
+        val indexes = mutableMapOf<String, Boolean>()
+        db.query("PRAGMA index_list(`indigenous_lands`)").use { cursor ->
+            val nameIdx = cursor.getColumnIndexOrThrow("name")
+            val uniqueIdx = cursor.getColumnIndexOrThrow("unique")
+            while (cursor.moveToNext()) {
+                indexes[cursor.getString(nameIdx)] = cursor.getInt(uniqueIdx) == 1
+            }
+        }
+
+        assertEquals(true, indexes["index_indigenous_lands_terrai_cod"])
+        assertEquals(false, indexes["index_indigenous_lands_terrai_nom"])
+        assertEquals(false, indexes["index_indigenous_lands_uf_sigla"])
+        assertEquals(false, indexes["index_indigenous_lands_fase_ti"])
+        assertEquals(false, indexes["index_indigenous_lands_modalidade"])
     }
 
     private fun readTableColumns(

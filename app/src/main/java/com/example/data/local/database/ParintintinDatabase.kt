@@ -7,10 +7,12 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.data.local.dao.DictionaryDao
 import com.example.data.local.dao.EncyclopediaDao
+import com.example.data.local.dao.IndigenousLandDao
 import com.example.data.local.dao.SeedMetadataDao
 import com.example.data.local.dao.SyncMetadataDao
 import com.example.data.local.entity.CulturalArticleEntity
 import com.example.data.local.entity.DictionaryEntryEntity
+import com.example.data.local.entity.IndigenousLandEntity
 import com.example.data.local.entity.SeedMetadataEntity
 import com.example.data.local.entity.SyncMetadataEntity
 
@@ -19,9 +21,10 @@ import com.example.data.local.entity.SyncMetadataEntity
         DictionaryEntryEntity::class,
         CulturalArticleEntity::class,
         SyncMetadataEntity::class,
-        SeedMetadataEntity::class
+        SeedMetadataEntity::class,
+        IndigenousLandEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = true
 )
 @TypeConverters(ParintintinConverters::class)
@@ -30,9 +33,10 @@ abstract class ParintintinDatabase : RoomDatabase() {
     abstract fun encyclopediaDao(): EncyclopediaDao
     abstract fun syncMetadataDao(): SyncMetadataDao
     abstract fun seedMetadataDao(): SeedMetadataDao
+    abstract fun indigenousLandDao(): IndigenousLandDao
 
     companion object {
-        val MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3)
+        val MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
 
         val SEED_INITIALIZATION_CALLBACK: Callback = object : Callback() {
             override fun onCreate(db: SupportSQLiteDatabase) {

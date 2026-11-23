@@ -112,3 +112,45 @@ val MIGRATION_2_3: Migration = object : Migration(2, 3) {
         )
     }
 }
+
+val MIGRATION_3_4: Migration = object : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `indigenous_lands` (
+                `id` TEXT NOT NULL,
+                `objectid` INTEGER,
+                `terrai_cod` TEXT,
+                `terrai_nom` TEXT,
+                `etnia_nome` TEXT,
+                `ethnicities` TEXT NOT NULL,
+                `municipio_` TEXT,
+                `municipalities` TEXT NOT NULL,
+                `uf_sigla` TEXT,
+                `states_uf` TEXT NOT NULL,
+                `superficie` REAL,
+                `fase_ti` TEXT,
+                `modalidade` TEXT,
+                `data_atual` TEXT,
+                PRIMARY KEY(`id`)
+            )
+            """.trimIndent()
+        )
+
+        db.execSQL(
+            "CREATE UNIQUE INDEX IF NOT EXISTS `index_indigenous_lands_terrai_cod` ON `indigenous_lands` (`terrai_cod`)"
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_indigenous_lands_terrai_nom` ON `indigenous_lands` (`terrai_nom`)"
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_indigenous_lands_uf_sigla` ON `indigenous_lands` (`uf_sigla`)"
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_indigenous_lands_fase_ti` ON `indigenous_lands` (`fase_ti`)"
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_indigenous_lands_modalidade` ON `indigenous_lands` (`modalidade`)"
+        )
+    }
+}

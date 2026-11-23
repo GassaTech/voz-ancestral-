@@ -7,8 +7,10 @@ import com.example.data.local.seed.DictionarySeedImporter
 import com.example.data.repository.ArchiveSyncRepositoryImpl
 import com.example.data.repository.OfflineFirstDictionaryRepository
 import com.example.data.repository.OfflineFirstEncyclopediaRepository
+import com.example.data.repository.RoomIndigenousLandRepository
 import com.example.domain.repository.DictionaryRepository
 import com.example.domain.repository.EncyclopediaRepository
+import com.example.domain.repository.IndigenousLandRepository
 import com.example.domain.repository.SyncStatusRepository
 import dagger.Binds
 import dagger.Module
@@ -37,6 +39,12 @@ abstract class RepositoryModule {
     abstract fun bindEncyclopediaRepository(
         impl: OfflineFirstEncyclopediaRepository
     ): EncyclopediaRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindIndigenousLandRepository(
+        impl: RoomIndigenousLandRepository
+    ): IndigenousLandRepository
 
     @Binds
     @Singleton
