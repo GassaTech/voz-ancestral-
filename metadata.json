@@ -1,5 +1,5 @@
 {
-  "name": "Acervo Provisório",
+  "name": "Voz Ancestral",
   "description": "Estrutura inicial em Clean Architecture para o aplicativo de preservação e divulgação da língua Parintintin, com Jetpack Compose, Navigation Compose, Hilt, Room e Retrofit.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
