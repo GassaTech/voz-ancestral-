@@ -267,6 +267,5 @@ class EncyclopediaViewModelTest {
         override fun observeTotalCount(): Flow<Int> = articlesFlow.map { it.size }
         override fun observeBookmarkedCount(): Flow<Int> = flowOf(0)
         override suspend fun toggleBookmark(articleId: String) = Unit
-        override suspend fun syncFromRemote(): AppResult<Int> = AppResult.Success(0)
     }
 }

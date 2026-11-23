@@ -84,6 +84,16 @@ class ArchiveMappersTest {
     }
 
     @Test
+    fun `adaptador Moshi gerado pelo KSP esta ativo para DictionaryEntryDto`() {
+        val moshi = com.squareup.moshi.Moshi.Builder()
+            .addLast(com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory())
+            .build()
+        val adapter = moshi.adapter(DictionaryEntryDto::class.java)
+
+        assertTrue(adapter.toString().contains("GeneratedJsonAdapter(DictionaryEntryDto)"))
+    }
+
+    @Test
     fun `CulturalArticleEntity e DTO realizam conversao bidirecional e fallback de topico desconhecido`() {
         val dto = CulturalArticleDto(
             id = "a1",

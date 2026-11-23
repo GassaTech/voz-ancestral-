@@ -1,16 +1,10 @@
 package com.example.data.repository
 
-import androidx.room.withTransaction
-import com.example.core.common.AppResult
 import com.example.core.common.DispatcherProvider
 import com.example.data.local.dao.DictionaryDao
-import com.example.data.local.database.ParintintinDatabase
 import com.example.data.mapper.toDomain
-import com.example.data.mapper.toEntity
-import com.example.data.remote.datasource.RemoteArchiveDataSource
 import com.example.domain.model.DictionaryEntry
 import com.example.domain.model.GrammaticalClass
-import com.example.domain.model.RemoteSyncOutcome
 import com.example.domain.model.SemanticCategory
 import com.example.domain.repository.DictionaryRepository
 import javax.inject.Inject
@@ -22,9 +16,7 @@ import kotlinx.coroutines.withContext
 
 @Singleton
 class OfflineFirstDictionaryRepository @Inject constructor(
-    private val database: ParintintinDatabase,
     private val dictionaryDao: DictionaryDao,
-    private val remoteDataSource: RemoteArchiveDataSource,
     private val dispatchers: DispatcherProvider
 ) : DictionaryRepository {
 
@@ -57,26 +49,6 @@ class OfflineFirstDictionaryRepository @Inject constructor(
     override suspend fun toggleFavorite(entryId: String) {
         withContext(dispatchers.io) {
             dictionaryDao.toggleFavorite(entryId)
-        }
-    }
-
-    override suspend fun syncFromRemote(): AppResult<RemoteSyncOutcome> = withContext(dispatchers.io) {
-        when (val result = remoteDataSource.fetchDictionaryEntries()) {
-            is AppResult.Success -> {
-                if (result.data.isEmpty()) {
-                    return@withContext AppResult.Success(RemoteSyncOutcome.Empty)
-                }
-                val syncedCount = database.withTransaction {
-                    val favoriteIds = dictionaryDao.getFavoriteIds().toSet()
-                    val entities = result.data.map { dto ->
-                        dto.toEntity(isFavorite = favoriteIds.contains(dto.id))
-                    }
-                    dictionaryDao.upsertAll(entities)
-                    entities.size
-                }
-                AppResult.Success(RemoteSyncOutcome.Synced(syncedCount))
-            }
-            is AppResult.Error -> result
         }
     }
 }

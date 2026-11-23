@@ -3,7 +3,6 @@ package com.example.di
 import com.example.BuildConfig
 import com.example.data.remote.api.ArcGisTerritoriesQuerySpec
 import com.example.data.remote.api.IbamaTerritoriesApiService
-import com.example.data.remote.api.ParintintinApiService
 import com.example.data.remote.dto.IndigenousLandAttributesDto
 import com.example.data.remote.dto.IndigenousLandAttributesJsonAdapter
 import com.squareup.moshi.Moshi
@@ -62,9 +61,4 @@ object NetworkModule {
     @Singleton
     fun provideIbamaTerritoriesApiService(retrofit: Retrofit): IbamaTerritoriesApiService =
         retrofit.create(IbamaTerritoriesApiService::class.java)
-
-    @Provides
-    @Singleton
-    fun provideParintintinApiService(retrofit: Retrofit): ParintintinApiService =
-        retrofit.create(ParintintinApiService::class.java)
 }

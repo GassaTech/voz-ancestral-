@@ -29,5 +29,6 @@ data class ArchiveStats(
     val totalEntries: Int = 0,
     val favoriteEntries: Int = 0,
     val totalArticles: Int = 0,
-    val bookmarkedArticles: Int = 0
+    val bookmarkedArticles: Int = 0,
+    val totalTerritories: Int = 0
 )

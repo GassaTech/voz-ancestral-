@@ -1,13 +1,8 @@
 package com.example.data.repository
 
-import androidx.room.withTransaction
-import com.example.core.common.AppResult
 import com.example.core.common.DispatcherProvider
 import com.example.data.local.dao.EncyclopediaDao
-import com.example.data.local.database.ParintintinDatabase
 import com.example.data.mapper.toDomain
-import com.example.data.mapper.toEntity
-import com.example.data.remote.datasource.RemoteArchiveDataSource
 import com.example.domain.model.CulturalArticle
 import com.example.domain.model.CulturalTopic
 import com.example.domain.repository.EncyclopediaRepository
@@ -20,9 +15,7 @@ import kotlinx.coroutines.withContext
 
 @Singleton
 class OfflineFirstEncyclopediaRepository @Inject constructor(
-    private val database: ParintintinDatabase,
     private val encyclopediaDao: EncyclopediaDao,
-    private val remoteDataSource: RemoteArchiveDataSource,
     private val dispatchers: DispatcherProvider
 ) : EncyclopediaRepository {
 
@@ -53,26 +46,6 @@ class OfflineFirstEncyclopediaRepository @Inject constructor(
     override suspend fun toggleBookmark(articleId: String) {
         withContext(dispatchers.io) {
             encyclopediaDao.toggleBookmark(articleId)
-        }
-    }
-
-    override suspend fun syncFromRemote(): AppResult<Int> = withContext(dispatchers.io) {
-        when (val result = remoteDataSource.fetchCulturalArticles()) {
-            is AppResult.Success -> {
-                if (result.data.isEmpty()) {
-                    return@withContext AppResult.Success(0)
-                }
-                val syncedCount = database.withTransaction {
-                    val bookmarkedIds = encyclopediaDao.getBookmarkedIds().toSet()
-                    val entities = result.data.map { dto ->
-                        dto.toEntity(isBookmarked = bookmarkedIds.contains(dto.id))
-                    }
-                    encyclopediaDao.upsertAll(entities)
-                    entities.size
-                }
-                AppResult.Success(syncedCount)
-            }
-            is AppResult.Error -> result
         }
     }
 }

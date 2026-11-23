@@ -8,7 +8,6 @@ import com.example.data.local.entity.SyncMetadataEntity
 import com.example.data.local.seed.DictionarySeedUpdater
 import com.example.data.local.seed.SeedUpdateOutcomeStatus
 import com.example.data.mapper.toDomainSyncState
-import com.example.data.remote.datasource.RemoteArchiveDataSource
 import com.example.domain.connectivity.NetworkConnectivityObserver
 import com.example.domain.model.ArchiveStats
 import com.example.domain.model.RemoteSyncOutcome
@@ -16,6 +15,7 @@ import com.example.domain.model.SyncFailureType
 import com.example.domain.model.SyncState
 import com.example.domain.repository.DictionaryRepository
 import com.example.domain.repository.EncyclopediaRepository
+import com.example.domain.repository.IndigenousLandRepository
 import com.example.domain.repository.SyncStatusRepository
 import com.example.domain.sync.SyncFailureClassifier
 import javax.inject.Inject
@@ -37,7 +37,7 @@ import kotlinx.coroutines.withContext
 class ArchiveSyncRepositoryImpl @Inject constructor(
     private val dictionaryRepository: DictionaryRepository,
     private val encyclopediaRepository: EncyclopediaRepository,
-    private val remoteArchiveDataSource: RemoteArchiveDataSource,
+    private val indigenousLandRepository: IndigenousLandRepository,
     private val syncMetadataDao: SyncMetadataDao,
     private val dictionarySeedUpdater: DictionarySeedUpdater,
     private val networkConnectivityObserver: NetworkConnectivityObserver,
@@ -173,13 +173,15 @@ class ArchiveSyncRepositoryImpl @Inject constructor(
             dictionaryRepository.observeTotalCount(),
             dictionaryRepository.observeFavoriteCount(),
             encyclopediaRepository.observeTotalCount(),
-            encyclopediaRepository.observeBookmarkedCount()
-        ) { totalEntries, favoriteEntries, totalArticles, bookmarkedArticles ->
+            encyclopediaRepository.observeBookmarkedCount(),
+            indigenousLandRepository.observeTotalCount()
+        ) { totalEntries, favoriteEntries, totalArticles, bookmarkedArticles, totalTerritories ->
             ArchiveStats(
                 totalEntries = totalEntries,
                 favoriteEntries = favoriteEntries,
                 totalArticles = totalArticles,
-                bookmarkedArticles = bookmarkedArticles
+                bookmarkedArticles = bookmarkedArticles,
+                totalTerritories = totalTerritories
             )
         }.flowOn(dispatchers.io)
 
@@ -195,24 +197,15 @@ class ArchiveSyncRepositoryImpl @Inject constructor(
 
             try {
                 runSeedUpdateSafely()
-                val manifest = when (val manifestResult = remoteArchiveDataSource.fetchArchiveManifest()) {
-                    is AppResult.Success -> manifestResult.data
-                    is AppResult.Error -> {
-                        return@withContext recordRemoteError(
-                            error = manifestResult,
-                            restoreOnCancel = restoreOnCancel
-                        )
-                    }
-                }
-                val entriesResult = dictionaryRepository.syncFromRemote()
+                val territoriesResult = indigenousLandRepository.syncFromRemote()
 
-                when (entriesResult) {
+                when (territoriesResult) {
                     is AppResult.Success -> {
                         val attemptSnapshot = nextAttemptSnapshot()
                         val now = attemptSnapshot.nextEpochMillis
                         val previousMetadata = attemptSnapshot.persistedMetadata
 
-                        when (val outcome = entriesResult.data) {
+                        when (val outcome = territoriesResult.data) {
                             is RemoteSyncOutcome.Synced -> {
                                 lastClassifiedFailure = null
                                 val syncedState = SyncState.Synced(
@@ -228,10 +221,8 @@ class ArchiveSyncRepositoryImpl @Inject constructor(
                                         lastFailureReason = null,
                                         lastSuccessfulSyncEpochMillis = now,
                                         lastSuccessfulEntriesCount = outcome.entriesCount,
-                                        // Na versão 1.0 a enciclopédia não participa da sincronização;
-                                        // mantém null em vez de registrar contagem fictícia (ex.: 0).
                                         lastSuccessfulArticlesCount = null,
-                                        lastSuccessfulRemoteVersion = manifest.version
+                                        lastSuccessfulRemoteVersion = IBAMA_TERRITORIES_REMOTE_VERSION
                                     )
                                 )
                                 transientOverride.value = TransientSyncOverride.PendingRoomEmission(
@@ -262,7 +253,7 @@ class ArchiveSyncRepositoryImpl @Inject constructor(
                     }
 
                     is AppResult.Error -> recordRemoteError(
-                        error = entriesResult,
+                        error = territoriesResult,
                         restoreOnCancel = restoreOnCancel
                     )
                 }
@@ -446,6 +437,7 @@ class ArchiveSyncRepositoryImpl @Inject constructor(
     }
 
     companion object {
+        internal const val IBAMA_TERRITORIES_REMOTE_VERSION = "IBAMA/SIGAGEO Camada 25"
         private const val DEFAULT_OFFLINE_REASON = "Modo offline ativo. Dados locais preservados."
         private const val DEFAULT_METADATA_READ_ERROR_REASON =
             "Falha ao consultar metadados de sincronização no banco local."

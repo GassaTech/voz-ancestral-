@@ -1,6 +1,8 @@
 package com.example.domain.repository
 
+import com.example.core.common.AppResult
 import com.example.domain.model.IndigenousLand
+import com.example.domain.model.RemoteSyncOutcome
 import kotlinx.coroutines.flow.Flow
 
 interface IndigenousLandRepository {
@@ -29,4 +31,6 @@ interface IndigenousLandRepository {
     suspend fun update(territory: IndigenousLand): Boolean
 
     suspend fun deleteAll()
+
+    suspend fun syncFromRemote(): AppResult<RemoteSyncOutcome>
 }

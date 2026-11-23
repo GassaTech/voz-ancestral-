@@ -9,23 +9,20 @@ import com.example.data.local.seed.DictionarySeedSpec
 import com.example.data.local.seed.DictionarySeedUpdater
 import com.example.data.local.seed.SeedUpdateOutcome
 import com.example.data.local.seed.SeedUpdateOutcomeStatus
-import com.example.data.remote.api.ParintintinApiService
-import com.example.data.remote.datasource.RemoteArchiveDataSource
-import com.example.data.remote.dto.ArchiveManifestDto
-import com.example.data.remote.dto.CulturalArticleDto
-import com.example.data.remote.dto.DictionaryEntryDto
 import com.example.domain.connectivity.NetworkConnectivityObserver
 import com.example.domain.model.CulturalArticle
 import com.example.domain.model.CulturalTopic
 import com.example.domain.model.DeviceConnectivityState
 import com.example.domain.model.DictionaryEntry
 import com.example.domain.model.GrammaticalClass
+import com.example.domain.model.IndigenousLand
 import com.example.domain.model.RemoteSyncOutcome
 import com.example.domain.model.SemanticCategory
 import com.example.domain.model.SyncFailureType
 import com.example.domain.model.SyncState
 import com.example.domain.repository.DictionaryRepository
 import com.example.domain.repository.EncyclopediaRepository
+import com.example.domain.repository.IndigenousLandRepository
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import kotlinx.coroutines.CancellationException
@@ -78,12 +75,10 @@ class ArchiveSyncRepositoryImplTest {
     @Test
     fun `1 - cancelamento durante a sincronizacao restaura estado anterior e relanca CancellationException`() = runTest {
         val syncDao = FakeSyncMetadataDao()
-        val encyclopediaRepository = FakeEncyclopediaRepository(syncResult = AppResult.Success(0))
         val repository = createRepository(
-            dictionaryRepository = FakeDictionaryRepository(
+            indigenousLandRepository = FakeIndigenousLandRepository(
                 throwOnSync = CancellationException("Cancelado durante sincronização")
             ),
-            encyclopediaRepository = encyclopediaRepository,
             syncDao = syncDao
         )
         advanceUntilIdle()
@@ -94,7 +89,6 @@ class ArchiveSyncRepositoryImplTest {
         } catch (_: CancellationException) {
             advanceUntilIdle()
             assertEquals(SyncState.Idle, repository.syncState.value)
-            assertEquals(0, encyclopediaRepository.syncCallCount)
         }
     }
 
@@ -103,12 +97,10 @@ class ArchiveSyncRepositoryImplTest {
         val syncDao = FakeSyncMetadataDao(
             throwOnRecordFailure = CancellationException("Cancelado ao gravar fallback")
         )
-        val encyclopediaRepository = FakeEncyclopediaRepository(syncResult = AppResult.Success(0))
         val repository = createRepository(
-            dictionaryRepository = FakeDictionaryRepository(
+            indigenousLandRepository = FakeIndigenousLandRepository(
                 throwOnSync = IllegalStateException("Erro inesperado de rede")
             ),
-            encyclopediaRepository = encyclopediaRepository,
             syncDao = syncDao
         )
         advanceUntilIdle()
@@ -119,19 +111,16 @@ class ArchiveSyncRepositoryImplTest {
         } catch (_: CancellationException) {
             advanceUntilIdle()
             assertEquals(SyncState.Idle, repository.syncState.value)
-            assertEquals(0, encyclopediaRepository.syncCallCount)
         }
     }
 
     @Test
     fun `3 - falha inesperada durante a sincronizacao registra OfflineFallback e preserva dados locais`() = runTest {
         val syncDao = FakeSyncMetadataDao()
-        val encyclopediaRepository = FakeEncyclopediaRepository(syncResult = AppResult.Success(2))
         val repository = createRepository(
-            dictionaryRepository = FakeDictionaryRepository(
+            indigenousLandRepository = FakeIndigenousLandRepository(
                 throwOnSync = IllegalStateException("Falha inesperada ao ler resposta")
             ),
-            encyclopediaRepository = encyclopediaRepository,
             syncDao = syncDao
         )
         advanceUntilIdle()
@@ -140,7 +129,6 @@ class ArchiveSyncRepositoryImplTest {
         advanceUntilIdle()
 
         assertTrue(result is AppResult.Error)
-        assertEquals(0, encyclopediaRepository.syncCallCount)
         val state = repository.syncState.value as SyncState.OfflineFallback
         assertEquals("Falha inesperada ao ler resposta", state.reason)
         assertEquals(SyncMetadataEntity.STATUS_OFFLINE_FALLBACK, syncDao.lastSaved?.lastAttemptStatus)
@@ -149,16 +137,12 @@ class ArchiveSyncRepositoryImplTest {
     }
 
     @Test
-    fun `4 - sucesso da sincronizacao do dicionario atualiza estado para Synced sem executar enciclopedia e com articlesCount null`() = runTest {
+    fun `4 - sucesso da sincronizacao territorial atualiza estado para Synced com articlesCount null`() = runTest {
         val syncDao = FakeSyncMetadataDao()
-        val encyclopediaRepository = FakeEncyclopediaRepository(
-            throwOnSync = AssertionError("Enciclopédia não deve ser sincronizada na versão 1.0")
-        )
         val repository = createRepository(
-            dictionaryRepository = FakeDictionaryRepository(
+            indigenousLandRepository = FakeIndigenousLandRepository(
                 syncResult = AppResult.Success(RemoteSyncOutcome.Synced(12))
             ),
-            encyclopediaRepository = encyclopediaRepository,
             syncDao = syncDao
         )
         advanceUntilIdle()
@@ -169,7 +153,6 @@ class ArchiveSyncRepositoryImplTest {
         advanceUntilIdle()
 
         assertTrue(result is AppResult.Success)
-        assertEquals(0, encyclopediaRepository.syncCallCount)
         val state = repository.syncState.value as SyncState.Synced
         assertEquals(12, state.entriesCount)
         assertNull(state.articlesCount)
@@ -177,21 +160,19 @@ class ArchiveSyncRepositoryImplTest {
         assertEquals(12, syncDao.lastSaved?.lastSuccessfulEntriesCount)
         assertNull(syncDao.lastSaved?.lastSuccessfulArticlesCount)
         assertEquals(
-            "1.0.0",
+            ArchiveSyncRepositoryImpl.IBAMA_TERRITORIES_REMOTE_VERSION,
             syncDao.lastSaved?.lastSuccessfulRemoteVersion
         )
     }
 
     @Test
-    fun `5 - falha do dicionario atualiza estado para OfflineFallback e preserva causa estruturada`() = runTest {
+    fun `5 - falha do repositorio territorial atualiza estado para OfflineFallback e preserva causa estruturada`() = runTest {
         val syncDao = FakeSyncMetadataDao()
         val cause = IllegalStateException("Timeout na rede")
-        val encyclopediaRepository = FakeEncyclopediaRepository(syncResult = AppResult.Success(4))
         val repository = createRepository(
-            dictionaryRepository = FakeDictionaryRepository(
-                syncResult = AppResult.Error(message = "Erro no dicionário", cause = cause)
+            indigenousLandRepository = FakeIndigenousLandRepository(
+                syncResult = AppResult.Error(message = "Erro ao consultar IBAMA", cause = cause)
             ),
-            encyclopediaRepository = encyclopediaRepository,
             syncDao = syncDao
         )
         advanceUntilIdle()
@@ -200,47 +181,19 @@ class ArchiveSyncRepositoryImplTest {
         advanceUntilIdle()
 
         assertTrue(result is AppResult.Error)
-        assertEquals("Erro no dicionário", (result as AppResult.Error).message)
+        assertEquals("Erro ao consultar IBAMA", (result as AppResult.Error).message)
         assertEquals(cause, result.cause)
-        assertEquals(0, encyclopediaRepository.syncCallCount)
         val state = repository.syncState.value as SyncState.OfflineFallback
-        assertEquals("Erro no dicionário", state.reason)
+        assertEquals("Erro ao consultar IBAMA", state.reason)
         assertEquals(SyncMetadataEntity.STATUS_OFFLINE_FALLBACK, syncDao.lastSaved?.lastAttemptStatus)
     }
 
     @Test
-    fun `6 - falha ou indisponibilidade da enciclopedia nao impede Synced do dicionario nem chama syncFromRemote`() = runTest {
-        val syncDao = FakeSyncMetadataDao()
-        val encyclopediaRepository = FakeEncyclopediaRepository(
-            syncResult = AppResult.Error("Falha ao consultar API da enciclopédia.")
-        )
-        val repository = createRepository(
-            dictionaryRepository = FakeDictionaryRepository(
-                syncResult = AppResult.Success(RemoteSyncOutcome.Synced(5))
-            ),
-            encyclopediaRepository = encyclopediaRepository,
-            syncDao = syncDao
-        )
-        advanceUntilIdle()
-
-        val result = repository.syncArchive()
-        advanceUntilIdle()
-
-        assertTrue(result is AppResult.Success)
-        assertEquals(0, encyclopediaRepository.syncCallCount)
-        val state = repository.syncState.value as SyncState.Synced
-        assertEquals(5, state.entriesCount)
-        assertNull(state.articlesCount)
-        assertEquals(SyncMetadataEntity.STATUS_SYNCED, syncDao.lastSaved?.lastAttemptStatus)
-        assertEquals(5, syncDao.lastSaved?.lastSuccessfulEntriesCount)
-        assertNull(syncDao.lastSaved?.lastSuccessfulArticlesCount)
-    }
-
-    @Test
-    fun `observeArchiveStats combina contagens dos repositorios de dicionario e enciclopedia`() = runTest {
+    fun `6 - observeArchiveStats combina contagens locais de dicionario enciclopedia e territorios`() = runTest {
         val repository = createRepository(
             dictionaryRepository = FakeDictionaryRepository(total = 10, favorites = 3),
             encyclopediaRepository = FakeEncyclopediaRepository(total = 5, bookmarked = 2),
+            indigenousLandRepository = FakeIndigenousLandRepository(total = 627),
             syncDao = FakeSyncMetadataDao()
         )
 
@@ -250,6 +203,7 @@ class ArchiveSyncRepositoryImplTest {
         assertEquals(3, stats.favoriteEntries)
         assertEquals(5, stats.totalArticles)
         assertEquals(2, stats.bookmarkedArticles)
+        assertEquals(627, stats.totalTerritories)
     }
 
     @Test
@@ -293,7 +247,7 @@ class ArchiveSyncRepositoryImplTest {
             lastSuccessfulSyncEpochMillis = 1_700_000_010_000L,
             lastSuccessfulEntriesCount = null,
             lastSuccessfulArticlesCount = null,
-            lastSuccessfulRemoteVersion = "1.0.0"
+            lastSuccessfulRemoteVersion = ArchiveSyncRepositoryImpl.IBAMA_TERRITORIES_REMOTE_VERSION
         )
         val syncDao = FakeSyncMetadataDao(
             initialEntity = persistedSynced,
@@ -322,7 +276,7 @@ class ArchiveSyncRepositoryImplTest {
             lastSuccessfulSyncEpochMillis = 1_700_000_000_000L,
             lastSuccessfulEntriesCount = 20,
             lastSuccessfulArticlesCount = 8,
-            lastSuccessfulRemoteVersion = "1.0.0"
+            lastSuccessfulRemoteVersion = ArchiveSyncRepositoryImpl.IBAMA_TERRITORIES_REMOTE_VERSION
         )
         val syncDao = FakeSyncMetadataDao(
             initialEntity = persistedFallback,
@@ -349,7 +303,7 @@ class ArchiveSyncRepositoryImplTest {
             deferInitialEmission = true
         )
         val repository = createRepository(
-            dictionaryRepository = FakeDictionaryRepository(
+            indigenousLandRepository = FakeIndigenousLandRepository(
                 customSync = {
                     attempt += 1
                     when (attempt) {
@@ -359,7 +313,6 @@ class ArchiveSyncRepositoryImplTest {
                     }
                 }
             ),
-            encyclopediaRepository = FakeEncyclopediaRepository(syncResult = AppResult.Success(4)),
             syncDao = syncDao
         )
 
@@ -409,28 +362,25 @@ class ArchiveSyncRepositoryImplTest {
             lastAttemptStatus = SyncMetadataEntity.STATUS_SYNCED,
             lastFailureReason = null,
             lastSuccessfulSyncEpochMillis = 1_700_000_000_000L,
-            lastSuccessfulEntriesCount = 30,
-            lastSuccessfulArticlesCount = 9,
-            lastSuccessfulRemoteVersion = "v1.2.3"
+            lastSuccessfulEntriesCount = 627,
+            lastSuccessfulArticlesCount = null,
+            lastSuccessfulRemoteVersion = ArchiveSyncRepositoryImpl.IBAMA_TERRITORIES_REMOTE_VERSION
         )
         val syncDao = FakeSyncMetadataDao(initialEntity = initialSynced)
-        val encyclopediaRepository = FakeEncyclopediaRepository(syncResult = AppResult.Success(9))
         val repository = createRepository(
-            dictionaryRepository = FakeDictionaryRepository(
+            indigenousLandRepository = FakeIndigenousLandRepository(
                 syncResult = AppResult.Error("Tempo limite excedido")
             ),
-            encyclopediaRepository = encyclopediaRepository,
             syncDao = syncDao
         )
 
         val recovered = repository.syncState.first { it is SyncState.Synced } as SyncState.Synced
-        assertEquals(30, recovered.entriesCount)
+        assertEquals(627, recovered.entriesCount)
 
         val result = repository.syncArchive()
         advanceUntilIdle()
 
         assertTrue(result is AppResult.Error)
-        assertEquals(0, encyclopediaRepository.syncCallCount)
         val currentState = repository.syncState.value as SyncState.OfflineFallback
         assertEquals("Tempo limite excedido", currentState.reason)
 
@@ -440,9 +390,12 @@ class ArchiveSyncRepositoryImplTest {
         assertEquals("Tempo limite excedido", saved?.lastFailureReason)
         assertTrue((saved?.lastAttemptEpochMillis ?: 0L) > initialSynced.lastAttemptEpochMillis)
         assertEquals(1_700_000_000_000L, saved?.lastSuccessfulSyncEpochMillis)
-        assertEquals(30, saved?.lastSuccessfulEntriesCount)
-        assertEquals(9, saved?.lastSuccessfulArticlesCount)
-        assertEquals("v1.2.3", saved?.lastSuccessfulRemoteVersion)
+        assertEquals(627, saved?.lastSuccessfulEntriesCount)
+        assertNull(saved?.lastSuccessfulArticlesCount)
+        assertEquals(
+            ArchiveSyncRepositoryImpl.IBAMA_TERRITORIES_REMOTE_VERSION,
+            saved?.lastSuccessfulRemoteVersion
+        )
     }
 
     @Test
@@ -453,15 +406,14 @@ class ArchiveSyncRepositoryImplTest {
             lastFailureReason = null,
             lastSuccessfulSyncEpochMillis = 1_700_000_000_000L,
             lastSuccessfulEntriesCount = 14,
-            lastSuccessfulArticlesCount = 6,
-            lastSuccessfulRemoteVersion = "1.0.0"
+            lastSuccessfulArticlesCount = null,
+            lastSuccessfulRemoteVersion = ArchiveSyncRepositoryImpl.IBAMA_TERRITORIES_REMOTE_VERSION
         )
         val syncDao = FakeSyncMetadataDao(initialEntity = initialSynced)
         val repository = createRepository(
-            dictionaryRepository = FakeDictionaryRepository(
+            indigenousLandRepository = FakeIndigenousLandRepository(
                 throwOnSync = CancellationException("Cancelado pelo chamador")
             ),
-            encyclopediaRepository = FakeEncyclopediaRepository(syncResult = AppResult.Success(6)),
             syncDao = syncDao
         )
         repository.syncState.first { it is SyncState.Synced }
@@ -474,7 +426,7 @@ class ArchiveSyncRepositoryImplTest {
             val restored = repository.syncState.value as SyncState.Synced
             assertEquals(1_700_000_000_000L, restored.lastSyncedEpochMillis)
             assertEquals(14, restored.entriesCount)
-            assertEquals(6, restored.articlesCount)
+            assertNull(restored.articlesCount)
         }
     }
 
@@ -486,18 +438,17 @@ class ArchiveSyncRepositoryImplTest {
             lastFailureReason = null,
             lastSuccessfulSyncEpochMillis = 1_700_000_000_000L,
             lastSuccessfulEntriesCount = 11,
-            lastSuccessfulArticlesCount = 4,
-            lastSuccessfulRemoteVersion = "1.0.0"
+            lastSuccessfulArticlesCount = null,
+            lastSuccessfulRemoteVersion = ArchiveSyncRepositoryImpl.IBAMA_TERRITORIES_REMOTE_VERSION
         )
         val syncDao = FakeSyncMetadataDao(
             initialEntity = initialSynced,
             throwOnRead = IllegalStateException("Erro ao consultar metadados no SQLite")
         )
         val repository = createRepository(
-            dictionaryRepository = FakeDictionaryRepository(
+            indigenousLandRepository = FakeIndigenousLandRepository(
                 syncResult = AppResult.Success(RemoteSyncOutcome.Synced(18))
             ),
-            encyclopediaRepository = FakeEncyclopediaRepository(syncResult = AppResult.Success(7)),
             syncDao = syncDao
         )
         repository.syncState.first { it is SyncState.Synced }
@@ -519,18 +470,17 @@ class ArchiveSyncRepositoryImplTest {
             lastFailureReason = null,
             lastSuccessfulSyncEpochMillis = 1_700_000_000_000L,
             lastSuccessfulEntriesCount = 10,
-            lastSuccessfulArticlesCount = 3,
-            lastSuccessfulRemoteVersion = "1.0.0"
+            lastSuccessfulArticlesCount = null,
+            lastSuccessfulRemoteVersion = ArchiveSyncRepositoryImpl.IBAMA_TERRITORIES_REMOTE_VERSION
         )
         val syncDao = FakeSyncMetadataDao(
             initialEntity = initialSynced,
             throwOnUpsert = IllegalStateException("Erro de escrita no SQLite")
         )
         val repository = createRepository(
-            dictionaryRepository = FakeDictionaryRepository(
+            indigenousLandRepository = FakeIndigenousLandRepository(
                 syncResult = AppResult.Success(RemoteSyncOutcome.Synced(25))
             ),
-            encyclopediaRepository = FakeEncyclopediaRepository(syncResult = AppResult.Success(9)),
             syncDao = syncDao
         )
         repository.syncState.first { it is SyncState.Synced }
@@ -553,15 +503,14 @@ class ArchiveSyncRepositoryImplTest {
             lastFailureReason = null,
             lastSuccessfulSyncEpochMillis = futureReference,
             lastSuccessfulEntriesCount = 1,
-            lastSuccessfulArticlesCount = 1,
-            lastSuccessfulRemoteVersion = "1.0.0"
+            lastSuccessfulArticlesCount = null,
+            lastSuccessfulRemoteVersion = ArchiveSyncRepositoryImpl.IBAMA_TERRITORIES_REMOTE_VERSION
         )
         val syncDao = FakeSyncMetadataDao(initialEntity = persisted)
         val repository = createRepository(
-            dictionaryRepository = FakeDictionaryRepository(
+            indigenousLandRepository = FakeIndigenousLandRepository(
                 syncResult = AppResult.Success(RemoteSyncOutcome.Synced(2))
             ),
-            encyclopediaRepository = FakeEncyclopediaRepository(syncResult = AppResult.Success(3)),
             syncDao = syncDao
         )
         repository.syncState.first { it is SyncState.Synced }
@@ -586,16 +535,14 @@ class ArchiveSyncRepositoryImplTest {
         var syncCallCount = 0
         val syncDao = FakeSyncMetadataDao(deferFlowEmission = true)
 
-        val dictionaryRepository = FakeDictionaryRepository(
+        val territoryRepository = FakeIndigenousLandRepository(
             customSync = {
                 syncCallCount += 1
                 if (syncCallCount == 1) firstGate.await() else secondGate.await()
             }
         )
-        val encyclopediaRepository = FakeEncyclopediaRepository(syncResult = AppResult.Success(5))
         val repository = createRepository(
-            dictionaryRepository = dictionaryRepository,
-            encyclopediaRepository = encyclopediaRepository,
+            indigenousLandRepository = territoryRepository,
             syncDao = syncDao
         )
         advanceUntilIdle()
@@ -631,7 +578,6 @@ class ArchiveSyncRepositoryImplTest {
         val finalState = repository.syncState.value as SyncState.Synced
         assertEquals(22, finalState.entriesCount)
         assertNull(finalState.articlesCount)
-        assertEquals(0, encyclopediaRepository.syncCallCount)
     }
 
     @Test
@@ -645,7 +591,7 @@ class ArchiveSyncRepositoryImplTest {
             }
         )
         val errorResultRepository = createRepository(
-            dictionaryRepository = FakeDictionaryRepository(
+            indigenousLandRepository = FakeIndigenousLandRepository(
                 customSync = {
                     callOrder += "remote"
                     AppResult.Success(RemoteSyncOutcome.Synced(7))
@@ -677,7 +623,7 @@ class ArchiveSyncRepositoryImplTest {
             }
         )
         val throwingSeederRepository = createRepository(
-            dictionaryRepository = FakeDictionaryRepository(
+            indigenousLandRepository = FakeIndigenousLandRepository(
                 customSync = {
                     exceptionCallOrder += "remote"
                     AppResult.Error("Sem internet")
@@ -720,7 +666,7 @@ class ArchiveSyncRepositoryImplTest {
             }
         )
         val repository = createRepository(
-            dictionaryRepository = FakeDictionaryRepository(
+            indigenousLandRepository = FakeIndigenousLandRepository(
                 customSync = {
                     callOrder += "remote"
                     AppResult.Error("Backend indisponível")
@@ -755,7 +701,7 @@ class ArchiveSyncRepositoryImplTest {
             }
         )
         val repository = createRepository(
-            dictionaryRepository = FakeDictionaryRepository(
+            indigenousLandRepository = FakeIndigenousLandRepository(
                 customSync = {
                     remoteCallCount += 1
                     AppResult.Success(RemoteSyncOutcome.Synced(3))
@@ -798,7 +744,7 @@ class ArchiveSyncRepositoryImplTest {
             }
         )
         val repository = createRepository(
-            dictionaryRepository = FakeDictionaryRepository(
+            indigenousLandRepository = FakeIndigenousLandRepository(
                 customSync = {
                     callOrder += "remote"
                     AppResult.Success(RemoteSyncOutcome.Synced(20))
@@ -840,7 +786,7 @@ class ArchiveSyncRepositoryImplTest {
                 }
             )
             val repository = createRepository(
-                dictionaryRepository = FakeDictionaryRepository(
+                indigenousLandRepository = FakeIndigenousLandRepository(
                     customSync = {
                         callOrder += "remote"
                         AppResult.Success(RemoteSyncOutcome.Synced(14))
@@ -866,14 +812,10 @@ class ArchiveSyncRepositoryImplTest {
     @Test
     fun `RemoteSyncOutcome Empty sem historico oficial grava STATUS_REMOTE_EMPTY preserva nulls e emite RemoteEmpty`() = runTest {
         val syncDao = FakeSyncMetadataDao()
-        val encyclopediaRepository = FakeEncyclopediaRepository(
-            throwOnSync = AssertionError("Enciclopédia não deve ser chamada")
-        )
         val repository = createRepository(
-            dictionaryRepository = FakeDictionaryRepository(
+            indigenousLandRepository = FakeIndigenousLandRepository(
                 syncResult = AppResult.Success(RemoteSyncOutcome.Empty)
             ),
-            encyclopediaRepository = encyclopediaRepository,
             syncDao = syncDao
         )
         advanceUntilIdle()
@@ -882,7 +824,6 @@ class ArchiveSyncRepositoryImplTest {
         advanceUntilIdle()
 
         assertTrue(result is AppResult.Success)
-        assertEquals(0, encyclopediaRepository.syncCallCount)
 
         val state = repository.syncState.value as SyncState.RemoteEmpty
         assertNull(state.lastSyncedEpochMillis)
@@ -906,13 +847,13 @@ class ArchiveSyncRepositoryImplTest {
             lastAttemptStatus = SyncMetadataEntity.STATUS_SYNCED,
             lastFailureReason = null,
             lastSuccessfulSyncEpochMillis = 1_700_000_000_000L,
-            lastSuccessfulEntriesCount = 24,
-            lastSuccessfulArticlesCount = 6,
-            lastSuccessfulRemoteVersion = "v1.4.0"
+            lastSuccessfulEntriesCount = 627,
+            lastSuccessfulArticlesCount = null,
+            lastSuccessfulRemoteVersion = ArchiveSyncRepositoryImpl.IBAMA_TERRITORIES_REMOTE_VERSION
         )
         val syncDao = FakeSyncMetadataDao(initialEntity = initialSynced)
         val repository = createRepository(
-            dictionaryRepository = FakeDictionaryRepository(
+            indigenousLandRepository = FakeIndigenousLandRepository(
                 syncResult = AppResult.Success(RemoteSyncOutcome.Empty)
             ),
             syncDao = syncDao
@@ -926,8 +867,8 @@ class ArchiveSyncRepositoryImplTest {
         val state = repository.syncState.value as SyncState.RemoteEmpty
         assertTrue(state.lastAttemptEpochMillis > initialSynced.lastAttemptEpochMillis)
         assertEquals(1_700_000_000_000L, state.lastSyncedEpochMillis)
-        assertEquals(24, state.entriesCount)
-        assertEquals(6, state.articlesCount)
+        assertEquals(627, state.entriesCount)
+        assertNull(state.articlesCount)
 
         val saved = syncDao.lastSaved
         assertNotNull(saved)
@@ -935,9 +876,12 @@ class ArchiveSyncRepositoryImplTest {
         assertNull(saved?.lastFailureReason)
         assertTrue((saved?.lastAttemptEpochMillis ?: 0L) > initialSynced.lastAttemptEpochMillis)
         assertEquals(1_700_000_000_000L, saved?.lastSuccessfulSyncEpochMillis)
-        assertEquals(24, saved?.lastSuccessfulEntriesCount)
-        assertEquals(6, saved?.lastSuccessfulArticlesCount)
-        assertEquals("v1.4.0", saved?.lastSuccessfulRemoteVersion)
+        assertEquals(627, saved?.lastSuccessfulEntriesCount)
+        assertNull(saved?.lastSuccessfulArticlesCount)
+        assertEquals(
+            ArchiveSyncRepositoryImpl.IBAMA_TERRITORIES_REMOTE_VERSION,
+            saved?.lastSuccessfulRemoteVersion
+        )
     }
 
     @Test
@@ -973,9 +917,9 @@ class ArchiveSyncRepositoryImplTest {
             lastAttemptStatus = SyncMetadataEntity.STATUS_REMOTE_EMPTY,
             lastFailureReason = null,
             lastSuccessfulSyncEpochMillis = 1_700_000_010_000L,
-            lastSuccessfulEntriesCount = 35,
-            lastSuccessfulArticlesCount = 8,
-            lastSuccessfulRemoteVersion = "v2.0.0"
+            lastSuccessfulEntriesCount = 627,
+            lastSuccessfulArticlesCount = null,
+            lastSuccessfulRemoteVersion = ArchiveSyncRepositoryImpl.IBAMA_TERRITORIES_REMOTE_VERSION
         )
         val daoWithHistory = FakeSyncMetadataDao(
             initialEntity = withHistory,
@@ -992,8 +936,8 @@ class ArchiveSyncRepositoryImplTest {
         val recoveredWithHistory = repoWithHistory.syncState.value as SyncState.RemoteEmpty
         assertEquals(1_700_000_050_000L, recoveredWithHistory.lastAttemptEpochMillis)
         assertEquals(1_700_000_010_000L, recoveredWithHistory.lastSyncedEpochMillis)
-        assertEquals(35, recoveredWithHistory.entriesCount)
-        assertEquals(8, recoveredWithHistory.articlesCount)
+        assertEquals(627, recoveredWithHistory.entriesCount)
+        assertNull(recoveredWithHistory.articlesCount)
     }
 
     @Test
@@ -1002,7 +946,7 @@ class ArchiveSyncRepositoryImplTest {
             throwOnRecordFailure = CancellationException("Cancelado ao gravar RemoteEmpty")
         )
         val repository = createRepository(
-            dictionaryRepository = FakeDictionaryRepository(
+            indigenousLandRepository = FakeIndigenousLandRepository(
                 syncResult = AppResult.Success(RemoteSyncOutcome.Empty)
             ),
             syncDao = syncDao
@@ -1024,10 +968,10 @@ class ArchiveSyncRepositoryImplTest {
         val syncDao = FakeSyncMetadataDao()
         val connectivityObserver = FakeNetworkConnectivityObserver(DeviceConnectivityState.Offline)
         val repository = createRepository(
-            dictionaryRepository = FakeDictionaryRepository(
+            indigenousLandRepository = FakeIndigenousLandRepository(
                 syncResult = AppResult.Error(
                     message = "Sem rede",
-                    cause = UnknownHostException("archive.parintintin.org"),
+                    cause = UnknownHostException("pamgia.ibama.gov.br"),
                     remoteErrorKind = RemoteErrorKind.DNS_FAILURE
                 )
             ),
@@ -1052,7 +996,7 @@ class ArchiveSyncRepositoryImplTest {
             DeviceConnectivityState.ConnectedUnvalidated
         )
         val repository = createRepository(
-            dictionaryRepository = FakeDictionaryRepository(
+            indigenousLandRepository = FakeIndigenousLandRepository(
                 syncResult = AppResult.Error(
                     message = "Rede sem acesso validado",
                     cause = SocketTimeoutException("timeout"),
@@ -1080,13 +1024,13 @@ class ArchiveSyncRepositoryImplTest {
         val failures = listOf(
             Triple(http500, RemoteErrorKind.HTTP_SERVER_ERROR, "HTTP 500"),
             Triple(SocketTimeoutException("timeout"), RemoteErrorKind.TIMEOUT, "Timeout"),
-            Triple(UnknownHostException("archive.parintintin.org"), RemoteErrorKind.DNS_FAILURE, "DNS")
+            Triple(UnknownHostException("pamgia.ibama.gov.br"), RemoteErrorKind.DNS_FAILURE, "DNS")
         )
 
         failures.forEach { (cause, kind, label) ->
             val connectivityObserver = FakeNetworkConnectivityObserver(DeviceConnectivityState.Online)
             val repository = createRepository(
-                dictionaryRepository = FakeDictionaryRepository(
+                indigenousLandRepository = FakeIndigenousLandRepository(
                     syncResult = AppResult.Error(
                         message = label,
                         cause = cause,
@@ -1112,17 +1056,15 @@ class ArchiveSyncRepositoryImplTest {
         val connectivityObserver = FakeNetworkConnectivityObserver(DeviceConnectivityState.Online)
         var attempt = 0
         val repository = createRepository(
-            dictionaryRepository = FakeDictionaryRepository(
+            indigenousLandRepository = FakeIndigenousLandRepository(
                 customSync = {
                     attempt += 1
                     if (attempt == 1) {
-                        // Falha enquanto dispositivo permanece Online -> SERVER_UNAVAILABLE
                         AppResult.Error(
                             message = "Erro servidor",
                             remoteErrorKind = RemoteErrorKind.HTTP_SERVER_ERROR
                         )
                     } else {
-                        // Durante a tentativa 2, conectividade cai para Offline antes do tratamento da falha
                         connectivityObserver.setState(DeviceConnectivityState.Offline)
                         AppResult.Error(
                             message = "Conexão perdida",
@@ -1158,14 +1100,14 @@ class ArchiveSyncRepositoryImplTest {
             lastAttemptStatus = SyncMetadataEntity.STATUS_SYNCED,
             lastFailureReason = null,
             lastSuccessfulSyncEpochMillis = officialEpoch,
-            lastSuccessfulEntriesCount = 30,
+            lastSuccessfulEntriesCount = 627,
             lastSuccessfulArticlesCount = null,
-            lastSuccessfulRemoteVersion = "1.0.0"
+            lastSuccessfulRemoteVersion = ArchiveSyncRepositoryImpl.IBAMA_TERRITORIES_REMOTE_VERSION
         )
         val syncDao = FakeSyncMetadataDao(initialEntity = initialSynced)
         val connectivityObserver = FakeNetworkConnectivityObserver(DeviceConnectivityState.Online)
         val repository = createRepository(
-            dictionaryRepository = FakeDictionaryRepository(
+            indigenousLandRepository = FakeIndigenousLandRepository(
                 syncResult = AppResult.Error(
                     message = "Servidor indisponível",
                     remoteErrorKind = RemoteErrorKind.HTTP_SERVER_ERROR
@@ -1184,7 +1126,6 @@ class ArchiveSyncRepositoryImplTest {
         assertEquals(officialEpoch, firstFallback.lastSuccessfulSyncEpochMillis)
         assertEquals(officialEpoch, syncDao.lastSaved?.lastSuccessfulSyncEpochMillis)
 
-        // Segunda falha consecutiva (agora Offline) não pode perder o timestamp oficial nem manter cache SERVER_UNAVAILABLE
         connectivityObserver.setState(DeviceConnectivityState.Offline)
         repository.syncArchive()
         advanceUntilIdle()
@@ -1200,7 +1141,7 @@ class ArchiveSyncRepositoryImplTest {
         val syncDao = FakeSyncMetadataDao()
         val connectivityObserver = FakeNetworkConnectivityObserver(DeviceConnectivityState.Online)
         val repository = createRepository(
-            dictionaryRepository = FakeDictionaryRepository(
+            indigenousLandRepository = FakeIndigenousLandRepository(
                 syncResult = AppResult.Success(RemoteSyncOutcome.Empty)
             ),
             syncDao = syncDao,
@@ -1218,18 +1159,11 @@ class ArchiveSyncRepositoryImplTest {
     }
 
     @Test
-    fun `manifesto remoto valido grava version oficial em sync_metadata apos Synced`() = runTest {
+    fun `sincronizacao territorial valida grava fonte oficial IBAMA em sync_metadata apos Synced`() = runTest {
         val syncDao = FakeSyncMetadataDao()
         val repository = createRepository(
-            dictionaryRepository = FakeDictionaryRepository(
-                syncResult = AppResult.Success(RemoteSyncOutcome.Synced(18))
-            ),
-            remoteArchiveDataSource = RemoteArchiveDataSource(
-                FakeManifestApiService(
-                    manifestProvider = {
-                        ArchiveManifestDto(version = "2.1.0", entriesCount = 18, articlesCount = 0)
-                    }
-                )
+            indigenousLandRepository = FakeIndigenousLandRepository(
+                syncResult = AppResult.Success(RemoteSyncOutcome.Synced(627))
             ),
             syncDao = syncDao
         )
@@ -1239,37 +1173,32 @@ class ArchiveSyncRepositoryImplTest {
         advanceUntilIdle()
 
         assertTrue(result is AppResult.Success)
-        assertEquals("2.1.0", syncDao.lastSaved?.lastSuccessfulRemoteVersion)
-        assertEquals(18, syncDao.lastSaved?.lastSuccessfulEntriesCount)
+        assertEquals(
+            ArchiveSyncRepositoryImpl.IBAMA_TERRITORIES_REMOTE_VERSION,
+            syncDao.lastSaved?.lastSuccessfulRemoteVersion
+        )
+        assertEquals(627, syncDao.lastSaved?.lastSuccessfulEntriesCount)
         assertNull(syncDao.lastSaved?.lastSuccessfulArticlesCount)
     }
 
     @Test
-    fun `falha ou manifesto invalido registra OfflineFallback sem chamar dicionario e preserva historico oficial`() = runTest {
+    fun `falha de desserializacao territorial registra OfflineFallback e preserva historico oficial`() = runTest {
         val officialEpoch = 1_700_000_000_000L
         val initialSynced = SyncMetadataEntity(
             lastAttemptEpochMillis = officialEpoch,
             lastAttemptStatus = SyncMetadataEntity.STATUS_SYNCED,
             lastFailureReason = null,
             lastSuccessfulSyncEpochMillis = officialEpoch,
-            lastSuccessfulEntriesCount = 22,
+            lastSuccessfulEntriesCount = 627,
             lastSuccessfulArticlesCount = null,
-            lastSuccessfulRemoteVersion = "1.5.0"
+            lastSuccessfulRemoteVersion = ArchiveSyncRepositoryImpl.IBAMA_TERRITORIES_REMOTE_VERSION
         )
         val syncDao = FakeSyncMetadataDao(initialEntity = initialSynced)
-        var dictionarySyncCalls = 0
         val repository = createRepository(
-            dictionaryRepository = FakeDictionaryRepository(
-                customSync = {
-                    dictionarySyncCalls += 1
-                    AppResult.Success(RemoteSyncOutcome.Synced(99))
-                }
-            ),
-            remoteArchiveDataSource = RemoteArchiveDataSource(
-                FakeManifestApiService(
-                    manifestProvider = {
-                        ArchiveManifestDto(version = " ", entriesCount = 10, articlesCount = 0)
-                    }
+            indigenousLandRepository = FakeIndigenousLandRepository(
+                syncResult = AppResult.Error(
+                    message = "Resposta ArcGIS inválida: campo 'features' ausente.",
+                    remoteErrorKind = RemoteErrorKind.DESERIALIZATION_ERROR
                 )
             ),
             syncDao = syncDao,
@@ -1282,49 +1211,53 @@ class ArchiveSyncRepositoryImplTest {
 
         assertTrue(result is AppResult.Error)
         assertEquals(RemoteErrorKind.DESERIALIZATION_ERROR, (result as AppResult.Error).remoteErrorKind)
-        assertEquals(0, dictionarySyncCalls)
         val fallback = repository.syncState.value as SyncState.OfflineFallback
         assertEquals(SyncFailureType.SERVER_UNAVAILABLE, fallback.failureType)
         assertEquals(officialEpoch, fallback.lastSuccessfulSyncEpochMillis)
-        assertEquals("1.5.0", syncDao.lastSaved?.lastSuccessfulRemoteVersion)
-        assertEquals(22, syncDao.lastSaved?.lastSuccessfulEntriesCount)
+        assertEquals(
+            ArchiveSyncRepositoryImpl.IBAMA_TERRITORIES_REMOTE_VERSION,
+            syncDao.lastSaved?.lastSuccessfulRemoteVersion
+        )
+        assertEquals(627, syncDao.lastSaved?.lastSuccessfulEntriesCount)
     }
 
     @Test
-    fun `cancelamento ao consultar manifesto remoto restaura estado anterior sem chamar dicionario e relanca CancellationException`() = runTest {
+    fun `cancelamento ao consultar repositorio territorial restaura RemoteEmpty anterior e relanca CancellationException`() = runTest {
+        var attempt = 0
         val syncDao = FakeSyncMetadataDao()
-        var dictionarySyncCalls = 0
         val repository = createRepository(
-            dictionaryRepository = FakeDictionaryRepository(
+            indigenousLandRepository = FakeIndigenousLandRepository(
                 customSync = {
-                    dictionarySyncCalls += 1
-                    AppResult.Success(RemoteSyncOutcome.Synced(3))
+                    attempt += 1
+                    if (attempt == 1) {
+                        AppResult.Success(RemoteSyncOutcome.Empty)
+                    } else {
+                        throw CancellationException("Cancelado durante consulta territorial")
+                    }
                 }
-            ),
-            remoteArchiveDataSource = RemoteArchiveDataSource(
-                FakeManifestApiService(
-                    manifestProvider = { throw CancellationException("Cancelado ao obter manifesto") }
-                )
             ),
             syncDao = syncDao
         )
         advanceUntilIdle()
+
+        repository.syncArchive()
+        advanceUntilIdle()
+        val emptyState = repository.syncState.value as SyncState.RemoteEmpty
 
         try {
             repository.syncArchive()
             fail("Era esperado relançar CancellationException")
         } catch (_: CancellationException) {
             advanceUntilIdle()
-            assertEquals(0, dictionarySyncCalls)
-            assertNull(syncDao.lastSaved)
-            assertEquals(SyncState.Idle, repository.syncState.value)
+            assertEquals(emptyState, repository.syncState.value)
+            assertEquals(SyncMetadataEntity.STATUS_REMOTE_EMPTY, syncDao.lastSaved?.lastAttemptStatus)
         }
     }
 
     private fun TestScope.createRepository(
         dictionaryRepository: DictionaryRepository = FakeDictionaryRepository(),
         encyclopediaRepository: EncyclopediaRepository = FakeEncyclopediaRepository(),
-        remoteArchiveDataSource: RemoteArchiveDataSource = RemoteArchiveDataSource(FakeManifestApiService()),
+        indigenousLandRepository: IndigenousLandRepository = FakeIndigenousLandRepository(),
         syncDao: SyncMetadataDao = FakeSyncMetadataDao(),
         dictionarySeedUpdater: DictionarySeedUpdater = FakeDictionarySeedUpdater(),
         connectivityObserver: NetworkConnectivityObserver = FakeNetworkConnectivityObserver()
@@ -1335,23 +1268,13 @@ class ArchiveSyncRepositoryImplTest {
         return ArchiveSyncRepositoryImpl(
             dictionaryRepository = dictionaryRepository,
             encyclopediaRepository = encyclopediaRepository,
-            remoteArchiveDataSource = remoteArchiveDataSource,
+            indigenousLandRepository = indigenousLandRepository,
             syncMetadataDao = syncDao,
             dictionarySeedUpdater = dictionarySeedUpdater,
             networkConnectivityObserver = connectivityObserver,
             dispatchers = TestDispatcherProvider(testDispatcher),
             applicationScope = applicationScope
         )
-    }
-
-    private class FakeManifestApiService(
-        private val manifestProvider: suspend () -> ArchiveManifestDto = {
-            ArchiveManifestDto(version = "1.0.0", entriesCount = 0, articlesCount = 0)
-        }
-    ) : ParintintinApiService {
-        override suspend fun getArchiveManifest(): ArchiveManifestDto = manifestProvider()
-        override suspend fun getDictionaryEntries(): List<DictionaryEntryDto> = emptyList()
-        override suspend fun getCulturalArticles(): List<CulturalArticleDto> = emptyList()
     }
 
     private class TestDispatcherProvider(
@@ -1435,10 +1358,7 @@ class ArchiveSyncRepositoryImplTest {
 
     private class FakeDictionaryRepository(
         private val total: Int = 0,
-        private val favorites: Int = 0,
-        private val syncResult: AppResult<RemoteSyncOutcome> = AppResult.Success(RemoteSyncOutcome.Empty),
-        private val throwOnSync: Throwable? = null,
-        private val customSync: (suspend () -> AppResult<RemoteSyncOutcome>)? = null
+        private val favorites: Int = 0
     ) : DictionaryRepository {
         override fun observeEntries(
             query: String,
@@ -1451,22 +1371,12 @@ class ArchiveSyncRepositoryImplTest {
         override fun observeTotalCount(): Flow<Int> = flowOf(total)
         override fun observeFavoriteCount(): Flow<Int> = flowOf(favorites)
         override suspend fun toggleFavorite(entryId: String) = Unit
-        override suspend fun syncFromRemote(): AppResult<RemoteSyncOutcome> {
-            customSync?.let { return it() }
-            throwOnSync?.let { throw it }
-            return syncResult
-        }
     }
 
     private class FakeEncyclopediaRepository(
         private val total: Int = 0,
-        private val bookmarked: Int = 0,
-        private val syncResult: AppResult<Int> = AppResult.Success(0),
-        private val throwOnSync: Throwable? = null
+        private val bookmarked: Int = 0
     ) : EncyclopediaRepository {
-        var syncCallCount: Int = 0
-            private set
-
         override fun observeArticles(
             query: String,
             topic: CulturalTopic?,
@@ -1477,8 +1387,34 @@ class ArchiveSyncRepositoryImplTest {
         override fun observeTotalCount(): Flow<Int> = flowOf(total)
         override fun observeBookmarkedCount(): Flow<Int> = flowOf(bookmarked)
         override suspend fun toggleBookmark(articleId: String) = Unit
-        override suspend fun syncFromRemote(): AppResult<Int> {
-            syncCallCount += 1
+    }
+
+    private class FakeIndigenousLandRepository(
+        private val total: Int = 0,
+        private val syncResult: AppResult<RemoteSyncOutcome> = AppResult.Success(RemoteSyncOutcome.Empty),
+        private val throwOnSync: Throwable? = null,
+        private val customSync: (suspend () -> AppResult<RemoteSyncOutcome>)? = null
+    ) : IndigenousLandRepository {
+        override fun observeAll(): Flow<List<IndigenousLand>> = flowOf(emptyList())
+
+        override fun observeTerritories(
+            query: String,
+            stateUf: String?,
+            phase: String?,
+            modality: String?
+        ): Flow<List<IndigenousLand>> = flowOf(emptyList())
+
+        override fun observeById(id: String): Flow<IndigenousLand?> = flowOf(null)
+        override suspend fun findByTerritoryCode(territoryCode: String): IndigenousLand? = null
+        override fun observeTotalCount(): Flow<Int> = flowOf(total)
+        override suspend fun countOnce(): Int = total
+        override suspend fun upsert(territory: IndigenousLand) = Unit
+        override suspend fun upsertAll(territories: List<IndigenousLand>) = Unit
+        override suspend fun update(territory: IndigenousLand): Boolean = false
+        override suspend fun deleteAll() = Unit
+
+        override suspend fun syncFromRemote(): AppResult<RemoteSyncOutcome> {
+            customSync?.let { return it() }
             throwOnSync?.let { throw it }
             return syncResult
         }

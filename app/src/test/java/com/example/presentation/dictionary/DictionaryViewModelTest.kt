@@ -781,8 +781,6 @@ class DictionaryViewModelTest {
         override fun observeTotalCount(): Flow<Int> = entriesFlow.map { it.size }
         override fun observeFavoriteCount(): Flow<Int> = flowOf(0)
         override suspend fun toggleFavorite(entryId: String) = Unit
-        override suspend fun syncFromRemote(): AppResult<RemoteSyncOutcome> =
-            AppResult.Success(RemoteSyncOutcome.Empty)
     }
 
     private class FakeSyncStatusRepository(

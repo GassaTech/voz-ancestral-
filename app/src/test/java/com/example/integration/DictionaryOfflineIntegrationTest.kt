@@ -20,11 +20,14 @@ import com.example.data.local.seed.SeedSha256Calculator
 import com.example.data.local.seed.SeedUpdateOutcomeStatus
 import com.example.data.local.seed.SeedVersionComparator
 import com.example.data.local.seed.VersionedDictionarySeedUpdater
-import com.example.data.remote.api.ParintintinApiService
-import com.example.data.remote.datasource.RemoteArchiveDataSource
+import com.example.data.remote.api.IbamaTerritoriesApiService
+import com.example.data.remote.datasource.RemoteTerritoriesDataSource
+import com.example.data.remote.dto.IndigenousLandAttributesDto
+import com.example.data.remote.dto.IndigenousLandAttributesJsonAdapter
 import com.example.data.repository.ArchiveSyncRepositoryImpl
 import com.example.data.repository.OfflineFirstDictionaryRepository
 import com.example.data.repository.OfflineFirstEncyclopediaRepository
+import com.example.data.repository.RoomIndigenousLandRepository
 import com.example.domain.connectivity.NetworkConnectivityObserver
 import com.example.domain.model.DeviceConnectivityState
 import com.example.domain.model.GrammaticalClass
@@ -96,6 +99,7 @@ class DictionaryOfflineIntegrationTest {
     fun setUp() {
         context = ApplicationProvider.getApplicationContext()
         moshi = Moshi.Builder()
+            .add(IndigenousLandAttributesDto::class.java, IndigenousLandAttributesJsonAdapter())
             .addLast(KotlinJsonAdapterFactory())
             .build()
         mainExecutorDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
@@ -374,27 +378,10 @@ class DictionaryOfflineIntegrationTest {
             enqueue(MockResponse().setResponseCode(500).setBody("Offline 2"))
             enqueue(
                 MockResponse().setResponseCode(200).setBody(
-                    """{"version":"1.2.0","entries_count":2,"articles_count":0}"""
-                )
-            )
-            enqueue(
-                MockResponse().setResponseCode(200).setBody(
-                    """
-                    [
-                      ${syntheticJsonEntry(
-                        id = "int_seed_1",
-                        word = "termo_oficial_alpha",
-                        translation = "significado_oficial_alpha",
-                        updatedAt = 1_700_000_005_000L
-                    )},
-                      ${syntheticJsonEntry(
-                        id = "official_1",
-                        word = "termo_oficial_extra",
-                        translation = "significado_oficial_extra",
-                        updatedAt = 1_700_000_005_100L
-                    )}
-                    ]
-                    """.trimIndent()
+                    arcGisTerritoriesPageJson(
+                        syntheticArcGisFeature(1L, "101", "Ipixuna"),
+                        syntheticArcGisFeature(2L, "102", "Nove de Janeiro")
+                    )
                 )
             )
             enqueue(MockResponse().setResponseCode(500).setBody("Offline 3"))
@@ -446,7 +433,7 @@ class DictionaryOfflineIntegrationTest {
             assertEquals(1, stack.spyDictionaryDao.upsertAllCallCount)
             assertEquals(initialSeedMeta, database.seedMetadataDao().getMetadataOnce())
 
-            // Marca favorito localmente e executa sync oficial HTTP 200
+            // Marca favorito localmente e executa sync oficial HTTP 200 (IBAMA Terras Indígenas)
             stack.dictionaryRepository.toggleFavorite("int_seed_1")
             val thirdSync = stack.syncRepository.syncArchive()
             assertTrue(thirdSync is AppResult.Success)
@@ -454,21 +441,24 @@ class DictionaryOfflineIntegrationTest {
                 stack.syncRepository.syncState.first { it is SyncState.Synced }
             }
             assertTrue(database.syncMetadataDao().getMetadataOnce()?.lastSuccessfulSyncEpochMillis != null)
-            assertEquals("1.2.0", database.syncMetadataDao().getMetadataOnce()?.lastSuccessfulRemoteVersion)
+            assertEquals(
+                ArchiveSyncRepositoryImpl.IBAMA_TERRITORIES_REMOTE_VERSION,
+                database.syncMetadataDao().getMetadataOnce()?.lastSuccessfulRemoteVersion
+            )
+            assertEquals(2, stack.territoryRepository.countOnce())
 
             val entriesAfterOfficial = stack.dictionaryRepository.observeEntries().first().associateBy { it.id }
-            assertEquals(5, entriesAfterOfficial.size)
-            assertEquals("termo_oficial_alpha", entriesAfterOfficial.getValue("int_seed_1").parintintinWord)
+            assertEquals(4, entriesAfterOfficial.size)
+            assertEquals("termo_sintetico_alpha", entriesAfterOfficial.getValue("int_seed_1").parintintinWord)
             assertTrue(entriesAfterOfficial.getValue("int_seed_1").isFavorite)
-            assertEquals("termo_oficial_extra", entriesAfterOfficial.getValue("official_1").parintintinWord)
 
             val uiAfterOfficial = withTimeout(5_000L) {
                 viewModel.uiState.first { state ->
-                    val entries = (state.contentState as? DictionaryEntriesState.Success)?.entries
-                    entries?.any { it.id == "int_seed_1" && it.parintintinWord == "termo_oficial_alpha" } == true
+                    (state.contentState as? DictionaryEntriesState.Success)?.entries?.size == 4
                 }
             }
-            assertEquals(5, uiAfterOfficial.totalLocalEntriesCount)
+            assertEquals(4, uiAfterOfficial.totalLocalEntriesCount)
+            assertEquals(2, ObserveArchiveStatsUseCase(stack.syncRepository)().first().totalTerritories)
 
             // Execução 4: seed modificado localmente + HTTP 500 -> bloqueado pelo sync oficial
             currentSeedJson = """
@@ -483,10 +473,10 @@ class DictionaryOfflineIntegrationTest {
             """.trimIndent()
             val fourthSync = stack.syncRepository.syncArchive()
             assertTrue(fourthSync is AppResult.Error)
-            assertEquals(5, server.requestCount)
+            assertEquals(4, server.requestCount)
 
             val entriesAfterBlockedSeed = stack.dictionaryRepository.observeEntries().first().associateBy { it.id }
-            assertEquals("termo_oficial_alpha", entriesAfterBlockedSeed.getValue("int_seed_1").parintintinWord)
+            assertEquals("termo_sintetico_alpha", entriesAfterBlockedSeed.getValue("int_seed_1").parintintinWord)
             assertTrue(entriesAfterBlockedSeed.getValue("int_seed_1").isFavorite)
             assertEquals(initialSeedMeta, database.seedMetadataDao().getMetadataOnce())
         } finally {
@@ -500,21 +490,9 @@ class DictionaryOfflineIntegrationTest {
             enqueue(MockResponse().setResponseCode(500).setBody("Offline"))
             enqueue(
                 MockResponse().setResponseCode(200).setBody(
-                    """{"version":"1.3.0","entries_count":1,"articles_count":0}"""
-                )
-            )
-            enqueue(
-                MockResponse().setResponseCode(200).setBody(
-                    """
-                    [
-                      ${syntheticJsonEntry(
-                        id = "int_seed_1",
-                        word = "termo_oficial_pos_seed",
-                        translation = "significado_oficial_pos_seed",
-                        updatedAt = 1_700_000_010_000L
-                    )}
-                    ]
-                    """.trimIndent()
+                    arcGisTerritoriesPageJson(
+                        syntheticArcGisFeature(1L, "101", "Ipixuna")
+                    )
                 )
             )
             start()
@@ -585,7 +563,7 @@ class DictionaryOfflineIntegrationTest {
             database.seedMetadataDao().getMetadataOnce()?.appliedSeedVersion
         )
 
-        // Passo 2: sincronização oficial HTTP 200 atualiza verbete preservando favoritos
+        // Passo 2: sincronização oficial HTTP 200 persiste territórios e preserva favoritos locais
         val officialSync = stack.syncRepository.syncArchive()
         assertTrue(officialSync is AppResult.Success)
         withTimeout(5_000L) {
@@ -593,9 +571,10 @@ class DictionaryOfflineIntegrationTest {
         }
 
         val entriesAfterOfficial = stack.dictionaryRepository.observeEntries().first().associateBy { it.id }
-        assertEquals("termo_oficial_pos_seed", entriesAfterOfficial.getValue("int_seed_1").parintintinWord)
+        assertEquals("termo_sintetico_alpha", entriesAfterOfficial.getValue("int_seed_1").parintintinWord)
         assertTrue(entriesAfterOfficial.getValue("int_seed_1").isFavorite)
         assertTrue(entriesAfterOfficial.getValue("custom_entry_1").isFavorite)
+        assertEquals(1, stack.territoryRepository.countOnce())
     }
 
     @Test
@@ -604,20 +583,9 @@ class DictionaryOfflineIntegrationTest {
         val serverInvalidSeed = MockWebServer().apply {
             enqueue(
                 MockResponse().setResponseCode(200).setBody(
-                    """{"version":"1.0.1","entries_count":1,"articles_count":0}"""
-                )
-            )
-            enqueue(
-                MockResponse().setResponseCode(200).setBody(
-                    """
-                    [
-                      ${syntheticJsonEntry(
-                        id = "official_from_invalid_seed",
-                        word = "verbete_oficial_resiliente",
-                        translation = "traducao_oficial_resiliente"
-                    )}
-                    ]
-                    """.trimIndent()
+                    arcGisTerritoriesPageJson(
+                        syntheticArcGisFeature(1L, "101", "Ipixuna Resiliente")
+                    )
                 )
             )
             start()
@@ -633,32 +601,19 @@ class DictionaryOfflineIntegrationTest {
 
         val invalidSeedSync = stackInvalidSeed.syncRepository.syncArchive()
         assertTrue(invalidSeedSync is AppResult.Success)
-        assertEquals(2, serverInvalidSeed.requestCount)
+        assertEquals(1, serverInvalidSeed.requestCount)
         withTimeout(5_000L) {
             stackInvalidSeed.syncRepository.syncState.first { it is SyncState.Synced }
         }
-        val persistedAfterInvalid = stackInvalidSeed.dictionaryRepository.observeEntries().first().associateBy { it.id }
-        assertEquals(1, persistedAfterInvalid.size)
-        assertEquals("verbete_oficial_resiliente", persistedAfterInvalid.getValue("official_from_invalid_seed").parintintinWord)
+        assertEquals("Ipixuna Resiliente", stackInvalidSeed.territoryRepository.findByTerritoryCode("101")?.name)
 
         // Sub-cenário B: falha transacional na persistência do seed faz rollback completo e prossegue para HTTP 200
         val serverRollback = MockWebServer().apply {
             enqueue(
                 MockResponse().setResponseCode(200).setBody(
-                    """{"version":"1.0.2","entries_count":1,"articles_count":0}"""
-                )
-            )
-            enqueue(
-                MockResponse().setResponseCode(200).setBody(
-                    """
-                    [
-                      ${syntheticJsonEntry(
-                        id = "official_after_rollback",
-                        word = "verbete_oficial_pos_rollback",
-                        translation = "traducao_pos_rollback"
-                    )}
-                    ]
-                    """.trimIndent()
+                    arcGisTerritoriesPageJson(
+                        syntheticArcGisFeature(2L, "202", "Nove de Janeiro Pós Rollback")
+                    )
                 )
             )
             start()
@@ -703,50 +658,36 @@ class DictionaryOfflineIntegrationTest {
 
         val rollbackSync = stackRollback.syncRepository.syncArchive()
         assertTrue(rollbackSync is AppResult.Success)
-        assertEquals(2, serverRollback.requestCount)
+        assertEquals(1, serverRollback.requestCount)
         withTimeout(5_000L) {
             stackRollback.syncRepository.syncState.first { it is SyncState.Synced }
         }
 
         val entriesAfterRollback = stackRollback.dictionaryRepository.observeEntries().first().associateBy { it.id }
         // Rollback garantiu que int_seed_2..4 do seed abortado não foram gravados e int_seed_1 manteve estado pré-existente
-        assertEquals(setOf("int_seed_1", "official_after_rollback"), entriesAfterRollback.keys)
+        assertEquals(setOf("int_seed_1"), entriesAfterRollback.keys)
         assertEquals("termo_preexistente_estavel", entriesAfterRollback.getValue("int_seed_1").parintintinWord)
         assertTrue(entriesAfterRollback.getValue("int_seed_1").isFavorite)
         assertEquals(initialRollbackMeta, dbRollback.seedMetadataDao().getMetadataOnce())
+        assertEquals("Nove de Janeiro Pós Rollback", stackRollback.territoryRepository.findByTerritoryCode("202")?.name)
     }
 
     @Test
     fun `8 - resposta HTTP 200 vazia nao bloqueia futuras atualizacoes do seed e preserva metadados oficiais anteriores`() = runBlocking {
         var currentSeedJson = syntheticSeedArrayJson()
+        val emptyArcGis = arcGisTerritoriesPageJson()
         val server = MockWebServer().apply {
-            enqueue(MockResponse().setResponseCode(200).setBody("""{"version":"1.0.0","entries_count":0,"articles_count":0}"""))
-            enqueue(MockResponse().setResponseCode(200).setBody("[]"))
-            enqueue(MockResponse().setResponseCode(200).setBody("""{"version":"1.0.0","entries_count":0,"articles_count":0}"""))
-            enqueue(MockResponse().setResponseCode(200).setBody("[]"))
-            enqueue(MockResponse().setResponseCode(200).setBody("""{"version":"1.4.0","entries_count":2,"articles_count":0}"""))
+            enqueue(MockResponse().setResponseCode(200).setBody(emptyArcGis))
+            enqueue(MockResponse().setResponseCode(200).setBody(emptyArcGis))
             enqueue(
                 MockResponse().setResponseCode(200).setBody(
-                    """
-                    [
-                      ${syntheticJsonEntry(
-                        id = "int_seed_1",
-                        word = "termo_oficial_publicado",
-                        translation = "significado_oficial_publicado",
-                        updatedAt = 1_700_000_020_000L
-                    )},
-                      ${syntheticJsonEntry(
-                        id = "official_extra",
-                        word = "termo_oficial_adicional",
-                        translation = "significado_oficial_adicional",
-                        updatedAt = 1_700_000_020_100L
-                    )}
-                    ]
-                    """.trimIndent()
+                    arcGisTerritoriesPageJson(
+                        syntheticArcGisFeature(1L, "101", "Ipixuna"),
+                        syntheticArcGisFeature(2L, "102", "Nove de Janeiro")
+                    )
                 )
             )
-            enqueue(MockResponse().setResponseCode(200).setBody("""{"version":"1.4.0","entries_count":0,"articles_count":0}"""))
-            enqueue(MockResponse().setResponseCode(200).setBody("[]"))
+            enqueue(MockResponse().setResponseCode(200).setBody(emptyArcGis))
             start()
         }
         startedServers += server
@@ -758,7 +699,7 @@ class DictionaryOfflineIntegrationTest {
             seedStreamProvider = { currentSeedJson.toUtf8Stream() }
         )
 
-        // Passo 1: primeira execução com banco vazio + servidor HTTP 200 []
+        // Passo 1: primeira execução com banco vazio + servidor HTTP 200 features=[]
         val firstResult = stack.syncRepository.syncArchive()
         assertTrue(firstResult is AppResult.Success)
         val firstState = withTimeout(5_000L) {
@@ -789,7 +730,7 @@ class DictionaryOfflineIntegrationTest {
             ]
         """.trimIndent()
 
-        // Passo 2: nova chamada HTTP 200 [] -> atualizador do Seed NÃO deve ser bloqueado e favorito é preservado
+        // Passo 2: nova chamada HTTP 200 features=[] -> atualizador do Seed NÃO deve ser bloqueado e favorito é preservado
         val secondResult = stack.syncRepository.syncArchive()
         assertTrue(secondResult is AppResult.Success)
         val entriesAfterSecondSeed = stack.dictionaryRepository.observeEntries().first().associateBy { it.id }
@@ -797,7 +738,7 @@ class DictionaryOfflineIntegrationTest {
         assertTrue(entriesAfterSecondSeed.getValue("int_seed_1").isFavorite)
         assertNull(database.syncMetadataDao().getMetadataOnce()?.lastSuccessfulSyncEpochMillis)
 
-        // Passo 3: servidor publica acervo oficial não vazio -> Synced grava histórico oficial
+        // Passo 3: servidor publica camada territorial não vazia -> Synced grava histórico oficial
         val thirdResult = stack.syncRepository.syncArchive()
         assertTrue(thirdResult is AppResult.Success)
         val syncedState = withTimeout(5_000L) {
@@ -807,12 +748,12 @@ class DictionaryOfflineIntegrationTest {
 
         val officialSyncEpoch = database.syncMetadataDao().getMetadataOnce()?.lastSuccessfulSyncEpochMillis
         assertTrue(officialSyncEpoch != null)
+        assertEquals(2, stack.territoryRepository.countOnce())
         val entriesAfterOfficial = stack.dictionaryRepository.observeEntries().first().associateBy { it.id }
-        assertEquals("termo_oficial_publicado", entriesAfterOfficial.getValue("int_seed_1").parintintinWord)
+        assertEquals("termo_seed_revisado_v2", entriesAfterOfficial.getValue("int_seed_1").parintintinWord)
         assertTrue(entriesAfterOfficial.getValue("int_seed_1").isFavorite)
-        assertEquals("termo_oficial_adicional", entriesAfterOfficial.getValue("official_extra").parintintinWord)
 
-        // Passo 4: novo Seed alterado + HTTP 200 [] após sincronização oficial -> Seed fica bloqueado e histórico oficial é preservado
+        // Passo 4: novo Seed alterado + HTTP 200 features=[] após sincronização oficial -> Seed fica bloqueado e histórico oficial é preservado
         currentSeedJson = """
             [
               ${syntheticJsonEntry(
@@ -844,12 +785,15 @@ class DictionaryOfflineIntegrationTest {
         assertEquals(SyncMetadataEntity.STATUS_REMOTE_EMPTY, metadataAfterFourth?.lastAttemptStatus)
         assertEquals(officialSyncEpoch, metadataAfterFourth?.lastSuccessfulSyncEpochMillis)
         assertEquals(2, metadataAfterFourth?.lastSuccessfulEntriesCount)
-        assertEquals("1.4.0", metadataAfterFourth?.lastSuccessfulRemoteVersion)
+        assertEquals(
+            ArchiveSyncRepositoryImpl.IBAMA_TERRITORIES_REMOTE_VERSION,
+            metadataAfterFourth?.lastSuccessfulRemoteVersion
+        )
 
         val finalEntries = stack.dictionaryRepository.observeEntries().first().associateBy { it.id }
-        assertEquals("termo_oficial_publicado", finalEntries.getValue("int_seed_1").parintintinWord)
+        assertEquals("termo_seed_revisado_v2", finalEntries.getValue("int_seed_1").parintintinWord)
         assertTrue(finalEntries.getValue("int_seed_1").isFavorite)
-        assertEquals("termo_oficial_adicional", finalEntries.getValue("official_extra").parintintinWord)
+        assertEquals(2, stack.territoryRepository.countOnce())
     }
 
     @Test
@@ -919,24 +863,15 @@ class DictionaryOfflineIntegrationTest {
     @Test
     fun `10 - sincronizacao oficial com favorito preservado seguida de HTTP 500 preserva timestamp oficial favoritos e HTTP 200 vazio segue RemoteEmpty`() = runBlocking {
         val server = MockWebServer().apply {
-            enqueue(MockResponse().setResponseCode(200).setBody("""{"version":"1.6.0","entries_count":1,"articles_count":0}"""))
             enqueue(
                 MockResponse().setResponseCode(200).setBody(
-                    """
-                    [
-                      ${syntheticJsonEntry(
-                        id = "int_seed_1",
-                        word = "termo_oficial_k",
-                        translation = "significado_oficial_k",
-                        updatedAt = 1_700_000_050_000L
-                    )}
-                    ]
-                    """.trimIndent()
+                    arcGisTerritoriesPageJson(
+                        syntheticArcGisFeature(1L, "101", "Ipixuna Oficial")
+                    )
                 )
             )
             enqueue(MockResponse().setResponseCode(500).setBody("Server Down"))
-            enqueue(MockResponse().setResponseCode(200).setBody("""{"version":"1.6.0","entries_count":0,"articles_count":0}"""))
-            enqueue(MockResponse().setResponseCode(200).setBody("[]"))
+            enqueue(MockResponse().setResponseCode(200).setBody(arcGisTerritoriesPageJson()))
             start()
         }
         startedServers += server
@@ -956,19 +891,20 @@ class DictionaryOfflineIntegrationTest {
         })
         stack.dictionaryRepository.toggleFavorite("int_seed_1")
 
-        // Passo 1: sincronização oficial bem-sucedida preserva favorito
+        // Passo 1: sincronização oficial bem-sucedida preserva favorito e persiste território
         val officialResult = stack.syncRepository.syncArchive()
         assertTrue(officialResult is AppResult.Success)
         val syncedState = withTimeout(5_000L) {
             stack.syncRepository.syncState.first { it is SyncState.Synced }
         } as SyncState.Synced
         val officialTimestamp = syncedState.lastSyncedEpochMillis
+        assertEquals("Ipixuna Oficial", stack.territoryRepository.findByTerritoryCode("101")?.name)
 
         val entriesAfterOfficial = stack.dictionaryRepository.observeEntries().first().associateBy { it.id }
-        assertEquals("termo_oficial_k", entriesAfterOfficial.getValue("int_seed_1").parintintinWord)
+        assertEquals("termo_sintetico_alpha", entriesAfterOfficial.getValue("int_seed_1").parintintinWord)
         assertTrue(entriesAfterOfficial.getValue("int_seed_1").isFavorite)
 
-        // Passo 2: dispositivo Online + HTTP 500 -> SERVER_UNAVAILABLE preservando timestamp oficial e favoritos
+        // Passo 2: dispositivo Online + HTTP 500 -> SERVER_UNAVAILABLE preservando timestamp oficial, território e favoritos
         val failedResult = stack.syncRepository.syncArchive()
         assertTrue(failedResult is AppResult.Error)
         val fallbackState = withTimeout(5_000L) {
@@ -976,12 +912,13 @@ class DictionaryOfflineIntegrationTest {
         } as SyncState.OfflineFallback
         assertEquals(SyncFailureType.SERVER_UNAVAILABLE, fallbackState.failureType)
         assertEquals(officialTimestamp, fallbackState.lastSuccessfulSyncEpochMillis)
+        assertEquals(1, stack.territoryRepository.countOnce())
 
         val entriesAfterFailure = stack.dictionaryRepository.observeEntries().first().associateBy { it.id }
-        assertEquals("termo_oficial_k", entriesAfterFailure.getValue("int_seed_1").parintintinWord)
+        assertEquals("termo_sintetico_alpha", entriesAfterFailure.getValue("int_seed_1").parintintinWord)
         assertTrue(entriesAfterFailure.getValue("int_seed_1").isFavorite)
 
-        // Passo 3: HTTP 200 [] continua tratado como SyncState.RemoteEmpty e preserva histórico oficial e favoritos
+        // Passo 3: HTTP 200 features=[] continua tratado como SyncState.RemoteEmpty e preserva histórico oficial, território e favoritos
         val emptyResult = stack.syncRepository.syncArchive()
         assertTrue(emptyResult is AppResult.Success)
         val remoteEmptyState = withTimeout(5_000L) {
@@ -989,6 +926,7 @@ class DictionaryOfflineIntegrationTest {
         } as SyncState.RemoteEmpty
         assertEquals(officialTimestamp, remoteEmptyState.lastSyncedEpochMillis)
         assertEquals(1, remoteEmptyState.entriesCount)
+        assertEquals(1, stack.territoryRepository.countOnce())
         assertTrue(
             stack.dictionaryRepository.observeEntries().first()
                 .first { it.id == "int_seed_1" }
@@ -1021,18 +959,20 @@ class DictionaryOfflineIntegrationTest {
             .client(OkHttpClient())
             .addConverterFactory(MoshiConverterFactory.create(moshi))
             .build()
-            .create(ParintintinApiService::class.java)
-        val remoteDataSource = RemoteArchiveDataSource(apiService)
-        val dictionaryRepository = OfflineFirstDictionaryRepository(
+            .create(IbamaTerritoriesApiService::class.java)
+        val remoteDataSource = RemoteTerritoriesDataSource(apiService)
+        val territoryRepository = RoomIndigenousLandRepository(
             database = database,
-            dictionaryDao = database.dictionaryDao(),
+            indigenousLandDao = database.indigenousLandDao(),
             remoteDataSource = remoteDataSource,
             dispatchers = testDispatchers
         )
+        val dictionaryRepository = OfflineFirstDictionaryRepository(
+            dictionaryDao = database.dictionaryDao(),
+            dispatchers = testDispatchers
+        )
         val encyclopediaRepository = OfflineFirstEncyclopediaRepository(
-            database = database,
             encyclopediaDao = database.encyclopediaDao(),
-            remoteDataSource = remoteDataSource,
             dispatchers = testDispatchers
         )
         val assetSeeder = AssetDictionarySeedImporter(
@@ -1065,7 +1005,7 @@ class DictionaryOfflineIntegrationTest {
         val syncRepository = ArchiveSyncRepositoryImpl(
             dictionaryRepository = dictionaryRepository,
             encyclopediaRepository = encyclopediaRepository,
-            remoteArchiveDataSource = remoteDataSource,
+            indigenousLandRepository = territoryRepository,
             syncMetadataDao = database.syncMetadataDao(),
             dictionarySeedUpdater = seedUpdater,
             networkConnectivityObserver = connectivityObserver,
@@ -1078,6 +1018,7 @@ class DictionaryOfflineIntegrationTest {
             spyDictionaryDao = spyDictionaryDao,
             spySeedMetadataDao = spySeedMetadataDao,
             dictionaryRepository = dictionaryRepository,
+            territoryRepository = territoryRepository,
             syncRepository = syncRepository
         )
     }
@@ -1099,6 +1040,7 @@ class DictionaryOfflineIntegrationTest {
         val spyDictionaryDao: SpyDictionaryDao,
         val spySeedMetadataDao: SpySeedMetadataDao,
         val dictionaryRepository: OfflineFirstDictionaryRepository,
+        val territoryRepository: RoomIndigenousLandRepository,
         val syncRepository: ArchiveSyncRepositoryImpl
     )
 
@@ -1183,6 +1125,34 @@ class DictionaryOfflineIntegrationTest {
           "cultural_note": "nota_$id",
           "audio_url": null,
           "updated_at_epoch_millis": $updatedAt
+        }
+    """.trimIndent()
+
+    private fun arcGisTerritoriesPageJson(vararg features: String): String = """
+        {
+          "exceededTransferLimit": false,
+          "features": [${features.joinToString(",")}]
+        }
+    """.trimIndent()
+
+    private fun syntheticArcGisFeature(
+        objectId: Long,
+        code: String,
+        name: String
+    ): String = """
+        {
+          "attributes": {
+            "objectid": $objectId,
+            "terrai_cod": "$code",
+            "terrai_nom": "$name",
+            "etnia_nome": "Parintintin",
+            "municipio_": "Humaitá",
+            "uf_sigla": "AM",
+            "superficie": 215362.0,
+            "fase_ti": "Regularizada",
+            "modalidade": "Tradicionalmente Ocupada",
+            "data_atual": "2024-08-19"
+          }
         }
     """.trimIndent()
 
