@@ -1,7 +1,11 @@
 package com.example.di
 
 import com.example.BuildConfig
+import com.example.data.remote.api.ArcGisTerritoriesQuerySpec
+import com.example.data.remote.api.IbamaTerritoriesApiService
 import com.example.data.remote.api.ParintintinApiService
+import com.example.data.remote.dto.IndigenousLandAttributesDto
+import com.example.data.remote.dto.IndigenousLandAttributesJsonAdapter
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import dagger.Module
@@ -19,11 +23,10 @@ import retrofit2.converter.moshi.MoshiConverterFactory
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
-    private const val ARCHIVE_BASE_URL = "https://archive.parintintin.org/"
-
     @Provides
     @Singleton
     fun provideMoshi(): Moshi = Moshi.Builder()
+        .add(IndigenousLandAttributesDto::class.java, IndigenousLandAttributesJsonAdapter())
         .addLast(KotlinJsonAdapterFactory())
         .build()
 
@@ -38,8 +41,8 @@ object NetworkModule {
             }
         }
         return OkHttpClient.Builder()
-            .connectTimeout(5, TimeUnit.SECONDS)
-            .readTimeout(10, TimeUnit.SECONDS)
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
             .addInterceptor(logging)
             .build()
     }
@@ -50,10 +53,15 @@ object NetworkModule {
         okHttpClient: OkHttpClient,
         moshi: Moshi
     ): Retrofit = Retrofit.Builder()
-        .baseUrl(ARCHIVE_BASE_URL)
+        .baseUrl(ArcGisTerritoriesQuerySpec.BASE_URL)
         .client(okHttpClient)
         .addConverterFactory(MoshiConverterFactory.create(moshi))
         .build()
+
+    @Provides
+    @Singleton
+    fun provideIbamaTerritoriesApiService(retrofit: Retrofit): IbamaTerritoriesApiService =
+        retrofit.create(IbamaTerritoriesApiService::class.java)
 
     @Provides
     @Singleton

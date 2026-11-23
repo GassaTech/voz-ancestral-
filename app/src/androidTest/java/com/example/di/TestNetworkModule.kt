@@ -1,6 +1,9 @@
 package com.example.di
 
+import com.example.data.remote.api.IbamaTerritoriesApiService
 import com.example.data.remote.api.ParintintinApiService
+import com.example.data.remote.dto.IndigenousLandAttributesDto
+import com.example.data.remote.dto.IndigenousLandAttributesJsonAdapter
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import dagger.Module
@@ -26,6 +29,7 @@ object TestNetworkModule {
     @Provides
     @Singleton
     fun provideMoshi(): Moshi = Moshi.Builder()
+        .add(IndigenousLandAttributesDto::class.java, IndigenousLandAttributesJsonAdapter())
         .addLast(KotlinJsonAdapterFactory())
         .build()
 
@@ -62,6 +66,11 @@ object TestNetworkModule {
         .client(okHttpClient)
         .addConverterFactory(MoshiConverterFactory.create(moshi))
         .build()
+
+    @Provides
+    @Singleton
+    fun provideIbamaTerritoriesApiService(retrofit: Retrofit): IbamaTerritoriesApiService =
+        retrofit.create(IbamaTerritoriesApiService::class.java)
 
     @Provides
     @Singleton
