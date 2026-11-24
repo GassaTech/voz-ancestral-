@@ -26,8 +26,13 @@ import com.example.domain.connectivity.NetworkConnectivityObserver
 import com.example.domain.model.DeviceConnectivityState
 import com.example.domain.model.SyncFailureType
 import com.example.domain.model.SyncState
+import com.example.domain.model.TerritoryFilter
+import com.example.domain.model.TerritorySortDirection
+import com.example.domain.model.TerritorySortField
+import com.example.domain.model.TerritorySortOption
 import com.example.domain.usecase.ObserveArchiveStatsUseCase
 import com.example.domain.usecase.ObserveIndigenousLandByIdUseCase
+import com.example.domain.usecase.ObserveIndigenousLandFilterOptionsUseCase
 import com.example.domain.usecase.ObserveIndigenousLandsCountUseCase
 import com.example.domain.usecase.ObserveIndigenousLandsUseCase
 import com.example.domain.usecase.SyncArchiveUseCase
@@ -180,6 +185,26 @@ class TerritoriesSyncIntegrationTest {
 
         val filteredByUf = ObserveIndigenousLandsUseCase(offlineStack.territoryRepository)(stateUf = "RR").first()
         assertEquals(listOf("terrai:103"), filteredByUf.map { it.id })
+
+        // Pesquisa textual sem acentos + ordenação por superfície decrescente totalmente offline
+        val offlineUseCase = ObserveIndigenousLandsUseCase(offlineStack.territoryRepository)
+        val offlineByMunicipality = offlineUseCase(
+            TerritoryFilter(
+                query = "humaita",
+                stateUf = "AM",
+                phase = "regularizada",
+                sortOption = TerritorySortOption(
+                    field = TerritorySortField.SURFACE_AREA,
+                    direction = TerritorySortDirection.DESCENDING
+                )
+            )
+        ).first()
+        assertEquals(listOf("terrai:102", "terrai:101"), offlineByMunicipality.map { it.id })
+
+        val filterOptions = ObserveIndigenousLandFilterOptionsUseCase(offlineStack.territoryRepository)().first()
+        assertEquals(listOf("AM", "RR"), filterOptions.statesUf)
+        assertEquals(listOf("Homologada", "Regularizada"), filterOptions.phases)
+        assertEquals(listOf("Tradicionalmente Ocupada"), filterOptions.modalities)
 
         val detail = ObserveIndigenousLandByIdUseCase(offlineStack.territoryRepository)("terrai:101").first()
         assertNotNull(detail)

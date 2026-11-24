@@ -1393,8 +1393,12 @@ class ArchiveSyncRepositoryImplTest {
             query: String,
             stateUf: String?,
             phase: String?,
-            modality: String?
+            modality: String?,
+            sortOption: com.example.domain.model.TerritorySortOption
         ): Flow<List<IndigenousLand>> = flowOf(emptyList())
+
+        override fun observeFilterOptions(): Flow<com.example.domain.model.TerritoryFilterOptions> =
+            flowOf(com.example.domain.model.TerritoryFilterOptions())
 
         override fun observeById(id: String): Flow<IndigenousLand?> = flowOf(null)
         override suspend fun findByTerritoryCode(territoryCode: String): IndigenousLand? = null

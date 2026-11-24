@@ -13,6 +13,10 @@ import com.example.data.remote.dto.IndigenousLandAttributesDto
 import com.example.data.remote.dto.IndigenousLandAttributesJsonAdapter
 import com.example.domain.model.IndigenousLand
 import com.example.domain.model.RemoteSyncOutcome
+import com.example.domain.model.TerritoryFilter
+import com.example.domain.model.TerritorySortDirection
+import com.example.domain.model.TerritorySortField
+import com.example.domain.model.TerritorySortOption
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import java.util.concurrent.TimeUnit
@@ -594,6 +598,99 @@ class RoomIndigenousLandRepositoryTest {
             stateUf = "MA"
         ).first()
         assertTrue(unmatched.isEmpty())
+    }
+
+    @Test
+    fun `observeTerritories por TerritoryFilter ordena e trata acentos nulos filtros invalidos e opcoes distintas`() = runBlocking {
+        repository.upsertAll(
+            listOf(
+                IndigenousLand(
+                    id = "terrai:101",
+                    objectId = 1L,
+                    territoryCode = "101",
+                    name = "Ipixuna",
+                    rawEthnicity = "Parintintin, Kagwahiva",
+                    ethnicities = listOf("Parintintin", "Kagwahiva"),
+                    rawMunicipality = "Humaitá",
+                    municipalities = listOf("Humaitá"),
+                    rawStateUf = "AM",
+                    statesUf = listOf("AM"),
+                    surfaceArea = 215362.0,
+                    phase = "Regularizada",
+                    modality = "Tradicionalmente Ocupada",
+                    updatedAtRaw = "2024-08-19"
+                ),
+                IndigenousLand(
+                    id = "terrai:202",
+                    objectId = 2L,
+                    territoryCode = "9",
+                    name = "Araribóia",
+                    rawEthnicity = "Guajajara, Awá",
+                    ethnicities = listOf("Guajajara", "Awá"),
+                    rawMunicipality = "Amarante",
+                    municipalities = listOf("Amarante"),
+                    rawStateUf = "MA, TO",
+                    statesUf = listOf("MA", "TO"),
+                    surfaceArea = 413288.0,
+                    phase = "Homologada",
+                    modality = "Reserva Indígena",
+                    updatedAtRaw = "1730000000000"
+                ),
+                IndigenousLand(
+                    id = "oid:999",
+                    objectId = 999L,
+                    territoryCode = null,
+                    name = null,
+                    rawEthnicity = null,
+                    ethnicities = emptyList(),
+                    rawMunicipality = null,
+                    municipalities = emptyList(),
+                    rawStateUf = null,
+                    statesUf = emptyList(),
+                    surfaceArea = null,
+                    phase = null,
+                    modality = null,
+                    updatedAtRaw = null
+                )
+            )
+        )
+
+        val byAreaDesc = repository.observeTerritories(
+            TerritoryFilter(
+                sortOption = TerritorySortOption(
+                    field = TerritorySortField.SURFACE_AREA,
+                    direction = TerritorySortDirection.DESCENDING
+                )
+            )
+        ).first()
+        assertEquals(listOf("terrai:202", "terrai:101", "oid:999"), byAreaDesc.map { it.id })
+
+        val byCodeAsc = repository.observeTerritories(
+            TerritoryFilter(
+                sortOption = TerritorySortOption(
+                    field = TerritorySortField.TERRITORY_CODE,
+                    direction = TerritorySortDirection.ASCENDING
+                )
+            )
+        ).first()
+        assertEquals(listOf("terrai:202", "terrai:101", "oid:999"), byCodeAsc.map { it.id })
+
+        val accentAndModality = repository.observeTerritories(
+            TerritoryFilter(
+                query = "awa",
+                stateUf = "to",
+                phase = "homologada",
+                modality = "reserva indigena"
+            )
+        ).first()
+        assertEquals(listOf("terrai:202"), accentAndModality.map { it.id })
+
+        assertTrue(repository.observeTerritories(TerritoryFilter(stateUf = "%")).first().isEmpty())
+
+        val filterOptions = repository.observeFilterOptions().first()
+        assertEquals(listOf("AM", "MA", "TO"), filterOptions.statesUf)
+        assertEquals(listOf("Homologada", "Regularizada"), filterOptions.phases)
+        assertEquals(listOf("Reserva Indígena", "Tradicionalmente Ocupada"), filterOptions.modalities)
     }
 
     private object IoDispatcherProvider : DispatcherProvider {

@@ -6,6 +6,7 @@ import com.example.core.common.DispatcherProvider
 import com.example.core.common.RemoteErrorKind
 import com.example.data.local.dao.IndigenousLandDao
 import com.example.data.local.database.ParintintinDatabase
+import com.example.data.mapper.splitDelimitedValues
 import com.example.data.mapper.toDomain
 import com.example.data.mapper.toEntity
 import com.example.data.remote.api.ArcGisTerritoriesQuerySpec
@@ -13,15 +14,20 @@ import com.example.data.remote.datasource.RemoteTerritoriesDataSource
 import com.example.data.remote.model.RemoteIndigenousLand
 import com.example.domain.model.IndigenousLand
 import com.example.domain.model.RemoteSyncOutcome
+import com.example.domain.model.TerritoryFilterOptions
+import com.example.domain.model.TerritorySortOption
 import com.example.domain.repository.IndigenousLandRepository
+import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
 
 @Singleton
 class RoomIndigenousLandRepository @Inject constructor(
@@ -32,6 +38,7 @@ class RoomIndigenousLandRepository @Inject constructor(
 ) : IndigenousLandRepository {
 
     private val syncMutex = Mutex()
+    private val ufListJson = Json { ignoreUnknownKeys = true }
 
     override fun observeAll(): Flow<List<IndigenousLand>> =
         indigenousLandDao.observeAll()
@@ -42,16 +49,49 @@ class RoomIndigenousLandRepository @Inject constructor(
         query: String,
         stateUf: String?,
         phase: String?,
-        modality: String?
+        modality: String?,
+        sortOption: TerritorySortOption
     ): Flow<List<IndigenousLand>> =
         indigenousLandDao.observeTerritories(
             query = query.trim(),
-            stateUf = stateUf?.trim()?.uppercase()?.takeIf { it.isNotEmpty() },
+            stateUf = stateUf?.trim()?.takeIf { it.isNotEmpty() },
             phase = phase?.trim()?.takeIf { it.isNotEmpty() },
-            modality = modality?.trim()?.takeIf { it.isNotEmpty() }
+            modality = modality?.trim()?.takeIf { it.isNotEmpty() },
+            sortOption = sortOption
         )
             .map { entities -> entities.map { it.toDomain() } }
             .flowOn(dispatchers.io)
+
+    override fun observeFilterOptions(): Flow<TerritoryFilterOptions> =
+        combine(
+            indigenousLandDao.observeDistinctStatesUfJson(),
+            indigenousLandDao.observeDistinctRawStateUfs(),
+            indigenousLandDao.observeDistinctPhases(),
+            indigenousLandDao.observeDistinctModalities()
+        ) { stateJsonList, rawStates, phases, modalities ->
+            val extractedUfs = buildSet {
+                stateJsonList.forEach { encoded ->
+                    runCatching { ufListJson.decodeFromString<List<String>>(encoded) }
+                        .getOrDefault(emptyList())
+                        .forEach { uf ->
+                            val normalized = uf.trim().uppercase(Locale.ROOT)
+                            if (VALID_UF_REGEX.matches(normalized)) add(normalized)
+                        }
+                }
+                rawStates.forEach { raw ->
+                    splitDelimitedValues(raw).forEach { uf ->
+                        val normalized = uf.trim().uppercase(Locale.ROOT)
+                        if (VALID_UF_REGEX.matches(normalized)) add(normalized)
+                    }
+                }
+            }.sorted()
+
+            TerritoryFilterOptions(
+                statesUf = extractedUfs,
+                phases = phases.map { it.trim() }.filter { it.isNotEmpty() }.distinct().sortedBy { it.lowercase(Locale.ROOT) },
+                modalities = modalities.map { it.trim() }.filter { it.isNotEmpty() }.distinct().sortedBy { it.lowercase(Locale.ROOT) }
+            )
+        }.flowOn(dispatchers.io)
 
     override fun observeById(id: String): Flow<IndigenousLand?> =
         indigenousLandDao.observeById(id)
@@ -168,5 +208,9 @@ class RoomIndigenousLandRepository @Inject constructor(
 
             AppResult.Success(RemoteSyncOutcome.Synced(persistedCount))
         }
+    }
+
+    private companion object {
+        val VALID_UF_REGEX = Regex("^[A-Z]{2}$")
     }
 }

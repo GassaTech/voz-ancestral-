@@ -12,6 +12,11 @@ import com.example.domain.model.RemoteSyncOutcome
 import com.example.domain.model.SemanticCategory
 import com.example.domain.model.SyncFailureType
 import com.example.domain.model.SyncState
+import com.example.domain.model.TerritoryFilter
+import com.example.domain.model.TerritoryFilterOptions
+import com.example.domain.model.TerritorySortDirection
+import com.example.domain.model.TerritorySortField
+import com.example.domain.model.TerritorySortOption
 import com.example.domain.repository.DictionaryRepository
 import com.example.domain.repository.EncyclopediaRepository
 import com.example.domain.repository.IndigenousLandRepository
@@ -142,7 +147,13 @@ class ArchiveUseCasesAndClassifierTest {
             var lastUf: String? = null
             var lastPhase: String? = null
             var lastModality: String? = null
+            var lastSortOption: TerritorySortOption? = null
             var syncCalls = 0
+            val expectedFilterOptions = TerritoryFilterOptions(
+                statesUf = listOf("AM", "RO"),
+                phases = listOf("Regularizada"),
+                modalities = listOf("Tradicionalmente Ocupada")
+            )
 
             override fun observeAll(): Flow<List<IndigenousLand>> = flowOf(listOf(sampleTerritory))
 
@@ -150,14 +161,19 @@ class ArchiveUseCasesAndClassifierTest {
                 query: String,
                 stateUf: String?,
                 phase: String?,
-                modality: String?
+                modality: String?,
+                sortOption: TerritorySortOption
             ): Flow<List<IndigenousLand>> {
                 lastQuery = query
                 lastUf = stateUf
                 lastPhase = phase
                 lastModality = modality
+                lastSortOption = sortOption
                 return flowOf(listOf(sampleTerritory))
             }
+
+            override fun observeFilterOptions(): Flow<TerritoryFilterOptions> =
+                flowOf(expectedFilterOptions)
 
             override fun observeById(id: String): Flow<IndigenousLand?> =
                 flowOf(sampleTerritory.takeIf { it.id == id })
@@ -209,17 +225,47 @@ class ArchiveUseCasesAndClassifierTest {
         ToggleArticleBookmarkUseCase(fakeEncyclopediaRepo)("a1")
         assertEquals("a1", fakeEncyclopediaRepo.bookmarkedId)
 
+        val customSort = TerritorySortOption(
+            field = TerritorySortField.SURFACE_AREA,
+            direction = TerritorySortDirection.DESCENDING
+        )
         val territories = ObserveIndigenousLandsUseCase(fakeTerritoryRepo)(
             query = "Ipixuna",
             stateUf = "AM",
             phase = "Regularizada",
-            modality = "Tradicionalmente Ocupada"
+            modality = "Tradicionalmente Ocupada",
+            sortOption = customSort
         ).first()
         assertEquals(listOf(sampleTerritory), territories)
         assertEquals("Ipixuna", fakeTerritoryRepo.lastQuery)
         assertEquals("AM", fakeTerritoryRepo.lastUf)
         assertEquals("Regularizada", fakeTerritoryRepo.lastPhase)
         assertEquals("Tradicionalmente Ocupada", fakeTerritoryRepo.lastModality)
+        assertEquals(customSort, fakeTerritoryRepo.lastSortOption)
+
+        val territoriesByFilter = ObserveIndigenousLandsUseCase(fakeTerritoryRepo)(
+            TerritoryFilter(
+                query = "Parintintin",
+                stateUf = "RO",
+                phase = "Homologada",
+                modality = "Reserva Indígena",
+                sortOption = TerritorySortOption(
+                    field = TerritorySortField.UPDATED_AT,
+                    direction = TerritorySortDirection.DESCENDING
+                )
+            )
+        ).first()
+        assertEquals(listOf(sampleTerritory), territoriesByFilter)
+        assertEquals("Parintintin", fakeTerritoryRepo.lastQuery)
+        assertEquals("RO", fakeTerritoryRepo.lastUf)
+        assertEquals("Homologada", fakeTerritoryRepo.lastPhase)
+        assertEquals("Reserva Indígena", fakeTerritoryRepo.lastModality)
+        assertEquals(TerritorySortField.UPDATED_AT, fakeTerritoryRepo.lastSortOption?.field)
+
+        assertEquals(
+            fakeTerritoryRepo.expectedFilterOptions,
+            ObserveIndigenousLandFilterOptionsUseCase(fakeTerritoryRepo)().first()
+        )
         assertEquals(sampleTerritory, ObserveIndigenousLandByIdUseCase(fakeTerritoryRepo)("terrai:101").first())
         assertEquals(627, ObserveIndigenousLandsCountUseCase(fakeTerritoryRepo)().first())
         assertEquals(AppResult.Success(RemoteSyncOutcome.Synced(627)), SyncIndigenousLandsUseCase(fakeTerritoryRepo)())
