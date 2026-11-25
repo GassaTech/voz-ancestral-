@@ -2,17 +2,13 @@ package com.example.presentation.navigation
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoStories
-import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material.icons.outlined.Public
-import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.rounded.AutoStories
-import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.MenuBook
 import androidx.compose.material.icons.rounded.Public
-import androidx.compose.material.icons.rounded.Storage
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -68,20 +64,6 @@ private val bottomNavItems: List<BottomNavItem> = AppDestination.primaryDestinat
             selectedIcon = Icons.Rounded.Public,
             unselectedIcon = Icons.Outlined.Public,
             testTag = "bottom_nav_territories"
-        )
-        AppDestination.Favorites -> BottomNavItem(
-            destination = destination,
-            labelRes = R.string.nav_favorites,
-            selectedIcon = Icons.Rounded.Favorite,
-            unselectedIcon = Icons.Outlined.FavoriteBorder,
-            testTag = "bottom_nav_favorites"
-        )
-        AppDestination.Archive -> BottomNavItem(
-            destination = destination,
-            labelRes = R.string.nav_archive,
-            selectedIcon = Icons.Rounded.Storage,
-            unselectedIcon = Icons.Outlined.Storage,
-            testTag = "bottom_nav_archive"
         )
     }
 }

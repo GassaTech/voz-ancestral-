@@ -119,10 +119,10 @@ class OfflineArchiveStatusCardTest {
         }
         composeTestRule.waitForIdle()
 
-        composeTestRule.onNodeWithText("Sincronizando acervo…").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Sincronizando catálogo…").assertIsDisplayed()
         composeTestRule.onNodeWithTag("home_sync_progress_indicator")
             .assertIsDisplayed()
-            .assertContentDescriptionEquals("Sincronização remota do acervo em andamento")
+            .assertContentDescriptionEquals("Sincronização remota do catálogo em andamento")
         composeTestRule.onNodeWithTag("home_sync_linear_progress").assertIsDisplayed()
         assertLocalChipsDisplayed()
 
@@ -159,7 +159,7 @@ class OfflineArchiveStatusCardTest {
         }
         composeTestRule.waitForIdle()
 
-        composeTestRule.onNodeWithText("Acervo sincronizado").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Catálogo sincronizado").assertIsDisplayed()
         composeTestRule.onNodeWithText("Última sincronização em $expectedFormatted.").assertIsDisplayed()
         composeTestRule.onNodeWithText("Sincronizadas: 627 Terras Indígenas.").assertIsDisplayed()
         composeTestRule.onNodeWithText("Sincronizados:", substring = true).assertDoesNotExist()
@@ -197,7 +197,7 @@ class OfflineArchiveStatusCardTest {
         }
         composeTestRule.waitForIdle()
 
-        composeTestRule.onNodeWithText("Acervo sincronizado").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Catálogo sincronizado").assertIsDisplayed()
         composeTestRule.onNodeWithText("Última sincronização em $expectedFormatted.").assertIsDisplayed()
         composeTestRule.onNodeWithText("Sincronizada: 1 Terra Indígena.").assertIsDisplayed()
         composeTestRule.onNodeWithText("1 Terra Indígena local").assertIsDisplayed()
@@ -382,14 +382,14 @@ class OfflineArchiveStatusCardTest {
                 .assertDoesNotExist()
             composeTestRule.onNodeWithText("Última sincronização oficial em $expectedAttempt.")
                 .assertDoesNotExist()
-            composeTestRule.onNodeWithText("Acervo sincronizado").assertDoesNotExist()
+            composeTestRule.onNodeWithText("Catálogo sincronizado").assertDoesNotExist()
         } finally {
             Locale.setDefault(previousLocale)
         }
     }
 
     @Test
-    fun `estado RemoteEmpty sem historico informa ausencia de acervo publicado nao mostra Acervo sincronizado e habilita botao`() {
+    fun `estado RemoteEmpty sem historico informa ausencia de catalogo publicado nao mostra Catalogo sincronizado e habilita botao`() {
         val attemptEpochMillis = 1_700_000_060_000L
         val expectedAttempt = formatSyncTimestamp(
             epochMillis = attemptEpochMillis,
@@ -413,12 +413,12 @@ class OfflineArchiveStatusCardTest {
         }
         composeTestRule.waitForIdle()
 
-        composeTestRule.onNodeWithText("Acervo oficial ainda indisponível").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Catálogo oficial ainda indisponível").assertIsDisplayed()
         composeTestRule.onNodeWithText(
-            "O servidor respondeu, mas ainda não há acervo oficial publicado. Os dados locais continuam disponíveis."
+            "O servidor respondeu, mas não retornou registros territoriais publicados. Os dados locais continuam disponíveis."
         ).assertIsDisplayed()
         composeTestRule.onNodeWithText("Última verificação em $expectedAttempt.").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Acervo sincronizado").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Catálogo sincronizado").assertDoesNotExist()
         assertLocalChipsDisplayed()
 
         composeTestRule.onNodeWithTag("home_sync_button")
@@ -431,7 +431,7 @@ class OfflineArchiveStatusCardTest {
     }
 
     @Test
-    fun `estado RemoteEmpty com historico preserva data oficial anterior sem exibir Acervo sincronizado`() {
+    fun `estado RemoteEmpty com historico preserva data oficial anterior sem exibir Catalogo sincronizado`() {
         val officialEpochMillis = 1_700_000_000_000L
         val attemptEpochMillis = 1_700_000_090_000L
         val expectedOfficial = formatSyncTimestamp(
@@ -463,12 +463,12 @@ class OfflineArchiveStatusCardTest {
 
         composeTestRule.onNodeWithText("Sem novos registros publicados").assertIsDisplayed()
         composeTestRule.onNodeWithText(
-            "O servidor respondeu sem registros novos. O acervo oficial anterior continua preservado neste dispositivo."
+            "O servidor respondeu sem novos registros territoriais. A sincronização oficial anterior continua preservada neste dispositivo."
         ).assertIsDisplayed()
         composeTestRule.onNodeWithText(
             "Última sincronização oficial em $expectedOfficial • Verificado em $expectedAttempt."
         ).assertIsDisplayed()
-        composeTestRule.onNodeWithText("Acervo sincronizado").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Catálogo sincronizado").assertDoesNotExist()
         assertLocalChipsDisplayed()
 
         composeTestRule.onNodeWithTag("home_sync_button")

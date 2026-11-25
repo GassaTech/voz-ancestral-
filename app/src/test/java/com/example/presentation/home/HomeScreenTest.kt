@@ -45,7 +45,7 @@ class HomeScreenTest {
     val composeTestRule = createComposeRule()
 
     @Test
-    fun `aviso MODO DEMONSTRATIVO aparece na HomeScreen sem exigir interacao e informa registros ficticios`() {
+    fun `HomeScreen apresenta identidade Voz Ancestral e nao exibe aviso MODO DEMONSTRATIVO na tela inicial`() {
         composeTestRule.setContent {
             ParintintinTheme {
                 HomeContent(
@@ -61,29 +61,23 @@ class HomeScreenTest {
         composeTestRule.waitForIdle()
 
         composeTestRule.onNodeWithTag("home_hero_banner").assertIsDisplayed()
-        composeTestRule.onNodeWithTag("demo_mode_notice_card").assertIsDisplayed()
-        composeTestRule.onNodeWithTag("demo_mode_notice_title")
+        composeTestRule.onNodeWithTag("home_hero_badge")
             .assertIsDisplayed()
-            .assertTextEquals("MODO DEMONSTRATIVO")
-        composeTestRule.onNodeWithTag("demo_mode_notice_body")
+            .assertTextEquals("CATÁLOGO DIGITAL • OFFLINE-FIRST")
+        composeTestRule.onNodeWithTag("home_hero_title")
+            .assertIsDisplayed()
+            .assertTextEquals("Terras e Povos Indígenas do Brasil")
+        composeTestRule.onNodeWithTag("home_hero_subtitle")
             .assertIsDisplayed()
             .assertTextEquals(
-                "Este aplicativo utiliza registros fictícios para demonstrar suas funcionalidades. " +
-                    "As palavras e traduções exibidas não representam vocabulário autêntico da língua Parintintin."
+                "Plataforma offline-first para consulta de terras indígenas, saberes culturais e preservação linguística."
             )
-        composeTestRule.onNode(
-            hasTestTag("demo_mode_notice_body") and hasText("registros fictícios", substring = true)
-        ).assertIsDisplayed()
-        composeTestRule.onNode(
-            hasTestTag("demo_mode_notice_body") and hasText(
-                "não representam vocabulário autêntico da língua Parintintin",
-                substring = true
-            )
-        ).assertIsDisplayed()
+        composeTestRule.onNodeWithTag("demo_mode_notice_card").assertDoesNotExist()
+        composeTestRule.onNodeWithText("MODO DEMONSTRATIVO").assertDoesNotExist()
     }
 
     @Test
-    fun `aviso na HomeScreen preserva hierarquia abaixo do banner e sem overflow em 280dp`() {
+    fun `introducao na HomeScreen preserva hierarquia abaixo do banner e sem overflow em 280dp`() {
         composeTestRule.setContent {
             ParintintinTheme {
                 Box(modifier = Modifier.width(280.dp)) {
@@ -104,15 +98,15 @@ class HomeScreenTest {
             .fetchSemanticsNode().boundsInRoot
         val heroBounds = composeTestRule.onNodeWithTag("home_hero_banner")
             .fetchSemanticsNode().boundsInRoot
-        val noticeBounds = composeTestRule.onNodeWithTag("demo_mode_notice_card")
+        val introBounds = composeTestRule.onNodeWithTag("intro_notice_card")
             .fetchSemanticsNode().boundsInRoot
 
-        assertTrue(noticeBounds.top >= heroBounds.bottom)
-        assertTrue(noticeBounds.right <= rootBounds.right)
+        assertTrue(introBounds.top >= heroBounds.bottom)
+        assertTrue(introBounds.right <= rootBounds.right)
     }
 
     @Test
-    fun `home exibe versao demonstrativa e texto atualizado do acervo sem afirmar ausencia de dados`() {
+    fun `home exibe badge do catalogo digital e esclarece limites da API IBAMA e do Dicionario`() {
         composeTestRule.setContent {
             ParintintinTheme {
                 HomeContent(
@@ -127,22 +121,21 @@ class HomeScreenTest {
         }
         composeTestRule.waitForIdle()
 
-        composeTestRule.onNodeWithText("VERSÃO 1.0 • DEMONSTRATIVA").assertIsDisplayed()
-        composeTestRule.onNodeWithText("NOME PROVISÓRIO • ETAPA 1").assertDoesNotExist()
-        composeTestRule.onNodeWithTag("demo_mode_notice_card").assertIsDisplayed()
+        composeTestRule.onNodeWithText("CATÁLOGO DIGITAL • OFFLINE-FIRST").assertIsDisplayed()
+        composeTestRule.onNodeWithText("VERSÃO 1.0 • DEMONSTRATIVA").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("demo_mode_notice_card").assertDoesNotExist()
 
         composeTestRule.onNodeWithTag("home_list")
-            .performScrollToNode(hasText("Acervo em construção"))
+            .performScrollToNode(hasText("Sobre o catálogo e suas fontes"))
         composeTestRule.waitForIdle()
 
         composeTestRule.onNodeWithText(
-            "O acervo linguístico autêntico ainda está em preparação. " +
-                "Esta versão utiliza exclusivamente registros fictícios para demonstrar o " +
-                "funcionamento do aplicativo, e a inclusão de conteúdo autêntico depende de " +
-                "validação e autorização adequadas."
+            "A aba Territórios reúne dados territoriais oficiais e etnias associadas da API " +
+                "ArcGIS REST do IBAMA/SIGAGEO (Camada 25), que não representam perfis culturais, " +
+                "históricos ou linguísticos completos. A aba Dicionário exibe registros demonstrativos " +
+                "em português enquanto o acervo linguístico autêntico aguarda curadoria."
         ).assertIsDisplayed()
-        composeTestRule.onNodeWithText("Nenhum dado linguístico será exibido", substring = true)
-            .assertDoesNotExist()
+        composeTestRule.onNodeWithText("Acervo em construção").assertDoesNotExist()
     }
 
     @Test
@@ -217,7 +210,7 @@ class HomeScreenTest {
             composeTestRule.onNodeWithTag("stage_details_toggle")
                 .fetchSemanticsNode().config.getOrNull(SemanticsActions.OnClick)?.label
         )
-        composeTestRule.onNodeWithText("Estrutura organizada em Clean Architecture", substring = true)
+        composeTestRule.onNodeWithText("Estrutura em Clean Architecture", substring = true)
             .assertDoesNotExist()
 
         // Expande ao clicar
@@ -231,7 +224,7 @@ class HomeScreenTest {
             composeTestRule.onNodeWithTag("stage_details_toggle")
                 .fetchSemanticsNode().config.getOrNull(SemanticsActions.OnClick)?.label
         )
-        composeTestRule.onNodeWithText("Estrutura organizada em Clean Architecture", substring = true)
+        composeTestRule.onNodeWithText("Estrutura em Clean Architecture", substring = true)
             .assertIsDisplayed()
 
         // Recolhe novamente ao clicar
@@ -263,16 +256,15 @@ class HomeScreenTest {
         }
         composeTestRule.waitForIdle()
 
-        composeTestRule.onNodeWithText("Preservação da Língua Parintintin").assert(isHeading())
-        composeTestRule.onNodeWithText("MODO DEMONSTRATIVO").assert(isHeading())
-        composeTestRule.onNodeWithTag("demo_mode_notice_body").assert(isHeading().not())
+        composeTestRule.onNodeWithText("Terras e Povos Indígenas do Brasil").assert(isHeading())
+        composeTestRule.onNodeWithTag("home_hero_subtitle").assert(isHeading().not())
 
         composeTestRule.onNodeWithTag("home_list")
-            .performScrollToNode(hasText("Acervo em construção"))
+            .performScrollToNode(hasText("Sobre o catálogo e suas fontes"))
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithText("Acervo em construção").assert(isHeading())
+        composeTestRule.onNodeWithText("Sobre o catálogo e suas fontes").assert(isHeading())
         composeTestRule.onNodeWithText(
-            "O acervo linguístico autêntico ainda está em preparação.",
+            "A aba Territórios reúne dados territoriais oficiais",
             substring = true
         ).assert(isHeading().not())
 
@@ -288,7 +280,7 @@ class HomeScreenTest {
     }
 
     @Test
-    fun `home exibe estados diferenciados de falha mantem MODO DEMONSTRATIVO visivel e preserva botao de sync manual`() {
+    fun `home exibe estados diferenciados de falha e sincronizacao mantendo botao manual`() {
         var currentSyncState by mutableStateOf<SyncState>(
             SyncState.OfflineFallback(
                 reason = "Offline",
@@ -314,7 +306,6 @@ class HomeScreenTest {
         composeTestRule.waitForIdle()
 
         // NO_INTERNET
-        composeTestRule.onNodeWithTag("demo_mode_notice_title").assertIsDisplayed()
         composeTestRule.onNodeWithTag("home_list")
             .performScrollToNode(hasTestTag("home_offline_status_card"))
         composeTestRule.waitForIdle()
@@ -360,20 +351,15 @@ class HomeScreenTest {
             lastSyncedEpochMillis = null
         )
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithText("Acervo oficial ainda indisponível").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Catálogo oficial ainda indisponível").assertIsDisplayed()
 
-        // Synced mantém MODO DEMONSTRATIVO visível na Home
+        // Synced exibe confirmacao de catalogo sincronizado
         currentSyncState = SyncState.Synced(
             lastSyncedEpochMillis = officialEpoch,
             territoriesCount = 627
         )
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithText("Acervo sincronizado").assertIsDisplayed()
-        composeTestRule.onNodeWithTag("home_list")
-            .performScrollToNode(hasTestTag("demo_mode_notice_card"))
-        composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithTag("demo_mode_notice_title")
-            .assertIsDisplayed()
-            .assertTextEquals("MODO DEMONSTRATIVO")
+        composeTestRule.onNodeWithText("Catálogo sincronizado").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Sincronizadas: 627 Terras Indígenas.").assertIsDisplayed()
     }
 }

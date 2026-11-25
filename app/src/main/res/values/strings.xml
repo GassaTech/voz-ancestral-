@@ -1,20 +1,19 @@
 <resources>
     <string name="app_name">Voz Ancestral</string>
 
-    <!-- Tela Inicial (Versão 1.0.0) -->
-    <string name="home_provisional_badge">VERSÃO 1.0 • Em Desenvolvimento</string>
-    <string name="home_hero_title">Preservação das Línguas e dos Territórios Indígenas</string>
-    <string name="home_hero_subtitle">Um acervo digital dedicado à valorização das línguas, à memória cultural e ao reconhecimento dos territórios dos povos indígenas do Brasil.</string>
-    <string name="home_intro_title">Acervo em construção</string>
-    <string name="home_intro_body">O catálogo de territórios utiliza informações de fontes oficiais. O dicionário Parintintin e os recursos de preservação linguística estão em desenvolvimento, aguardando documentação, validação e autorização para incorporar conteúdos autênticos.</string>
+    <!-- Tela Inicial -->
+    <string name="home_provisional_badge">CATÁLOGO DIGITAL • OFFLINE-FIRST</string>
+    <string name="home_hero_title">Terras e Povos Indígenas do Brasil</string>
+    <string name="home_hero_subtitle">Plataforma offline-first para consulta de terras indígenas, saberes culturais e preservação linguística.</string>
+    <string name="home_intro_title">Sobre o catálogo e suas fontes</string>
+    <string name="home_intro_body">A aba Territórios reúne dados territoriais oficiais e etnias associadas da API ArcGIS REST do IBAMA/SIGAGEO (Camada 25), que não representam perfis culturais, históricos ou linguísticos completos. A aba Dicionário exibe registros demonstrativos em português enquanto o acervo linguístico autêntico aguarda curadoria.</string>
 
-    <!-- Aviso de Modo Demonstrativo -->
+    <!-- Aviso de Modo Demonstrativo (Dicionário) -->
     <string name="demo_mode_notice_title">MODO DEMONSTRATIVO</string>
-    <string name="demo_mode_notice_body">O catálogo de territórios utiliza informações de fontes oficiais. O dicionário Parintintin e os recursos de preservação linguística estão em desenvolvimento. Os termos exibidos são fictícios e não representam o vocabulário autêntico da língua.</string>
+    <string name="demo_mode_notice_body">A aba Dicionário utiliza registros fictícios em português para demonstrar recursos de consulta linguística offline. Os termos exibidos não representam vocabulário indígena oficial.</string>
 
     <!-- Status Offline-First e Sincronização -->
     <string name="home_offline_status_title">Armazenamento Local (Offline-First)</string>
-    <string name="home_offline_status_ready">Base Room pronta para receber verbetes, artigos e mídias oficiais</string>
     <string name="home_offline_entries_count">%1$d verbetes locais</string>
     <string name="home_offline_articles_count">%1$d artigos locais</string>
     <string name="home_offline_territory_singular">1 Terra Indígena local</string>
@@ -23,9 +22,9 @@
     <string name="home_sync_loading_body">Verificando o último estado de sincronização salvo no dispositivo.</string>
     <string name="home_sync_idle_title">Pronto para sincronizar</string>
     <string name="home_sync_idle_body">Base local preparada. Ainda não houve sincronização remota neste dispositivo.</string>
-    <string name="home_sync_syncing_title">Sincronizando acervo…</string>
-    <string name="home_sync_syncing_body">Atualizando o acervo remoto. Os dados locais continuam preservados.</string>
-    <string name="home_sync_synced_title">Acervo sincronizado</string>
+    <string name="home_sync_syncing_title">Sincronizando catálogo…</string>
+    <string name="home_sync_syncing_body">Atualizando os registros territoriais remotos. Os dados locais continuam preservados.</string>
+    <string name="home_sync_synced_title">Catálogo sincronizado</string>
     <string name="home_sync_synced_body">Última sincronização em %1$s.</string>
     <string name="home_sync_synced_territory_singular">Sincronizada: 1 Terra Indígena.</string>
     <string name="home_sync_synced_territories_count">Sincronizadas: %1$d Terras Indígenas.</string>
@@ -38,28 +37,25 @@
     <string name="home_sync_offline_no_official_history">Ainda não houve sincronização oficial concluída.</string>
     <string name="home_sync_offline_last_official_sync">Última sincronização oficial em %1$s.</string>
     <string name="home_sync_offline_last_attempt">Última tentativa em %1$s.</string>
-    <string name="home_sync_remote_empty_title">Acervo oficial ainda indisponível</string>
-    <string name="home_sync_remote_empty_body">O servidor respondeu, mas ainda não há acervo oficial publicado. Os dados locais continuam disponíveis.</string>
+    <string name="home_sync_remote_empty_title">Catálogo oficial ainda indisponível</string>
+    <string name="home_sync_remote_empty_body">O servidor respondeu, mas não retornou registros territoriais publicados. Os dados locais continuam disponíveis.</string>
     <string name="home_sync_remote_empty_last_attempt">Última verificação em %1$s.</string>
     <string name="home_sync_remote_empty_title_with_history">Sem novos registros publicados</string>
-    <string name="home_sync_remote_empty_body_with_history">O servidor respondeu sem registros novos. O acervo oficial anterior continua preservado neste dispositivo.</string>
+    <string name="home_sync_remote_empty_body_with_history">O servidor respondeu sem novos registros territoriais. A sincronização oficial anterior continua preservada neste dispositivo.</string>
     <string name="home_sync_remote_empty_history_detail">Última sincronização oficial em %1$s • Verificado em %2$s.</string>
     <string name="home_sync_button_now">Sincronizar agora</string>
     <string name="home_sync_button_syncing">Sincronizando…</string>
     <string name="home_sync_button_retry">Tentar novamente</string>
     <string name="cd_home_sync_loading">Consultando histórico de sincronização local</string>
-    <string name="cd_home_sync_in_progress">Sincronização remota do acervo em andamento</string>
+    <string name="cd_home_sync_in_progress">Sincronização remota do catálogo em andamento</string>
 
     <!-- Módulos Planejados -->
     <string name="home_modules_section_title">Módulos Planejados</string>
-    <string name="home_modules_section_subtitle">Espaços preparados na interface para as próximas etapas de desenvolvimento.</string>
+    <string name="home_modules_section_subtitle">Frentes de expansão previstas na arquitetura do catálogo Voz Ancestral.</string>
     <string name="module_status_planned">Planejado</string>
 
-    <string name="module_dictionary_title">Dicionário Parintintin–Português</string>
-    <string name="module_dictionary_desc">Consulta bilíngue de verbetes, classes gramaticais e exemplos validados.</string>
-
     <string name="module_encyclopedia_title">Enciclopédia Cultural e Linguística</string>
-    <string name="module_encyclopedia_desc">Artigos informativos sobre história, território e aspectos da língua.</string>
+    <string name="module_encyclopedia_desc">Artigos informativos sobre história, território e línguas dos povos indígenas.</string>
 
     <string name="module_audio_title">Pronúncias em Áudio</string>
     <string name="module_audio_desc">Registros sonoros oficiais para apoio à oralidade e escuta offline.</string>
@@ -67,37 +63,27 @@
     <string name="module_search_favorites_title">Pesquisa e Favoritos</string>
     <string name="module_search_favorites_desc">Busca rápida e organização pessoal de conteúdos salvos no dispositivo.</string>
 
-    <!-- Painel Expansível da Etapa -->
-    <string name="home_stage_details_title">Detalhes da Etapa Inicial</string>
+    <!-- Painel Expansível da Arquitetura -->
+    <string name="home_stage_details_title">Arquitetura e Fontes de Dados</string>
     <string name="home_stage_details_expand">Mostrar detalhes</string>
     <string name="home_stage_details_collapse">Ocultar detalhes</string>
     <string name="home_stage_details_state_expanded">Expandido</string>
     <string name="home_stage_details_state_collapsed">Recolhido</string>
-    <string name="home_stage_details_body">Estrutura organizada em Clean Architecture (Presentation, Domain e Data), com Jetpack Compose, Navigation Compose, Hilt, Coroutines/Flow, Retrofit e Room preparados para integração futura com a API oficial e sincronização offline.</string>
+    <string name="home_stage_details_body">Estrutura em Clean Architecture (Presentation, Domain e Data) com Jetpack Compose, Navigation Compose, Hilt, Coroutines/Flow, Retrofit e Room (v4) integrada à API ArcGIS REST do IBAMA/SIGAGEO (Camada 25) para consulta offline.</string>
 
     <!-- Descrições de acessibilidade -->
-    <string name="cd_hero_illustration">Ilustração de preservação cultural e linguística amazônica</string>
-    <string name="cd_archive_illustration">Ilustração representando caderno de pesquisa e preservação da oralidade</string>
+    <string name="cd_hero_illustration">Ilustração de paisagem amazônica e grafismos indígenas</string>
+    <string name="cd_archive_illustration">Ilustração representando caderno de pesquisa e preservação de saberes indígenas</string>
 
-    <!-- Navegação Principal (Etapa 2.2) -->
+    <!-- Navegação Principal -->
     <string name="nav_home">Início</string>
     <string name="nav_encyclopedia">Enciclopédia</string>
     <string name="nav_dictionary">Dicionário</string>
     <string name="nav_territories">Territórios</string>
-    <string name="nav_favorites">Favoritos</string>
-    <string name="nav_archive">Acervo</string>
 
-    <!-- Telas Provisórias -->
-    <string name="provisional_badge">TELA PROVISÓRIA • ETAPA 2.2</string>
-    <string name="provisional_back_home">Voltar ao Início</string>
-    <string name="provisional_encyclopedia_desc">Espaço reservado para os futuros artigos culturais e linguísticos validados sobre a língua Parintintin.</string>
-    <string name="provisional_dictionary_desc">Espaço reservado para o futuro dicionário Parintintin–Português, pesquisa e registros em áudio oficiais.</string>
-    <string name="provisional_favorites_desc">Espaço reservado para reunir verbetes e conteúdos salvos para consulta rápida offline.</string>
-    <string name="provisional_archive_desc">Espaço reservado para consulta ao estado do acervo offline, fontes e futuras rotinas de sincronização.</string>
-
-    <!-- Enciclopédia (Etapa 2.3) -->
+    <!-- Enciclopédia -->
     <string name="encyclopedia_title">Enciclopédia</string>
-    <string name="encyclopedia_subtitle">Acervo aberto dedicado à reunião de registros linguísticos, históricos e culturais validados para consulta offline.</string>
+    <string name="encyclopedia_subtitle">Espaço dedicado à reunião de registros linguísticos, históricos e culturais validados para consulta offline.</string>
     <string name="encyclopedia_search_hint">Pesquisar artigos por título ou tema…</string>
     <string name="encyclopedia_clear_search">Limpar pesquisa</string>
     <string name="encyclopedia_categories_label">Categorias de conteúdo</string>
@@ -105,9 +91,9 @@
     <string name="encyclopedia_articles_section_title">Artigos disponíveis</string>
     <string name="encyclopedia_articles_count">%1$d artigos locais</string>
     <string name="encyclopedia_offline_badge">Consulta offline via Room</string>
-    <string name="encyclopedia_loading">Consultando acervo local…</string>
+    <string name="encyclopedia_loading">Consultando catálogo local…</string>
     <string name="encyclopedia_empty_title">Nenhum artigo cadastrado ainda</string>
-    <string name="encyclopedia_empty_subtitle">Os artigos oficiais sobre a língua e a cultura Parintintin serão exibidos aqui assim que forem integrados ao banco local.</string>
+    <string name="encyclopedia_empty_subtitle">Os artigos culturais, históricos e linguísticos sobre os povos indígenas do Brasil serão exibidos aqui assim que forem integrados ao banco local.</string>
     <string name="encyclopedia_empty_filtered_title">Nenhum artigo encontrado</string>
     <string name="encyclopedia_empty_filtered_subtitle">Não há registros que correspondam à pesquisa ou categoria selecionada.</string>
     <string name="encyclopedia_clear_filters">Limpar filtros</string>
@@ -117,7 +103,7 @@
     <string name="encyclopedia_source_prefix">Fonte: %1$s</string>
     <string name="cd_toggle_article_bookmark">Salvar ou remover artigo dos favoritos</string>
 
-    <!-- Dicionário (Versão 1.0) -->
+    <!-- Dicionário -->
     <string name="dictionary_title">Dicionário</string>
     <string name="dictionary_subtitle">Consulta de termos demonstrativos em português, inspirados na natureza amazônica.</string>
     <string name="dictionary_offline_badge">Consulta offline via Room</string>
@@ -136,7 +122,7 @@
     <string name="dictionary_loading">Consultando verbetes locais…</string>
     <string name="cd_dictionary_loading">Carregando verbetes do dicionário local</string>
     <string name="dictionary_empty_title">Nenhum verbete cadastrado ainda</string>
-    <string name="dictionary_empty_subtitle">Os verbetes validados da língua Parintintin serão exibidos aqui após a sincronização com o banco local.</string>
+    <string name="dictionary_empty_subtitle">Os verbetes linguísticos validados serão exibidos aqui após a integração ao banco local.</string>
     <string name="dictionary_empty_filtered_title">Nenhum verbete encontrado</string>
     <string name="dictionary_empty_filtered_subtitle">Não há verbetes que correspondam à pesquisa ou aos filtros selecionados.</string>
     <string name="dictionary_clear_filters">Limpar filtros</string>

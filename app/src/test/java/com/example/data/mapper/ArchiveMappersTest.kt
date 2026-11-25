@@ -3,7 +3,6 @@ package com.example.data.mapper
 import com.example.data.local.entity.CulturalArticleEntity
 import com.example.data.local.entity.DictionaryEntryEntity
 import com.example.data.local.entity.SyncMetadataEntity
-import com.example.data.remote.dto.CulturalArticleDto
 import com.example.data.remote.dto.DictionaryEntryDto
 import com.example.domain.model.CulturalTopic
 import com.example.domain.model.GrammaticalClass
@@ -94,8 +93,8 @@ class ArchiveMappersTest {
     }
 
     @Test
-    fun `CulturalArticleEntity e DTO realizam conversao bidirecional e fallback de topico desconhecido`() {
-        val dto = CulturalArticleDto(
+    fun `CulturalArticleEntity toDomain realiza conversao e fallback de topico desconhecido`() {
+        val entity = CulturalArticleEntity(
             id = "a1",
             title = "História",
             subtitle = "Sub",
@@ -104,11 +103,12 @@ class ArchiveMappersTest {
             topic = "LINGUISTICS",
             readingTimeMinutes = 4,
             sourceReference = "Fonte",
+            isBookmarked = true,
             updatedAtEpochMillis = 1_700_000_002_000L
         )
-        val entity = dto.toEntity(isBookmarked = true)
-        assertTrue(entity.isBookmarked)
-        assertEquals(CulturalTopic.LINGUISTICS, entity.toDomain().topic)
+        val domain = entity.toDomain()
+        assertTrue(domain.isBookmarked)
+        assertEquals(CulturalTopic.LINGUISTICS, domain.topic)
 
         val fallback = entity.copy(topic = "TOPICO_DESCONHECIDO").toDomain()
         assertEquals(CulturalTopic.HISTORY, fallback.topic)

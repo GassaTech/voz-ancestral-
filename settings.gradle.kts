@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "AcervoProvisorio"
+rootProject.name = "VozAncestral"
 
 include(":app")

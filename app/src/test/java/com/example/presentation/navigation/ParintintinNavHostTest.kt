@@ -48,8 +48,6 @@ class ParintintinNavHostTest {
         composeTestRule.onNodeWithText("Territórios").assertIsDisplayed()
 
         composeTestRule.onNodeWithTag("bottom_nav_encyclopedia").assertDoesNotExist()
-        composeTestRule.onNodeWithTag("bottom_nav_favorites").assertDoesNotExist()
-        composeTestRule.onNodeWithTag("bottom_nav_archive").assertDoesNotExist()
     }
 
     @Test
@@ -70,7 +68,6 @@ class ParintintinNavHostTest {
 
         composeTestRule.onNodeWithTag("dictionary_screen_root").assertIsDisplayed()
         composeTestRule.onNodeWithTag("dictionary_header_card").assertIsDisplayed()
-        composeTestRule.onNodeWithTag("provisional_screen_dictionary").assertDoesNotExist()
         composeTestRule.onNodeWithTag("bottom_nav_dictionary").assertIsSelected()
         composeTestRule.onNodeWithTag("bottom_nav_home").assertIsNotSelected()
         composeTestRule.onNodeWithTag("bottom_nav_territories").assertIsNotSelected()

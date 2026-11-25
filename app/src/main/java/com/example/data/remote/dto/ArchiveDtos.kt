@@ -17,23 +17,3 @@ data class DictionaryEntryDto(
     @Json(name = "audio_url") val audioUrl: String? = null,
     @Json(name = "updated_at_epoch_millis") val updatedAtEpochMillis: Long
 )
-
-@JsonClass(generateAdapter = true)
-data class CulturalArticleDto(
-    @Json(name = "id") val id: String,
-    @Json(name = "title") val title: String,
-    @Json(name = "subtitle") val subtitle: String,
-    @Json(name = "summary") val summary: String,
-    @Json(name = "body_paragraphs") val bodyParagraphs: List<String>,
-    @Json(name = "topic") val topic: String,
-    @Json(name = "reading_time_minutes") val readingTimeMinutes: Int,
-    @Json(name = "source_reference") val sourceReference: String,
-    @Json(name = "updated_at_epoch_millis") val updatedAtEpochMillis: Long
-)
-
-@JsonClass(generateAdapter = true)
-data class ArchiveManifestDto(
-    @Json(name = "version") val version: String,
-    @Json(name = "entries_count") val entriesCount: Int,
-    @Json(name = "articles_count") val articlesCount: Int
-)

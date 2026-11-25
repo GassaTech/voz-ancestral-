@@ -4,8 +4,8 @@ Aplicativo Android desenvolvido em arquitetura *Offline-First* no âmbito do pro
 
 > **Aviso de Precisão e Escopo dos Dados:**
 > 1. **Terras Indígenas (API IBAMA / SIGAGEO, Camada 25):** a API fornece informações territoriais oficiais (nome da Terra Indígena, código `terrai_cod`, UF, municípios, superfície em hectares, fase do processo, modalidade, data de atualização) e as **etnias associadas aos territórios** (`etnia_nome` / `ethnicities`). **Ela não representa uma base completa de perfis culturais, históricos ou linguísticos dos povos indígenas.**
-> 2. **Dicionário (Escopo Demonstrativo Preservado):** a aba **Dicionário** mantém os **20 registros demonstrativos fictícios em português** (`DEMO-001` a `DEMO-020`) para preservação da funcionalidade anterior; **nenhum verbete dessa aba representa vocabulário autêntico de línguas indígenas**.
-> 3. **Identificadores Residuais de Configuração:** embora a identidade do projeto tenha evoluído para **Voz Ancestral: Catálogo Digital de Terras e Povos Indígenas do Brasil**, o manifesto de strings (`app_name = "Acervo Provisório"`), `settings.gradle.kts` (`rootProject.name = "AcervoProvisorio"`), `applicationId` (`com.aistudio.parintintin.kagwah`), `versionName = "1.0"` e os textos iniciais da tela **Início** ainda preservam os identificadores originais da v1.0.
+> 2. **Dicionário (Escopo Demonstrativo Isolado):** a aba **Dicionário** mantém os **20 registros demonstrativos fictícios em português** (`DEMO-001` a `DEMO-020`) com aviso explícito (`MODO DEMONSTRATIVO`) para demonstrar consulta linguística offline; **nenhum verbete dessa aba representa vocabulário indígena oficial**.
+> 3. **Identificadores Internos Preservados por Compatibilidade:** a identidade visível, os textos de interface, o nome do projeto Gradle (`VozAncestral`), o tema XML (`Theme.VozAncestral`) e os metadados já refletem **Voz Ancestral — Catálogo Digital de Terras e Povos Indígenas do Brasil**. Permanecem preservados apenas identificadores técnicos internos cuja alteração quebraria compatibilidade de instalação/atualização ou migrações Room (`applicationId = "com.aistudio.parintintin.kagwah"`, `namespace = "com.example"`, banco `parintintin_archive.db` / `ParintintinDatabase` v4 e classes históricas como `ParintintinApplication`, `ParintintinNavHost`, `ParintintinBottomBar` e `ParintintinTheme`).
 
 ---
 
@@ -13,11 +13,12 @@ Aplicativo Android desenvolvido em arquitetura *Offline-First* no âmbito do pro
 
 | Atributo | Informação Verificada no Repositório | Observação |
 |---|---|---|
-| **Identidade Atual do Projeto** | **Voz Ancestral: Catálogo Digital de Terras e Povos Indígenas do Brasil** | Evolução do projeto a partir do protótipo *Acervo Provisório* |
-| **Nome Configurado no Android/Gradle** | `app_name = "Acervo Provisório"` \| `rootProject.name = "AcervoProvisorio"` | Identificador residual em `strings.xml` e `settings.gradle.kts` |
-| **Metadado no AI Studio (`metadata.json`)** | `"Voz Ancestral"` | Descrição ainda refere-se apenas à língua Parintintin |
+| **Identidade Atual do Projeto** | **Voz Ancestral: Catálogo Digital de Terras e Povos Indígenas do Brasil** | Consolidado no código, UI, strings, tema e documentação |
+| **Nome no Android / Gradle** | `app_name = "Voz Ancestral"` \| `rootProject.name = "VozAncestral"` | `app/src/main/res/values/strings.xml`, `settings.gradle.kts` |
+| **Metadado no AI Studio (`metadata.json`)** | `"Voz Ancestral"` | Descrição atualizada para o catálogo de terras e povos indígenas |
+| **Tema Base Android (`themes.xml`)** | `Theme.VozAncestral` | `app/src/main/res/values/themes.xml`, `AndroidManifest.xml` |
 | **Versão no Gradle** | `versionCode = 1`, `versionName = "1.0"` | `app/build.gradle.kts` |
-| **Identificador Android (`applicationId`)** | `com.aistudio.parintintin.kagwah` (`namespace = "com.example"`) | `app/build.gradle.kts` |
+| **Identificador Android (`applicationId`)** | `com.aistudio.parintintin.kagwah` (`namespace = "com.example"`) | Preservado para manter compatibilidade de atualização e pacote `R` |
 | **Fonte Remota Territorial** | API ArcGIS REST — IBAMA / SIGAGEO (`MapServer/25/query`) | `ArcGisTerritoriesQuerySpec.kt`, `NetworkModule.kt` |
 | **Destinos Principais de Navegação** | **Início**, **Dicionário** e **Territórios** | `AppDestination.primaryDestinations` (Etapa 5.4) |
 
@@ -46,11 +47,11 @@ A barra de navegação inferior (`ParintintinBottomBar`) expõe exatamente **tr�
 - **Estados completos de interface e sincronização manual:** exibição de estados `Loading`, `Empty` (diferenciando base vazia de busca/filtro sem resultados), `Success` (1 coluna em telas compactas e 2 colunas a partir de `600.dp`) e `Error` com `Tentar novamente`, além de barra de status (`TerritoriesSyncStatusBar`) com botão de sincronização manual protegido contra chamadas simultâneas e banner dispensável em caso de erro inesperado.
 
 ### 3.2. Início (`Home`)
-- Exibe o banner inicial da v1.0, o aviso permanente `MODO DEMONSTRATIVO`, explicação introdutória e o cartão **Armazenamento Local (Offline-First)** (`OfflineArchiveStatusCard`), atualizado para exibir três métricas locais: **Terras Indígenas locais**, **verbetes locais** e **artigos locais**, além da contagem sincronizada de Terras Indígenas (`SyncState.Synced`) e controle de sincronização manual.
+- Exibe o banner institucional **`CATÁLOGO DIGITAL • OFFLINE-FIRST` — *"Terras e Povos Indígenas do Brasil"***, o card explicativo **`Sobre o catálogo e suas fontes`** (distinguindo claramente o escopo territorial oficial da API IBAMA/SIGAGEO do caráter demonstrativo da aba Dicionário), o cartão **Armazenamento Local (Offline-First)** (`OfflineArchiveStatusCard`) com as três métricas locais (**Terras Indígenas locais**, **verbetes locais** e **artigos locais**), contagem sincronizada de Terras Indígenas (`Catálogo sincronizado`), controle de sincronização manual e os cards informativos **Módulos Planejados** e **Arquitetura e Fontes de Dados**.
 - Mantém o disparo automático único de inicialização por processo (`HomeViewModel.init` → `ArchiveSyncCoordinator.requestAutoSync()`), combinando atualização idempotente do seed demonstrativo e sincronização paginada das Terras Indígenas.
 
 ### 3.3. Dicionário (`Dicionário`)
-- Preserva integralmente a experiência de consulta offline dos **20 verbetes demonstrativos em português** (`DEMO-001` a `DEMO-020`), com pesquisa textual (*debounce* de `150 ms`), filtros combináveis por 6 categorias semânticas e 7 classes gramaticais, cabeçalho fixo `MODO DEMONSTRATIVO` e selos identificadores de conteúdo demonstrativo.
+- Preserva integralmente a experiência de consulta offline dos **20 verbetes demonstrativos em português** (`DEMO-001` a `DEMO-020`), com pesquisa textual (*debounce* de `150 ms`), filtros combináveis por 6 categorias semânticas e 7 classes gramaticais, cabeçalho fixo `MODO DEMONSTRATIVO` (isolado nesta aba) e selos identificadores de conteúdo demonstrativo.
 
 ### 3.4. Navegação Principal (Etapa 5.4)
 - Navegação tipada com `Navigation Compose` (`@Serializable`) entre **Início**, **Dicionário** e **Territórios**, com `launchSingleTop = true`, `saveState = true` e `restoreState = true` preservando estado de pesquisa/filtros ao alternar abas e retorno padrão via botão voltar para **Início**.
@@ -60,8 +61,7 @@ A barra de navegação inferior (`ParintintinBottomBar`) expõe exatamente **tr�
 ## 4. Limitações e Escopo Atual
 
 - **Escopo dos dados da API IBAMA / SIGAGEO:** a camada 25 fornece atributos territoriais oficiais e etnias associadas (`etnia_nome`), **não substituindo fontes antropológicas, históricas ou linguísticas completas dos povos indígenas**. Não há sincronização de geometrias/polígonos (`returnGeometry = false`), nem tela dedicada de detalhes individuais de territórios.
-- **Conteúdo linguístico e módulos secundários:** os 20 verbetes do **Dicionário** continuam sendo registros demonstrativos em português (`DEMO-001`..`DEMO-020`), sem vocabulário Parintintin autêntico, IPA ou áudio. As rotas `Encyclopedia`, `Favorites` (`ProvisionalDestinationScreen`) e `Archive` (`ProvisionalDestinationScreen`) permanecem fora da barra inferior.
-- **Identificadores e textos residuais:** `strings.xml` (`app_name`, `home_hero_title`, `home_provisional_badge`), `settings.gradle.kts`, `metadata.json` e `docs/api-v1-contract.md` ainda carregam referências da fase inicial *Acervo Provisório* / *Parintintin* (detalhes em [`TEST_RESULTS.md`](TEST_RESULTS.md) e [`SPECIFICATION.md`](SPECIFICATION.md)).
+- **Conteúdo linguístico e módulos secundários:** os 20 verbetes do **Dicionário** continuam sendo registros demonstrativos em português (`DEMO-001`..`DEMO-020`), sem vocabulário Parintintin autêntico, IPA ou áudio. As rotas obsoletas `Favorites`, `Archive` e `ProvisionalDestinationScreen` foram removidas na revisão de saneamento; apenas `Encyclopedia` permanece preservada como estrutura preparatória fora da barra inferior.
 - **Execução de rede neste container offline:** no ambiente local de desenvolvimento/auditoria, todas as validações HTTP utilizaram `MockWebServer` (não há saída de rede externa nem emulador/ADB neste container). A sincronização completa de **627 registros territoriais** e a aprovação no **GitHub Actions** foram **confirmadas externamente pelo responsável pelo projeto** (o diretório `.github/` e o histórico `.git` não estão presentes neste container).
 - **Validação em hardware e Release:** testes instrumentados (`app/src/androidTest`) não foram executados por ausência de emulador/ADB, não há auditoria manual com TalkBack em aparelho físico e não há assinatura Release configurada (`my-upload-key.jks` e variáveis de assinatura externos ao repositório).
 
@@ -114,10 +114,10 @@ O projeto segue **Clean Architecture** combinada ao padrão **MVVM**:
 ├── gradle.properties                 # Parâmetros de build JVM/Gradle/Kotlin
 ├── gradlew                           # Script wrapper Unix executável (-rwxr-xr-x)
 ├── gradlew.bat                       # Script wrapper Windows
-├── metadata.json                     # Metadados do projeto no ambiente AI Studio
-├── settings.gradle.kts               # Definição do projeto AcervoProvisorio (:app)
+├── metadata.json                     # Metadados do projeto no ambiente AI Studio (Voz Ancestral)
+├── settings.gradle.kts               # Definição do projeto VozAncestral (:app)
 ├── docs/
-│   ├── api-v1-contract.md            # Contrato histórico/legado da antiga API v1 (não usada no cliente atual)
+│   ├── api-v1-contract.md            # Contrato histórico/arquivado da antiga API v1 (desativada no cliente atual)
 │   └── arcgis-territories-api.md     # Documentação técnica da Etapa 1 da API ArcGIS REST (IBAMA Camada 25)
 ├── gradle/
 │   ├── libs.versions.toml            # Catálogo central de versões e dependências

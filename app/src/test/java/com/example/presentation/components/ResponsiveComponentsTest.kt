@@ -26,16 +26,15 @@ class ResponsiveComponentsTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
-    private val sampleBadge = "VERSÃO 1.0 • DEMONSTRATIVA"
-    private val sampleHeroTitle = "Preservação da Língua Parintintin"
+    private val sampleBadge = "CATÁLOGO DIGITAL • OFFLINE-FIRST"
+    private val sampleHeroTitle = "Terras e Povos Indígenas do Brasil"
     private val sampleHeroSubtitle =
-        "Acervo digital aberto para documentação linguística, memória cultural e consulta offline."
+        "Plataforma offline-first para consulta de terras indígenas, saberes culturais e preservação linguística."
 
-    private val sampleIntroTitle = "Acervo em construção"
+    private val sampleIntroTitle = "Sobre o catálogo e suas fontes"
     private val sampleIntroBody =
-        "O acervo linguístico autêntico ainda está em preparação. Esta versão utiliza " +
-            "exclusivamente registros fictícios para demonstrar o funcionamento do aplicativo, " +
-            "e a inclusão de conteúdo autêntico depende de validação e autorização adequadas."
+        "A aba Territórios reúne dados territoriais oficiais e etnias associadas da API ArcGIS REST " +
+            "do IBAMA/SIGAGEO (Camada 25), e a aba Dicionário exibe registros demonstrativos em português."
 
     @Test
     fun `IntroNoticeCard em 280dp amplia largura do texto abaixo da imagem sem overflow horizontal`() {
@@ -285,11 +284,11 @@ class ResponsiveComponentsTest {
     @Test
     fun `HeroPreservationBanner expande altura acima de 232dp quando conteudo excede altura minima`() {
         var minHeightPx = 0f
-        val multilineTitle = "Preservação da Língua\nParintintin em Acervo\nDigital Aberto"
+        val multilineTitle = "Terras e Povos\nIndígenas do Brasil em\nCatálogo Digital"
         val multilineSubtitle =
-            "Acervo digital aberto para documentação linguística,\n" +
+            "Plataforma digital aberta para consulta territorial,\n" +
                 "memória cultural, pesquisa acadêmica\n" +
-                "e consulta offline em dispositivos móveis\n" +
+                "e acesso offline em dispositivos móveis\n" +
                 "com suporte a fontes ampliadas."
 
         composeTestRule.setContent {

@@ -601,12 +601,12 @@ class DictionaryScreenTest {
         composeTestRule.onNodeWithTag("demo_mode_notice_body")
             .assertIsDisplayed()
             .assertTextEquals(
-                "Este aplicativo utiliza registros fictícios para demonstrar suas funcionalidades. " +
-                    "As palavras e traduções exibidas não representam vocabulário autêntico da língua Parintintin."
+                "A aba Dicionário utiliza registros fictícios em português para demonstrar recursos " +
+                    "de consulta linguística offline. Os termos exibidos não representam vocabulário indígena oficial."
             )
         composeTestRule.onNodeWithText("registros fictícios", substring = true).assertIsDisplayed()
         composeTestRule.onNodeWithText(
-            "não representam vocabulário autêntico da língua Parintintin",
+            "não representam vocabulário indígena oficial",
             substring = true
         ).assertIsDisplayed()
     }
@@ -710,8 +710,8 @@ class DictionaryScreenTest {
         composeTestRule.onNodeWithTag("demo_mode_notice_body")
             .assertIsDisplayed()
             .assertTextEquals(
-                "Este aplicativo utiliza registros fictícios para demonstrar suas funcionalidades. " +
-                    "As palavras e traduções exibidas não representam vocabulário autêntico da língua Parintintin."
+                "A aba Dicionário utiliza registros fictícios em português para demonstrar recursos " +
+                    "de consulta linguística offline. Os termos exibidos não representam vocabulário indígena oficial."
             )
 
         // O último cartão exibido não fica encoberto pelo aviso fixo

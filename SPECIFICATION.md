@@ -8,12 +8,13 @@
 
 | Atributo | Definição Verificada no Repositório | Origem no Projeto |
 |---|---|---|
-| **Identidade do Projeto** | **Voz Ancestral — Catálogo Digital de Terras e Povos Indígenas do Brasil** | Evolução confirmada sobre a base do projeto *Voz Ancestral* |
-| **Nome Configurado no App / Gradle** | **Acervo Provisório** (`AcervoProvisorio` no Gradle) | `app/src/main/res/values/strings.xml` (`app_name`), `settings.gradle.kts` |
-| **Nome no AI Studio (`metadata.json`)** | `Voz Ancestral` | `metadata.json` *(descrição ainda cita apenas língua Parintintin)* |
-| **Tema Atual** | Catálogo digital *offline-first* de Terras Indígenas do Brasil e etnias associadas (API IBAMA / SIGAGEO Camada 25), mantendo a base demonstrativa de preservação da língua Parintintin | `TerritoriesScreen.kt`, `IbamaTerritoriesApiService.kt`, `HomeScreen.kt`, `DictionaryScreen.kt` |
+| **Identidade do Projeto** | **Voz Ancestral — Catálogo Digital de Terras e Povos Indígenas do Brasil** | Consolidado no código, interface, strings, tema e documentação |
+| **Nome no App / Gradle** | **Voz Ancestral** (`VozAncestral` no Gradle) | `app/src/main/res/values/strings.xml` (`app_name`), `settings.gradle.kts` |
+| **Nome no AI Studio (`metadata.json`)** | `Voz Ancestral` | `metadata.json` alinhado ao catálogo de terras e povos indígenas |
+| **Tema Base XML (`themes.xml`)** | `Theme.VozAncestral` | `app/src/main/res/values/themes.xml`, `AndroidManifest.xml` |
+| **Tema Funcional** | Catálogo digital *offline-first* de Terras Indígenas do Brasil e etnias associadas (API IBAMA / SIGAGEO Camada 25), com frente demonstrativa isolada de consulta linguística na aba **Dicionário** | `TerritoriesScreen.kt`, `IbamaTerritoriesApiService.kt`, `HomeScreen.kt`, `DictionaryScreen.kt` |
 | **Versão Configurada** | `versionCode = 1`, `versionName = "1.0"` | `app/build.gradle.kts` |
-| **Identificador Android (`applicationId`)** | `com.aistudio.parintintin.kagwah` (`namespace = "com.example"`) | `app/build.gradle.kts` |
+| **Identificador Android (`applicationId`)** | `com.aistudio.parintintin.kagwah` (`namespace = "com.example"`) | `app/build.gradle.kts` *(preservado por compatibilidade de pacote/atualização)* |
 | **Compatibilidade SDK** | `minSdk = 24` \| `targetSdk = 36` \| `compileSdk = 36` | `app/build.gradle.kts` |
 
 > **Aviso Obrigatório de Precisão dos Dados:**
@@ -60,8 +61,8 @@ Não há documento de definição formal de personas no repositório; com base n
 A navegação inferior (`AppDestination.primaryDestinations` em `AppDestination.kt` e `ParintintinBottomBar.kt`) expõe exatamente **três destinos principais**: **Início (`Home`)**, **Dicionário (`Dictionary`)** e **Territórios (`Territories`)**.
 
 ### 6.1. Tela Início (`HomeScreen` / `HomeViewModel`)
-- Mantém o cabeçalho hero v1.0 (`"VERSÃO 1.0 • DEMONSTRATIVA"` / `"Preservação da Língua Parintintin"`), o card permanente `"MODO DEMONSTRATIVO"`, o card `"Acervo em construção"`, a seção estática `"Módulos Planejados"` e o painel expansível `"Detalhes da Etapa Inicial"`.
-- O cartão **Armazenamento Local (Offline-First)** (`OfflineArchiveStatusCard`) exibe contagens locais em tempo real para **Terras Indígenas** (`home_offline_territories_chip`), **verbetes** (`home_offline_entries_chip`) e **artigos** (`home_offline_articles_chip`), estado da sincronização (`Loading`, `Idle`, `Syncing`, `Synced` com contagem de Terras Indígenas sincronizadas, `RemoteEmpty` e `OfflineFallback` classificado em `NO_INTERNET`, `UNVALIDATED_NETWORK` e `SERVER_UNAVAILABLE`) e botão de sincronização manual.
+- Exibe o cabeçalho hero **`CATÁLOGO DIGITAL • OFFLINE-FIRST` / `"Terras e Povos Indígenas do Brasil"`**, o card explicativo **`Sobre o catálogo e suas fontes`** (esclarecendo o escopo territorial da API IBAMA/SIGAGEO Camada 25 e o caráter demonstrativo da aba Dicionário), a seção `"Módulos Planejados"` e o painel expansível `"Arquitetura e Fontes de Dados"`. O card `MODO DEMONSTRATIVO` foi removido da **Início** e mantido exclusivamente na aba **Dicionário**, evitando apresentar registros demonstrativos como identidade principal do aplicativo.
+- O cartão **Armazenamento Local (Offline-First)** (`OfflineArchiveStatusCard`) exibe contagens locais em tempo real para **Terras Indígenas** (`home_offline_territories_chip`), **verbetes** (`home_offline_entries_chip`) e **artigos** (`home_offline_articles_chip`), estado da sincronização (`Loading`, `Idle`, `Syncing`, `Catálogo sincronizado` com contagem de Terras Indígenas sincronizadas, `Catálogo oficial ainda indisponível` / `Sem novos registros publicados` e `OfflineFallback` classificado em `NO_INTERNET`, `UNVALIDATED_NETWORK` e `SERVER_UNAVAILABLE`) e botão de sincronização manual.
 - Dispara `syncCoordinator.requestAutoSync()` uma única vez por processo em `HomeViewModel.init`.
 
 ### 6.2. Tela Dicionário (`DictionaryScreen` / `DictionaryViewModel`)
@@ -82,11 +83,12 @@ A navegação inferior (`AppDestination.primaryDestinations` em `AppDestination.
 
 - **Escopo estritamente territorial e de etnias associadas na API:** `IbamaTerritoriesApiService` consulta apenas os campos tabulares `objectid,terrai_cod,terrai_nom,etnia_nome,municipio_,uf_sigla,superficie,fase_ti,modalidade,data_atual` com `returnGeometry=false`. Perfis etnográficos, línguas faladas detalhadas, dados demográficos, históricos ou polígonos geográficos não fazem parte do modelo ou da API consumida.
 - **Estratégia de atualização local em `upsertAll`:** a sincronização em `RoomIndigenousLandRepository` executa paginação completa e persiste via `indigenousLandDao.upsertAll(deduplicatedEntities)` dentro de `database.withTransaction`. Não há política implementada de remoção automática de registros eventualmente excluídos na origem remota (com exceção de `deleteAll()` manual no repositório).
-- **Resíduos textuais e documentais da v1.0:**
-  - `strings.xml` mantém `app_name = "Acervo Provisório"`, `home_provisional_badge = "VERSÃO 1.0 • DEMONSTRATIVA"` e `home_hero_title = "Preservação da Língua Parintintin"`;
-  - `settings.gradle.kts` mantém `rootProject.name = "AcervoProvisorio"`;
-  - `ArchiveDtos.kt` ainda contém `DictionaryEntryDto`, `CulturalArticleDto` e `ArchiveManifestDto` (utilizado por `DictionarySeedJsonParser` e testes de mapper), enquanto `ParintintinApiService` e `RemoteArchiveDataSource` foram removidos na transição para a API do IBAMA;
-  - `docs/api-v1-contract.md` ainda descreve o antigo contrato proposto (`https://archive.parintintin.org/`), atualmente inativo no cliente.
+- **Saneamento de artefatos obsoletos pós-Etapa 5.4:**
+  - `strings.xml`, `HomeScreen`, `settings.gradle.kts`, `metadata.json`, `themes.xml` e `AndroidManifest.xml` foram atualizados para refletir a identidade **Voz Ancestral — Catálogo Digital de Terras e Povos Indígenas do Brasil**;
+  - `ProvisionalDestinationScreen` (`PreserveComponents.kt`), as rotas inacessíveis `AppDestination.Favorites` e `AppDestination.Archive` (`AppDestination.kt`, `ParintintinNavHost.kt`, `ParintintinBottomBar.kt`) e as strings `provisional_*` / `nav_favorites` / `nav_archive` foram removidas;
+  - `ArchiveDtos.kt` e `ArchiveMappers.kt` passaram a manter apenas `DictionaryEntryDto` (consumido por `DictionarySeedJsonParser`) e `CulturalArticleEntity.toDomain()`, após remoção de `ArchiveManifestDto` e `CulturalArticleDto` da desativada API `/v1/`;
+  - `docs/api-v1-contract.md` foi explicitamente marcado como especificação histórica arquivada;
+  - Permanecem preservados por compatibilidade de Room/Hilt/APK: `applicationId`, `namespace`, `ParintintinDatabase` (`parintintin_archive.db`, v4), nomes históricos de classes (`ParintintinApplication`, `ParintintinTheme`, `ParintintinNavHost`, `ParintintinBottomBar`) e colunas Room existentes.
 
 ---
 
@@ -95,10 +97,10 @@ A navegação inferior (`AppDestination.primaryDestinations` em `AppDestination.
 | Funcionalidade | Estado Atual no Repositório | Evidência |
 |---|---|---|
 | **Catálogo de Terras Indígenas (Pesquisa, Filtros, Ordenação, Sync IBAMA)** | **Implementado e ativo** na aba **Territórios** e na infraestrutura Room/Retrofit. *(Sincronização de **627 registros** confirmada externamente pelo responsável; no container offline, validado com `MockWebServer` e testes Robolectric/Room.)* | `TerritoriesScreen.kt`, `TerritoriesViewModel.kt`, `IndigenousLandQueryBuilder.kt`, `RoomIndigenousLandRepository.kt`, `IbamaTerritoriesApiService.kt` |
-| **Enciclopédia Cultural** | **Parcial (preparatório, fora da navegação e sem sync):** possui DAO, Entity, Repository (`OfflineFirstEncyclopediaRepository`), `EncyclopediaViewModel` e `EncyclopediaScreen`, porém está excluída de `primaryDestinations` e sem seed/API. | `AppDestination.kt`, `EncyclopediaScreen.kt`, `OfflineFirstEncyclopediaRepository.kt` |
-| **Favoritos** | **Parcial (persistência de Dicionário/Enciclopédia sem UI):** colunas/DAO preservados, porém sem botão nos cards e com rota `AppDestination.Favorites` apontando para `ProvisionalDestinationScreen` inacessível pela barra inferior. | `DictionaryDao.kt`, `ParintintinNavHost.kt` |
+| **Enciclopédia Cultural** | **Parcial (preparatório, fora da barra inferior e sem sync):** possui DAO, Entity, Repository (`OfflineFirstEncyclopediaRepository`), `EncyclopediaViewModel` e `EncyclopediaScreen`, porém está excluída de `primaryDestinations` e sem seed/API. | `AppDestination.kt`, `EncyclopediaScreen.kt`, `OfflineFirstEncyclopediaRepository.kt` |
+| **Favoritos** | **Parcial (persistência Room preservada sem UI):** colunas/DAO (`is_favorite`, `is_bookmarked`) preservados no schema v4, sem controles visíveis nos cards; a antiga rota provisória `AppDestination.Favorites` (`ProvisionalDestinationScreen`) foi removida. | `DictionaryDao.kt`, `EncyclopediaDao.kt` |
 | **Tela de Detalhes (Verbetes e Territórios)** | **Parcial no domínio / Sem UI:** existem `ObserveDictionaryEntryByIdUseCase` e `ObserveIndigenousLandByIdUseCase`, porém sem telas ou rotas de detalhes implementadas. | `ArchiveUseCases.kt`, `TerritoriesUseCases.kt`, `ParintintinNavHost.kt` |
-| **Pronúncias em Áudio / Acervo Oficial** | **Não implementada:** apenas campo `audioUrl: String?` no modelo do dicionário, card informativo `"Planejado"` na Home e rota provisória `AppDestination.Archive`. | `DictionaryEntry.kt`, `HomeScreen.kt`, `ParintintinNavHost.kt` |
+| **Pronúncias em Áudio** | **Não implementada:** apenas campo `audioUrl: String?` no modelo do dicionário e card informativo `"Planejado"` na Home. | `DictionaryEntry.kt`, `HomeScreen.kt` |
 | **Sincronização remota do Dicionário e Enciclopédia** | **Desativada no cliente atual:** `OfflineFirstDictionaryRepository` e `OfflineFirstEncyclopediaRepository` realizam apenas leitura/favoritos no Room; `ArchiveSyncRepositoryImpl` sincroniza apenas o seed local e `indigenousLandRepository.syncFromRemote()`. | `ArchiveSyncRepositoryImpl.kt`, `OfflineFirstDictionaryRepository.kt`, `NetworkModule.kt` |
 
 ---
@@ -109,7 +111,7 @@ A navegação inferior (`AppDestination.primaryDestinations` em `AppDestination.
 
 | ID | Descrição | Situação Atual | Critério de Aceitação Verificado |
 |---|---|---|---|
-| **RF-001** | Exibir tela inicial (*Home*) com identificação, aviso demonstrativo, card de status offline-first, módulos planejados e detalhes expansíveis. | **Implementado** (`HomeScreen.kt`, `PreserveComponents.kt`) | `HomeScreen` exibe banner, `MODO DEMONSTRATIVO`, `OfflineArchiveStatusCard` (com chips de Terras Indígenas, verbetes e artigos locais) e módulos planejados. |
+| **RF-001** | Exibir tela inicial (*Home*) com identificação do catálogo, contextualização das fontes, card de status offline-first, módulos planejados e detalhes expansíveis da arquitetura. | **Implementado** (`HomeScreen.kt`, `PreserveComponents.kt`) | `HomeScreen` exibe banner **Voz Ancestral**, card `"Sobre o catálogo e suas fontes"`, `OfflineArchiveStatusCard` (com chips de Terras Indígenas, verbetes e artigos locais), módulos planejados e detalhes expansíveis, mantendo `MODO DEMONSTRATIVO` isolado no **Dicionário**. |
 | **RF-002** | Disparar automaticamente uma tentativa de inicialização do seed demonstrativo e sincronização remota ao iniciar `HomeViewModel`. | **Implementado** (`HomeViewModel.kt`, `ArchiveSyncCoordinatorImpl.kt`) | `requestAutoSync()` executa uma vez por processo, atualiza o seed e chama `indigenousLandRepository.syncFromRemote()`. |
 | **RF-003** | Permitir sincronização manual sob demanda na **Início** e em **Territórios**, evitando chamadas concorrentes duplicadas. | **Implementado** (`HomeViewModel.kt`, `TerritoriesViewModel.kt`, `ArchiveSyncCoordinatorImpl.kt`) | Botões desabilitam durante `Syncing`; `syncJobLock`, `syncMutex` e `JoinedInFlight` evitam execuções paralelas simultâneas. |
 | **RF-004** | Exibir os 20 verbetes locais (`DEMO-001`..`DEMO-020`) no **Dicionário** ordenados alfabeticamente com selos demonstrativos. | **Implementado** (`DictionaryScreen.kt`, `DictionaryDao.kt`) | Exibe contagem local, `stickyHeader` `"MODO DEMONSTRATIVO"` e badges `"Termo demonstrativo"`. |
@@ -213,7 +215,7 @@ A navegação inferior (`AppDestination.primaryDestinations` em `AppDestination.
 |---|---|---|
 | **Dependência Externa (IBAMA / SIGAGEO)** | Disponibilidade, latência e esquema da URL `https://pamgia.ibama.gov.br/.../MapServer/25/query` dependem de serviço governamental externo. No container offline, os testes HTTP usam `MockWebServer`; a carga real de **627 registros** foi confirmada externamente pelo responsável. | Em ambientes sem acesso ao Geoportal ou em instabilidade externa, o app entra em `OfflineFallback` preservando dados locais. |
 | **Precisão de Domínio (Territórios vs. Perfis Culturais)** | A camada 25 fornece apenas dados fundiários/territoriais e nomes de etnias associadas. | Documentação e UI devem evitar afirmar que o app possui perfis culturais, históricos ou linguísticos completos dos povos indígenas. |
-| **Resíduos da Identidade v1.0** | `strings.xml` (`Acervo Provisório`), `settings.gradle.kts` (`AcervoProvisorio`), `metadata.json`, `HomeScreen` e `docs/api-v1-contract.md` ainda refletem textos/contratos da fase inicial. | Pode gerar ambiguidade visual entre a identidade *Voz Ancestral: Catálogo Digital de Terras e Povos Indígenas do Brasil* e o nome exibido no launcher/Home até refatoração específica de textos. |
+| **Identificadores Internos Históricos** | Nomes internos de classes/arquivos (`ParintintinDatabase`, `ParintintinApplication`, `ParintintinNavHost`, `ParintintinBottomBar`, `ParintintinTheme`), `applicationId` (`com.aistudio.parintintin.kagwah`) e `namespace = "com.example"` foram preservados intencionalmente. | Evita quebra de schemas exportados Room (`2.json`–`4.json`), incompatibilidade de atualização de APK e refatoração estrutural arriscada sem ganho ao usuário final. |
 | **Validação em Hardware e Release** | Sem execução de `:app:connectedDebugAndroidTest`, sem auditoria manual com TalkBack em dispositivo físico e sem assinatura Release no ambiente. | Comportamento em GPU/rede real e acessibilidade presencial permanecem pendentes de validação em dispositivo físico. |
 | **Efeitos Colaterais de `lastSuccessfulSyncEpochMillis`** | O registro de sucesso territorial grava `lastSuccessfulSyncEpochMillis` no mesmo singleton `SyncMetadataEntity`, o que também aciona `BLOCKED_BY_OFFICIAL_SYNC` no `VersionedDictionarySeedUpdater`. | Caso o `dictionary_seed.json` receba futura versão demonstrativa local após um sync territorial, não será reaplicado automaticamente sem revisão dessa regra. |
 
@@ -222,4 +224,5 @@ A navegação inferior (`AppDestination.primaryDestinations` em `AppDestination.
 ## 16. Histórico do Documento
 
 - **Versão `1.0`:** Reconstrução retrospectiva da Versão 1.0 Demonstrativa (*Acervo Provisório*, 2 abas, Room v3, `archive.parintintin.org`, 27 suítes / 252 testes).
-- **Versão `2.0` (Atual):** Atualização integral pós-**Etapas 1 a 5.4**, refletindo a nova identidade **Voz Ancestral: Catálogo Digital de Terras e Povos Indígenas do Brasil**, integração IBAMA / SIGAGEO Camada 25, Room v4 (`MIGRATION_3_4` e `IndigenousLandQueryBuilder`), `TerritoriesViewModel` / `TerritoriesScreen`, navegação em 3 abas (`Início`, `Dicionário`, `Territórios`), **35 suítes / 303 testes JVM aprovados** e separação estrita entre fatos locais, confirmações externas (`627` registros, GitHub Actions) e pendências.
+- **Versão `2.0`:** Atualização integral pós-**Etapas 1 a 5.4**, refletindo a nova identidade **Voz Ancestral: Catálogo Digital de Terras e Povos Indígenas do Brasil**, integração IBAMA / SIGAGEO Camada 25, Room v4 (`MIGRATION_3_4` e `IndigenousLandQueryBuilder`), `TerritoriesViewModel` / `TerritoriesScreen`, navegação em 3 abas (`Início`, `Dicionário`, `Territórios`), **35 suítes / 303 testes JVM aprovados** e separação estrita entre fatos locais, confirmações externas (`627` registros, GitHub Actions) e pendências.
+- **Versão `2.1` (Atual):** Revisão completa de identidade e remoção de estruturas obsoletas da v1.0 (`Acervo Provisório`, `Theme.MyApplication`, `ProvisionalDestinationScreen`, `Favorites`/`Archive` provisórios, `ArchiveManifestDto`/`CulturalArticleDto`, aviso demonstrativo na Home e contratos desatualizados), mantendo compatibilidade Room v4 e **35 suítes / 303 testes JVM aprovados**.

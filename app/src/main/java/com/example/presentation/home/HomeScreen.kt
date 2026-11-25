@@ -24,7 +24,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.R
-import com.example.presentation.components.DemonstrativeModeNoticeCard
 import com.example.presentation.components.ExpandableStageDetailsCard
 import com.example.presentation.components.HeroPreservationBanner
 import com.example.presentation.components.IntroNoticeCard
@@ -106,10 +105,6 @@ fun HomeContent(
                     title = stringResource(R.string.home_hero_title),
                     subtitle = stringResource(R.string.home_hero_subtitle)
                 )
-            }
-
-            item {
-                DemonstrativeModeNoticeCard()
             }
 
             item {

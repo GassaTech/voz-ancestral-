@@ -69,8 +69,8 @@ Implementado em `RemoteTerritoriesDataSource.fetchTerritoriesPage(...)`:
 ## 6. Limitações Conhecidas
 
 1. As requisições desta etapa foram validadas em JVM contra **`MockWebServer`**, não contra o servidor ativo `https://pamgia.ibama.gov.br` em dispositivo físico ou ambiente com acesso direto ao Geoportal do IBAMA.
-2. Os endpoints legados de `ParintintinApiService` foram mantidos compiláveis no mesmo `Retrofit` apenas para não remover funcionalidades nem quebrar testes legados antes das Etapas 2+.
-3. Não há persistência Room, UI territorial ou loop completo de sincronização nesta etapa.
+2. Na Etapa 1, os endpoints legados de `ParintintinApiService` foram temporariamente mantidos compiláveis no mesmo `Retrofit` apenas para transição gradual, tendo sido posteriormente removidos nas Etapas 3 e 4 (`TER-003`).
+3. Esta nota refere-se exclusivamente à Etapa 1; a persistência Room v4, o loop completo de sincronização e a UI territorial (`TerritoriesScreen`) foram implementados nas Etapas 2 a 5.4.
 
 ---
 

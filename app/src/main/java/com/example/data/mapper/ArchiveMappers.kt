@@ -3,7 +3,6 @@ package com.example.data.mapper
 import com.example.data.local.entity.CulturalArticleEntity
 import com.example.data.local.entity.DictionaryEntryEntity
 import com.example.data.local.entity.SyncMetadataEntity
-import com.example.data.remote.dto.CulturalArticleDto
 import com.example.data.remote.dto.DictionaryEntryDto
 import com.example.domain.model.CulturalArticle
 import com.example.domain.model.CulturalTopic
@@ -53,19 +52,6 @@ fun CulturalArticleEntity.toDomain(): CulturalArticle = CulturalArticle(
     bodyParagraphs = bodyParagraphs,
     topic = runCatching { CulturalTopic.valueOf(topic) }
         .getOrDefault(CulturalTopic.HISTORY),
-    readingTimeMinutes = readingTimeMinutes,
-    sourceReference = sourceReference,
-    isBookmarked = isBookmarked,
-    updatedAtEpochMillis = updatedAtEpochMillis
-)
-
-fun CulturalArticleDto.toEntity(isBookmarked: Boolean): CulturalArticleEntity = CulturalArticleEntity(
-    id = id,
-    title = title,
-    subtitle = subtitle,
-    summary = summary,
-    bodyParagraphs = bodyParagraphs,
-    topic = topic,
     readingTimeMinutes = readingTimeMinutes,
     sourceReference = sourceReference,
     isBookmarked = isBookmarked,

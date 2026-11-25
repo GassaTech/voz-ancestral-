@@ -1,37 +1,28 @@
-# Especificação Proposta do Contrato da API v1 — Acervo Parintintin
+# Especificação Histórica do Contrato da API v1 (Desativada no Cliente Atual)
 
-> **Status do documento:** Especificação técnica **proposta** para o contrato da API remota do acervo.  
-> O cliente Android está configurado para o endereço remoto `https://archive.parintintin.org/` (`NetworkModule`), porém **não foi possível confirmar a disponibilidade operacional do servidor remoto no ambiente de auditoria** e os endpoints descritos abaixo ainda não foram validados contra um ambiente em produção. Este contrato documenta exatamente o que o cliente Android atual espera receber e processar (`ParintintinApiService`, `ArchiveDtos`, `ArchiveMappers`, `RemoteArchiveDataSource`), cuja desserialização e comportamento HTTP foram verificados exclusivamente em ambiente controlado com `MockWebServer` (`ParintintinApiContractTest`).
+> **Status do documento:** **ARQUIVADO / HISTÓRICO (NÃO UTILIZADO NO CLIENTE ATUAL).**
+> Este documento registra exclusivamente a especificação proposta na fase inicial v1.0 para o endereço `https://archive.parintintin.org/`. A partir da evolução para o projeto **Voz Ancestral — Catálogo Digital de Terras e Povos Indígenas do Brasil** (Etapas 1 a 5.4 e revisão pós-Etapa 5.4), `ParintintinApiService`, `RemoteArchiveDataSource`, `ArchiveManifestDto` e `CulturalArticleDto` foram **removidos** do cliente Android, que passou a operar com a **API ArcGIS REST do IBAMA / SIGAGEO (Camada 25)** — documentada em [`arcgis-territories-api.md`](arcgis-territories-api.md).
 >
-> **Nota sobre exemplos:** Todos os payloads de exemplo neste documento utilizam dados **exclusivamente ilustrativos/fictícios**, sem representar vocabulário, pronúncia ou conteúdo cultural Parintintin autêntico.
+> Apenas `DictionaryEntryDto` permanece ativo no código atual exclusivamente para desserializar o seed demonstrativo local (`app/src/main/assets/dictionary_seed.json`) em `DictionarySeedJsonParser`.
+>
+> **Nota sobre exemplos:** Todos os payloads de exemplo abaixo utilizam dados **exclusivamente ilustrativos/fictícios**, sem representar vocabulário, pronúncia ou conteúdo cultural Parintintin autêntico.
 
 ---
 
-## 1. Visão Geral e Configuração do Cliente
+## 1. Visão Geral Histórica da Proposta v1.0 (Inativa)
 
-- **Base URL configurada no cliente (`NetworkModule`):** `https://archive.parintintin.org/`
-- **Protocolo:** HTTPS obrigatório (o aplicativo não habilita tráfego cleartext HTTP).
-- **Timeouts atuais do cliente (`OkHttpClient`):**
-  - `connectTimeout`: `5` segundos
-  - `readTimeout`: `10` segundos
-- **Serialização:** JSON UTF-8 desserializado por **Moshi** com adaptadores gerados em tempo de compilação (`@JsonClass(generateAdapter = true)` via KSP).
+- **Antiga Base URL (`archive.parintintin.org`):** substituída em `NetworkModule` por `ArcGisTerritoriesQuerySpec.BASE_URL` (`https://pamgia.ibama.gov.br/server/rest/services/SIGAGEO/bases/MapServer/25/`).
+- **Protocolo:** HTTPS obrigatório.
+- **Timeouts na v1.0:** `5s` / `10s` (atualmente configurados em `15s` / `30s` para a API IBAMA / SIGAGEO).
+- **Serialização:** JSON UTF-8 desserializado por **Moshi** (`@JsonClass(generateAdapter = true)` via KSP).
 
-### Endpoints Previstos
+### Endpoints Históricos Previstos (Removidos do Cliente)
 
-| Método | Caminho | Finalidade | Status de integração no cliente (v1.0) |
+| Método | Caminho | Finalidade Histórica | Situação Atual no Cliente |
 |---|---|---|---|
-| `GET` | `/v1/manifest.json` | Metadados de versão e contagens esperadas do snapshot | **Integrado** via `RemoteArchiveDataSource.fetchArchiveManifest()` e chamado em `ArchiveSyncRepositoryImpl.syncArchive()` antes de `/v1/dictionary.json`, validando `version` não vazia e contagens `>= 0` e gravando `lastSuccessfulRemoteVersion` |
-| `GET` | `/v1/dictionary.json` | Lista completa de verbetes do dicionário | Implementado em `OfflineFirstDictionaryRepository` e **integrado** ao fluxo efetivo de `ArchiveSyncRepositoryImpl.syncArchive()` após a leitura do manifesto |
-| `GET` | `/v1/articles.json` | Lista completa de artigos culturais da enciclopédia | Documentado no contrato, declarado no Retrofit (`getCulturalArticles()`) e implementado em `OfflineFirstEncyclopediaRepository`, porém **não integrado** ao fluxo de `ArchiveSyncRepositoryImpl.syncArchive()` na versão 1.0 |
-
-### 1.1. Distinção Obrigatória de Estado Real (Cliente vs. Produção)
-
-| Nível Verificado | Situação Comprovada na Versão 1.0 |
-|---|---|
-| **1. Cliente Retrofit/OkHttp/Moshi implementado** | **SIM.** `NetworkModule`, `ParintintinApiService`, `ArchiveDtos` e `RemoteArchiveDataSource` estão implementados e apontam para `https://archive.parintintin.org/`. |
-| **2. Requisições realmente executadas** | **APENAS EM TESTES LOCAIS (`MockWebServer`).** Não há evidência de execução contra o domínio externo em ambiente real. |
-| **3. Respostas remotas recebidas** | **APENAS RESPOSTAS SIMULADAS.** As respostas `HTTP 200`, `HTTP 200 []`, `404`/`500` e timeouts para `/v1/manifest.json` e `/v1/dictionary.json` foram obtidas exclusivamente via `MockWebServer` (`ParintintinApiContractTest`, `RemoteArchiveDataSourceTest`, `DictionaryOfflineIntegrationTest`); a disponibilidade operacional de `https://archive.parintintin.org/` **não foi confirmada**. |
-| **4. Sincronização realmente concluída** | **NÃO COMPROVADA EM PRODUÇÃO.** Em ambiente controlado (`MockWebServer`), o fluxo completo executa sequencialmente `GET /v1/manifest.json` e `GET /v1/dictionary.json`, gravando `version` em `sync_metadata`; `/v1/articles.json` permanece fora da sincronização na v1.0. |
+| `GET` | `/v1/manifest.json` | Metadados de versão e contagens do snapshot | **Removido** (`ArchiveManifestDto` e `ParintintinApiService` excluídos) |
+| `GET` | `/v1/dictionary.json` | Lista completa de verbetes do dicionário | **Endpoint removido** (`DictionaryEntryDto` mantido apenas para leitura local de `dictionary_seed.json`) |
+| `GET` | `/v1/articles.json` | Lista completa de artigos culturais da enciclopédia | **Removido** (`CulturalArticleDto` excluído; estrutura local Room preparatória preservada) |
 
 ---
 
