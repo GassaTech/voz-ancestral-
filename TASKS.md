@@ -1,29 +1,25 @@
-# TASKS.md — Projeto Acadêmico Voz Ancestral (Aplicativo Acervo Provisório)
+# TASKS.md — Voz Ancestral: Catálogo Digital de Terras e Povos Indígenas do Brasil
 
-> **Nota de Natureza Documental:** Este inventário de tarefas foi **reconstruído retrospectivamente** a partir do estado real verificado do código-fonte, do `SPECIFICATION.md`, do `PLANNING.md`, do contrato proposto em `docs/api-v1-contract.md` e dos artefatos de teste e build da **Versão 1.0 Demonstrativa**. Não foram inventadas tarefas históricas, datas, responsáveis, prazos ou aprovações sem comprovação.
+> **Nota de Natureza Documental:** Este inventário rastreia as tarefas verificadas do projeto **Voz Ancestral**, preservando integralmente o registro histórico da **Versão 1.0 Demonstrativa** (*Acervo Provisório*) e incorporando as entregas das **Etapas 1 a 5.4** (Catálogo de Terras Indígenas via API ArcGIS IBAMA / SIGAGEO, Room v4, `TerritoriesViewModel`, `TerritoriesScreen`, navegação em 3 abas) e a rodada atual de alinhamento documental.
 
 ---
 
 ## 1. Identificação e Finalidade
 
-| Atributo | Definição Oficial / Verificada | Referência |
+| Atributo | Definição Verificada | Referência |
 |---|---|---|
-| **Projeto Acadêmico** | **Voz Ancestral** | `SPECIFICATION.md`, `PLANNING.md` |
-| **Aplicativo** | **Acervo Provisório** (`AcervoProvisorio`) | `app/src/main/res/values/strings.xml`, `settings.gradle.kts`, `metadata.json` |
-| **Versão Atual** | **1.0 Demonstrativa** (`versionCode = 1`, `versionName = "1.0"`) | `app/build.gradle.kts` |
-| **Identificador Android (`applicationId`)** | `com.aistudio.parintintin.kagwah` | `app/build.gradle.kts` |
-| **Namespace Kotlin/Android** | `com.example` | `app/build.gradle.kts` |
+| **Identidade Atual do Projeto** | **Voz Ancestral — Catálogo Digital de Terras e Povos Indígenas do Brasil** | `README.md`, `SPECIFICATION.md`, `PLANNING.md` |
+| **Identificadores Residuais no App/Gradle** | `Acervo Provisório` (`AcervoProvisorio`) | `app/src/main/res/values/strings.xml`, `settings.gradle.kts`, `metadata.json` |
+| **Versão no Gradle** | `versionCode = 1`, `versionName = "1.0"` | `app/build.gradle.kts` |
+| **Identificador Android (`applicationId`)** | `com.aistudio.parintintin.kagwah` (`namespace = "com.example"`) | `app/build.gradle.kts` |
 
-### Finalidade e Relação com `SPECIFICATION.md` e `PLANNING.md`
-O arquivo `TASKS.md` constitui o artefato da fase de **Decomposição de Tarefas (*Task Decomposition*)** da metodologia SDD (*Specification-Driven Development*), atuando como elo rastreável entre:
-- **`SPECIFICATION.md`:** que define **o que** o aplicativo faz na Versão 1.0 Demonstrativa (`Início` e `Dicionário` com 20 registros demonstrativos fictícios `DEMO-001` a `DEMO-020`), seus requisitos (`RF-001`–`RF-011`, `RNF-001`–`RNF-009`, `RN-01`–`RN-09`), limitações e funcionalidades futuras; e
-- **`PLANNING.md`:** que organiza **como e em que ordem** as fases, decisões técnicas, validações, riscos e prioridades de regularização e evolução são estruturados.
-
-Este documento registra unidades de trabalho pequenas, independentes e verificáveis por critério objetivo, separando estritamente:
-1. **Regularização documental (`DOC-*`)**;
-2. **Validação técnica e artefatos (`VAL-*`)**;
-3. **Saneamento técnico de código preparatório (`TEC-*`)**; e
-4. **Evolução funcional futura pós-v1.0 (`FUT-*`)**.
+### Relação com `SPECIFICATION.md` e `PLANNING.md`
+Este documento materializa a fase de **Decomposição de Tarefas** (*SDD*), conectando os requisitos de `SPECIFICATION.md` (`RF-001`–`RF-017`, `RNF-001`–`RNF-009`, `RN-01`–`RN-13`) e as fases de `PLANNING.md` (`Fases 1–17`, `Marcos M1–M16`) em **35 unidades verificáveis**, distribuídas entre:
+1. **Documentação (`DOC-*`)**;
+2. **Validação e Testes (`VAL-*`)**;
+3. **Saneamento Técnico (`TEC-*`)**;
+4. **Catálogo de Terras Indígenas (`TER-*` — Etapas 1 a 5.4)**; e
+5. **Funcionalidades Futuras (`FUT-*`)**.
 
 ---
 
@@ -33,130 +29,106 @@ Este documento registra unidades de trabalho pequenas, independentes e verificá
 | Prefixo | Categoria | Escopo |
 |---|---|---|
 | **`DOC-XXX`** | Tarefas Documentais | Criação, revisão e alinhamento dos documentos SDD e contratos técnicos. |
-| **`VAL-XXX`** | Validação e Testes | Consolidação de execuções de testes, compilação de suítes, verificação de APK e registros de limitações/pendências. |
-| **`TEC-XXX`** | Saneamento Técnico | Correções técnicas pontuais em estruturas preparatórias existentes sem alterar o escopo funcional da v1.0. |
-| **`FUT-XXX`** | Funcionalidades Futuras | Atividades pós-v1.0 dependentes de curadoria linguística/cultural, autorização formal, servidor oficial ou novas telas. |
+| **`VAL-XXX`** | Validação e Testes | Execuções de testes JVM, compilação `androidTest`, artefatos de build e validações externas. |
+| **`TEC-XXX`** | Saneamento Técnico | Correções estruturais e arquiteturais realizadas na base inicial v1.0. |
+| **`TER-XXX`** | Catálogo Territorial | Implementação, revisões corretivas e integração do catálogo de Terras Indígenas (Etapas 1 a 5.4). |
+| **`FUT-XXX`** | Funcionalidades Futuras | Evoluções pendentes ou bloqueadas por conteúdo autorizado, backend linguístico ou refatoração de identidade. |
 
 ### Estados Adotados
 | Status | Definição Objetiva |
 |---|---|
-| **`CONCLUÍDA`** | Execução e entrega comprovadas por evidência direta no repositório ou relatório técnico verificado. |
+| **`CONCLUÍDA`** | Execução comprovada por evidência direta no código-fonte, recursos ou relatórios de build/teste. |
+| **`PARCIAL`** | Etapa iniciada ou validada em parte, com item complementar pendente ou confirmação apenas externa ao container. |
 | **`PENDENTE`** | Tarefa identificada e ainda não executada. |
-| **`PARCIAL`** | Tarefa iniciada ou parcialmente validada, aguardando etapa complementar ou revisão final para conclusão. |
-| **`BLOQUEADA`** | Execução impedida por condição externa ou pré-requisito obrigatório ainda não atendido. |
-| **`NÃO APLICÁVEL`** | Tarefa cancelada (`CANCELADA`) ou fora do escopo (`FORA DO ESCOPO`) do ciclo atual. *(Nenhuma das 26 tarefas inventariadas recebeu essa classificação até o momento.)* |
+| **`BLOQUEADA`** | Execução impedida por pré-requisito ou recurso externo (emulador/ADB, keystore Release, curadoria/backend linguístico). |
+| **`NÃO APLICÁVEL`** | Tarefa cancelada ou fora do escopo atual (`0` ocorrências). |
 
 ---
 
-## 3. Tarefas Documentais
+## 3. Tarefas Documentais (`DOC`)
 
 | ID | Descrição | Status Atual | Dependências | Critério Objetivo de Conclusão | Evidência / Referência |
 |---|---|---|---|---|---|
-| **`DOC-001`** | Criação e revisão pontual do documento `SPECIFICATION.md` na raiz do repositório. | **`CONCLUÍDA`** | Nenhuma (inspeção técnica prévia do código e auditoria geral). | `SPECIFICATION.md` presente na raiz com as 16 seções obrigatórias, `RF-001`–`RF-011`, `RNF-001`–`RNF-009`, `RN-01`–`RN-09`, separação explícita entre requisitos implementados, parciais e não implementados e consistência com o código verificada. | `/SPECIFICATION.md`; relatórios das Etapas 1.1, 1.1.1 e revisão documental final. |
-| **`DOC-002`** | Criação e revisão corretiva pontual do documento `PLANNING.md` na raiz do repositório. | **`CONCLUÍDA`** | `DOC-001`. | `PLANNING.md` presente na raiz com as 12 seções obrigatórias, 11 fases, 10 marcos (`M1`–`M10`), distinção entre código estrutural e experiência v1.0 e revisão alinhada aos artefatos atuais. | `/PLANNING.md`; relatório da Etapa 1.2, revisão corretiva e revisão documental final. |
-| **`DOC-003`** | Criação do documento `TASKS.md` na raiz do repositório. | **`CONCLUÍDA`** | `DOC-001`, `DOC-002`. | `TASKS.md` presente na raiz com as 9 seções obrigatórias, quantitativos consistentes, coerência integral com `SPECIFICATION.md` e `PLANNING.md` e revisão humana concluída. | `/TASKS.md` (criado, revisado na Seção 8.2, atualizado na Etapa 1.7.2 e na revisão documental final). |
-| **`DOC-004`** | Criação e atualização do documento `TEST_RESULTS.md` na raiz do repositório. | **`CONCLUÍDA`** | `DOC-001`, `DOC-002`, `DOC-003`, `VAL-001`, `VAL-002`, `VAL-005` (e referência às limitações de `VAL-003`, `VAL-004` e `VAL-006`). | `TEST_RESULTS.md` atualizado consolidando de forma auditável as **27 suítes JVM (252 testes aprovados)** após integração do manifesto e ampliações unitárias (preservando os marcos de 233/24 e 238/25), a recompilação de `androidTest`, o APK único `Voz-Ancestral-debug.apk` e o roteiro de validação externa em dispositivo real. | `/TEST_RESULTS.md` (atualizado após conclusão de `TEC-001`–`TEC-004` e `FUT-003` no cliente). |
-| **`DOC-005`** | Criação e atualização do documento `AI_USAGE.md` na raiz do repositório. | **`CONCLUÍDA`** | `DOC-001`, `DOC-002`, `DOC-003`. | `AI_USAGE.md` atualizado na raiz registrando transparentemente o uso e os limites de ferramentas de IA no ciclo acadêmico e nas rodadas de saneamento/testes da v1.0, sem informações não comprovadas. | `/AI_USAGE.md` (atualizado com o fechamento técnico v1.0). |
-| **`DOC-006`** | Criação e atualização do documento `README.md` na raiz do repositório. | **`CONCLUÍDA`** | `DOC-001`, `DOC-002`, `DOC-003`, `DOC-004`, `DOC-005`. | `README.md` atualizado na raiz apresentando identificação oficial (**Voz Ancestral** / **Acervo Provisório** v1.0 Demonstrativa), escopo real (`Início` e `Dicionário`), instruções verificadas de build/testes, `gradlew` executável, APK único `Voz-Ancestral-debug.apk`, roteiro de validação externa e referências aos documentos SDD. | `/README.md` (atualizado com o estado final da entrega). |
-| **`DOC-007`** | Revisão de `docs/api-v1-contract.md` para refletir o comportamento real do cliente v1.0. | **`CONCLUÍDA`** | `DOC-001`, `DOC-002`. | `docs/api-v1-contract.md` atualizado nas Seções 1, 1.1, 4.1, 4.2, 6.1–6.3 e 7 refletindo a integração real de `GET /v1/manifest.json` e `GET /v1/dictionary.json` no cliente, mantendo `/v1/articles.json` fora da v1.0 e o servidor oficial sem confirmação operacional. | `docs/api-v1-contract.md`; `RemoteArchiveDataSource.kt`; `ArchiveSyncRepositoryImpl.kt`. |
+| **`DOC-001`** | Criação e revisão da especificação inicial `SPECIFICATION.md` (v1.0). | **`CONCLUÍDA`** | Inspeção técnica da v1.0. | Documento inicial criado e validado na v1.0 (`RF-001`–`RF-011`). | Histórico preservado em `SPECIFICATION.md` |
+| **`DOC-002`** | Criação e revisão do planejamento inicial `PLANNING.md` (v1.0). | **`CONCLUÍDA`** | `DOC-001`. | Documento inicial com Fases 1–11 e Marcos M1–M10 criado na v1.0. | Histórico preservado em `PLANNING.md` |
+| **`DOC-003`** | Criação do inventário inicial `TASKS.md` (v1.0). | **`CONCLUÍDA`** | `DOC-001`, `DOC-002`. | Decomposição inicial rastreável criada e consolidada. | Histórico preservado neste arquivo |
+| **`DOC-004`** | Criação e consolidação inicial de `TEST_RESULTS.md` (v1.0 — 252/27). | **`CONCLUÍDA`** | `VAL-001`, `VAL-002`, `VAL-005`. | Relatório inicial das 27 suítes JVM e checklist externo publicado. | Histórico preservado em `TEST_RESULTS.md` |
+| **`DOC-005`** | Criação de `AI_USAGE.md` (v1.0). | **`CONCLUÍDA`** | `DOC-001`–`DOC-003`. | Registro transparente de uso de IA publicado na raiz. | Histórico preservado em `AI_USAGE.md` |
+| **`DOC-006`** | Criação de `README.md` (v1.0). | **`CONCLUÍDA`** | `DOC-001`–`DOC-005`. | Apresentação inicial do projeto publicada na raiz. | Histórico preservado em `README.md` |
+| **`DOC-007`** | Revisão histórica de `docs/api-v1-contract.md` (v1.0). | **`CONCLUÍDA`** | `DOC-001`, `DOC-002`. | Contrato legado `/v1/manifest.json` + `/v1/dictionary.json` documentado na etapa v1.0 *(hoje desativado no cliente atual após `TER-003`)*. | `docs/api-v1-contract.md` |
+| **`DOC-008`** | Alinhamento integral da documentação raiz pós-Etapa 5.4 para a identidade **Voz Ancestral: Catálogo Digital de Terras e Povos Indígenas do Brasil**. | **`CONCLUÍDA`** | `TER-001`–`TER-006`, `VAL-001`, `VAL-002`. | Atualização coerente de `README.md`, `SPECIFICATION.md`, `PLANNING.md`, `TASKS.md`, `TEST_RESULTS.md` e `AI_USAGE.md` com **35 suítes / 303 testes**, escopo exato da API IBAMA Camada 25 e sem alterar código/Gradle/XML. | Arquivos Markdown raiz atualizados; XMLs `testDebugUnitTest` |
 
 ---
 
-## 4. Tarefas de Validação
-
-> **Distinção Obrigatória:** Execução automatizada na JVM, compilação de suítes instrumentadas (`androidTest`) e validação manual/presencial em aparelho físico são tratadas em tarefas separadas para impedir que compilação ou registro documental seja confundido com execução em dispositivo real.
+## 4. Tarefas de Validação (`VAL`)
 
 | ID | Descrição | Status Atual | Dependências | Critério Objetivo de Conclusão | Evidência / Referência |
 |---|---|---|---|---|---|
-| **`VAL-001`** | Consolidação técnica das suítes JVM (`gradle :app:testDebugUnitTest`): evolução de 233/24 para 238/25 (`TEC-001`) e consolidação final em **252 testes aprovados em 27 suítes**. | **`CONCLUÍDA`** | Código e suítes em `app/src/test` estáveis. | Execução comprovada de `:app:testDebugUnitTest` com **252/252** testes aprovados em **27 suítes** (com `JAVA_TOOL_OPTIONS="-Duser.home=/home/appuser"` para cache offline do Robolectric), cobrindo também `ArchiveMappersTest`, `ArchiveUseCasesAndClassifierTest` e a integração de `/v1/manifest.json`. | 27 arquivos em `app/src/test/java/com/example/`; 27 XMLs em `app/build/test-results/testDebugUnitTest/`; `TEST_RESULTS.md`. |
-| **`VAL-002`** | Recompilação bem-sucedida da suíte instrumentada `androidTest` (`:app:assembleDebugAndroidTest`), diferenciando compilação de execução em dispositivo. | **`CONCLUÍDA`** | Código-fonte e `app/src/androidTest` atualizados. | Compilação via `:app:assembleDebugAndroidTest` concluída com geração de `app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk` (`1.056.983` bytes) após atualização de `StartupSeedHiltInstrumentedTest.kt` para o fluxo de manifesto e `core.common.ApplicationScope`. | 5 arquivos em `app/src/androidTest/java/com/example/`; `app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk`; `TEST_RESULTS.md`. |
-| **`VAL-003`** | Execução futura da suíte instrumentada `:app:connectedDebugAndroidTest` em dispositivo Android físico ou emulador compatível. | **`BLOQUEADA`** | `VAL-002`; disponibilidade externa de dispositivo Android ou emulador conectado via ADB. | Execução integral de `StartupSeedHiltInstrumentedTest` e `ExampleInstrumentedTest` via `:app:connectedDebugAndroidTest` concluída com aprovação em dispositivo ou emulador externo e resultado registrado em `TEST_RESULTS.md`. | `app/src/androidTest/java/com/example/StartupSeedHiltInstrumentedTest.kt`; ambiente atual sem emulador/ADB. |
-| **`VAL-004`** | Execução de validação manual, auditoria de acessibilidade com TalkBack e *benchmarks* de desempenho em aparelho físico, seguindo roteiro externo documentado. | **`PENDENTE`** | Disponibilidade de aparelho Android físico e APK Debug v1.0 (`VAL-005`). | Roteiro de testes manuais (instalação, fluxo *Offline-First*, modo avião, conectividade, rotação, TalkBack e verificação de logs/crash) executado em dispositivo físico e documentado em `TEST_RESULTS.md`. | `TEST_RESULTS.md` (Seção 12 / checklist externo); `README.md`. |
-| **`VAL-005`** | Geração e verificação de integridade do artefato único APK Debug v1.0 (`Voz-Ancestral-debug.apk` na raiz). | **`CONCLUÍDA`** | Build `:app:assembleDebug` e cópia verificada do artefato. | APK Debug final único localizado na raiz (`Voz-Ancestral-debug.apk`, `22.692.801` bytes, SHA-256 `e633f1c268fada603fb5c9a61d2010887a78fd826c0c9cdf6273708ecf25e36d`, idêntico a `app/build/outputs/apk/debug/app-debug.apk`), com remoção de `.build-outputs/` antigos para evitar duplicidade. | `Voz-Ancestral-debug.apk`; `app/build/outputs/apk/debug/app-debug.apk`; `TEST_RESULTS.md` (Seção 11). |
-| **`VAL-006`** | Configuração segura de assinatura Release e geração de APK/AAB Release assinado para eventual distribuição. | **`BLOQUEADA`** | Fornecimento externo de keystore Release (`my-upload-key.jks`) e variáveis `KEYSTORE_PATH`, `STORE_PASSWORD` e `KEY_PASSWORD`. | Execução bem-sucedida de `:app:assembleRelease` (ou geração de AAB) assinada com keystore Release dedicada fora do código-fonte e verificação do artefato resultante. *(Configuração `signingConfigs` em `app/build.gradle.kts` preservada.)* | `app/build.gradle.kts` (linhas 29–58); `PLANNING.md` (Seções 4 e 9). |
+| **`VAL-001`** | Consolidação e execução completa das suítes JVM (`:app:testDebugUnitTest`): evolução `233/24` → `238/25` → `252/27` → `272/30` → **303 testes aprovados em 35 suítes**. | **`CONCLUÍDA`** | `TER-001`–`TER-006`. | Execução local via `JAVA_TOOL_OPTIONS="-Duser.home=/home/appuser" gradle :app:testDebugUnitTest :app:compileDebugAndroidTestKotlin` concluída com **35/35** suítes e **303/303** testes aprovados (`0` falhas, `0` erros, `0` ignorados). | 35 arquivos XML em `app/build/test-results/testDebugUnitTest/`; `TEST_RESULTS.md` |
+| **`VAL-002`** | Atualização e compilação da suíte instrumentada `androidTest` após migração para ArcGIS `/query?`. | **`CONCLUÍDA`** | `TER-003`, `TER-006`. | `StartupSeedHiltInstrumentedTest.kt` e `TestNetworkModule.kt` atualizados para `IbamaTerritoriesApiService` / `/query?` e compilados com sucesso via `:app:compileDebugAndroidTestKotlin`. *(Nota: geração completa de `app-debug-androidTest.apk` via `:app:assembleDebugAndroidTest` ocorreu em marco anterior v1.0 e não foi reexecutada nesta rodada.)* | `StartupSeedHiltInstrumentedTest.kt`, `TestNetworkModule.kt`, output Gradle `:app:compileDebugAndroidTestKotlin` |
+| **`VAL-003`** | Execução da suíte instrumentada `:app:connectedDebugAndroidTest` em dispositivo Android físico ou emulador. | **`BLOQUEADA`** | `VAL-002`; disponibilidade externa de emulador/ADB. | Execução aprovada de `StartupSeedHiltInstrumentedTest` e `ExampleInstrumentedTest` em runtime Android real. | Sem emulador/ADB no container |
+| **`VAL-004`** | Validação manual em aparelho físico (offline, sync real IBAMA, rotação, fontes grandes e auditoria **TalkBack**). | **`PENDENTE`** | Aparelho Android físico e APK Debug atual. | Checklist externo executado e registrado em `TEST_RESULTS.md` (Seção 12). | `TEST_RESULTS.md` (Seção 12) |
+| **`VAL-005`** | Consolidação e verificação do APK Debug pós-Etapas 5.2–5.4. | **`PARCIAL`** | Build `:app:assembleDebug` atual. | `app/build/outputs/apk/debug/app-debug.apk` existe no módulo (`22.421.131` bytes), porém o artefato consolidado na raiz (`Voz-Ancestral-debug.apk` documentado na v1.0) não está presente no diretório atual nem foi reempacotado após a Etapa 5.4. | `app/build/outputs/apk/debug/app-debug.apk`; `output-metadata.json` |
+| **`VAL-006`** | Configuração segura de assinatura Release e geração de APK/AAB assinado. | **`BLOQUEADA`** | Keystore `my-upload-key.jks` e variáveis de ambiente externas. | `:app:assembleRelease` concluído e assinado externamente. | `app/build.gradle.kts` (`signingConfigs` preservado) |
+| **`VAL-007`** | Validação externa da carga real de **627 registros** da API IBAMA/SIGAGEO e aprovação do pipeline **GitHub Actions**. | **`PARCIAL`** | Ambiente externo com rede/CI. | Confirmado externamente pelo responsável pelo projeto (`627` registros territoriais e GitHub Actions aprovado); **não reproduzível localmente** neste container offline por ausência de `.git`, `.github/workflows/` e acesso de rede externa. | Informação confirmada pelo responsável; limitação registrada em `TEST_RESULTS.md` |
 
 ---
 
-## 5. Tarefas de Saneamento Técnico
+## 5. Tarefas de Saneamento Técnico (`TEC` — Base v1.0 Preservada)
 
 | ID | Descrição | Status Atual | Dependências | Critério Objetivo de Conclusão | Evidência / Referência |
 |---|---|---|---|---|---|
-| **`TEC-001`** | Correção do tratamento de `CancellationException` no operador `.catch` de `EncyclopediaViewModel.kt`. | **`CONCLUÍDA`** | Pré-requisito cumprido antes de eventual ativação futura de `Encyclopedia` (`FUT-005`). | Bloco `.catch` em `EncyclopediaViewModel.kt` atualizado com `import kotlinx.coroutines.CancellationException` para relançar cancelamentos upstream antes de emitir `EncyclopediaArticlesState.Error`, validado por `EncyclopediaViewModelTest.kt` (5 testes). | `EncyclopediaViewModel.kt`; `EncyclopediaViewModelTest.kt`; `TEST_RESULTS.md`. |
-| **`TEC-002`** | Desacoplamento da camada `data` em relação ao pacote `di` movendo `@ApplicationScope` para `core.common`. | **`CONCLUÍDA`** | Nenhuma. | Criado `CoroutinesQualifiers.kt` em `com.example.core.common` com `@ApplicationScope`; atualizados `CoroutinesModule`, `ConnectivityModule`, `AndroidNetworkConnectivityObserver`, `ArchiveSyncRepositoryImpl`, `ArchiveSyncCoordinatorImpl` e `StartupSeedHiltInstrumentedTest`, eliminando todas as referências de `data/` para `di/`. | `CoroutinesQualifiers.kt`; verificação via `grep` (`0` referências `data -> di`). |
-| **`TEC-003`** | Higiene de empacotamento e controle de versão: permissão `+x` no `gradlew`, atualização de `.gitignore` e remoção de APKs duplicados antigos. | **`CONCLUÍDA`** | Nenhuma. | Executado `chmod +x gradlew` (`-rwxr-xr-x`), adicionados `*.apk`, `*.aab` e `/.build-outputs/` ao `.gitignore` e removido `.build-outputs/`, consolidando a entrega final em `Voz-Ancestral-debug.apk`. | `gradlew`; `.gitignore`; `Voz-Ancestral-debug.apk`. |
-| **`TEC-004`** | Exibição de contagem de verbetes sincronizados na UI quando `articlesCount` é `null` na v1.0. | **`CONCLUÍDA`** | Nenhuma. | Adicionado recurso `home_sync_synced_entries_only` (`"Sincronizados: %1$d verbetes."`) em `strings.xml` e tratado o ramo `entriesCount != null && articlesCount == null` em `OfflineArchiveStatusCard` (`PreserveComponents.kt`), validado em `OfflineArchiveStatusCardTest`. | `strings.xml`; `PreserveComponents.kt`; `OfflineArchiveStatusCardTest.kt`. |
-
-> **Esclarecimento Obrigatório sobre `TEC-001`–`TEC-004`:**
-> - Todas as quatro tarefas de saneamento aprimoram a conformidade arquitetural, a qualidade de UI, a higiene do repositório e a robustez sem alterar o escopo funcional da Versão 1.0 Demonstrativa (**Início** e **Dicionário**).
-> - O módulo `Encyclopedia` (`TEC-001`) permanece fora da barra de navegação e da sincronização na v1.0 (`FUT-005`).
+| **`TEC-001`** | Propagação explícita de `CancellationException` no `.catch` de `EncyclopediaViewModel.kt`. | **`CONCLUÍDA`** | Nenhuma. | `EncyclopediaViewModelTest.kt` (5 testes aprovados); módulo mantido fora da barra inferior. | `EncyclopediaViewModel.kt`, `EncyclopediaViewModelTest.kt` |
+| **`TEC-002`** | Desacoplamento `data` → `di` movendo `@ApplicationScope` para `core.common`. | **`CONCLUÍDA`** | Nenhuma. | `CoroutinesQualifiers.kt` em `core.common`; zero referências de `data/` para `di/`. | `CoroutinesQualifiers.kt` |
+| **`TEC-003`** | Higiene de repositório da v1.0 (`chmod +x gradlew`, atualização de `.gitignore` e remoção de `.build-outputs/`). | **`CONCLUÍDA`** | Nenhuma. | `gradlew` executável (`-rwxr-xr-x`); `.gitignore` com `*.aab` e `/.build-outputs/`. *(Nota: `*.apk` não consta atualmente no `.gitignore`.)* | `gradlew`, `.gitignore` |
+| **`TEC-004`** | Exibição correta de contagem sincronizada no `OfflineArchiveStatusCard`. | **`CONCLUÍDA`** | Nenhuma. | Evoluído na Etapa 4 para exibir `home_sync_synced_territory_singular` / `home_sync_synced_territories_count` em `SyncState.Synced`. | `PreserveComponents.kt`, `OfflineArchiveStatusCardTest.kt` |
 
 ---
 
-## 6. Funcionalidades Futuras (Pós-v1.0)
-
-> **Aviso de Escopo:** Exceto a parte estritamente de cliente de `FUT-003` (consulta e persistência de `/v1/manifest.json`), as demais entregas abaixo não compõem conteúdo ou novas telas na v1.0 Demonstrativa e dependem de infraestrutura externa ou curadoria formal.
+## 6. Tarefas do Catálogo de Terras Indígenas (`TER` — Etapas 1 a 5.4)
 
 | ID | Descrição | Status Atual | Dependências | Critério Objetivo de Conclusão | Evidência / Referência |
 |---|---|---|---|---|---|
-| **`FUT-001`** | Obtenção e validação de conteúdo linguístico autêntico da língua Parintintin, com autorização comunitária e institucional apropriada, para futura substituição dos dados demonstrativos `DEMO-001`..`DEMO-020`. | **`BLOQUEADA`** | Curadoria linguística especializada e autorização formal externa para publicação digital. | Conjunto validado de verbetes autênticos (com transcrição IPA, classes, categorias e exemplos revisados) formalmente autorizado e pronto para consumo sem infringir direitos culturais ou linguísticos. | `SPECIFICATION.md` (Seções 7, 8 e 15); `strings.xml` (`home_intro_body`). |
-| **`FUT-002`** | Disponibilização operacional e homologação do backend oficial HTTPS compatível com `docs/api-v1-contract.md`. | **`BLOQUEADA`** | Definição das decisões contratuais pendentes (Seção 7 de `docs/api-v1-contract.md`), provisão de servidor externo e homologação dos endpoints. | Servidor HTTPS respondendo em ambiente operacional aos endpoints `/v1/manifest.json`, `/v1/dictionary.json` e `/v1/articles.json` conforme contrato revisado e aprovado em testes de integração reais. | `NetworkModule.kt` (`https://archive.parintintin.org/`); `docs/api-v1-contract.md`; `PLANNING.md` (Seção 9). |
-| **`FUT-003`** | Integração do consumo do manifesto remoto (`/v1/manifest.json`) no fluxo de sincronização do cliente Android. | **`CONCLUÍDA`** *(no cliente)* | Homologação externa de produção continua vinculada a `FUT-002`. | `RemoteArchiveDataSource.fetchArchiveManifest()` valida `version` não vazia e contagens `>= 0`; `ArchiveSyncRepositoryImpl.syncArchive()` consulta o manifesto antes de `/v1/dictionary.json` e persiste `lastSuccessfulRemoteVersion = manifest.version` no Room, validado com testes unitários e `MockWebServer`. *(Otimização futura de cache/skip por versão igual permanece registrada em `docs/api-v1-contract.md`, Seção 7.)* | `RemoteArchiveDataSource.kt`; `ArchiveSyncRepositoryImpl.kt`; `ArchiveSyncRepositoryImplTest.kt`; `DictionaryOfflineIntegrationTest.kt`. |
-| **`FUT-004`** | Definição contratual e implementação da política de exclusão/reconciliação de registros removidos no servidor. | **`BLOQUEADA`** | `FUT-002` e decisão contratual entre *snapshot* completo e *tombstones* (incluindo tratamento de itens favoritados). | Política documentada em `docs/api-v1-contract.md` e implementada nos repositórios Room com transações seguras e testes cobrindo remoção sem perda indevida de dados em falhas ou `HTTP 200 []`. | `docs/api-v1-contract.md` (Seções 6.5 e 7.1); `OfflineFirstDictionaryRepository.kt`. |
-| **`FUT-005`** | Integração futura da sincronização e exposição da Enciclopédia Cultural na experiência do usuário. | **`BLOQUEADA`** | `TEC-001` *(concluída)*, `FUT-002`, `FUT-009` e decisão sobre escopo transacional entre repositórios (`DOC-007`). | `encyclopediaRepository.syncFromRemote()` integrado ao fluxo de sincronização com tratamento explícito de falhas parciais, destino `AppDestination.Encyclopedia` habilitado conforme especificação futura e testes de UI/integração aprovados. | `EncyclopediaScreen.kt`, `EncyclopediaViewModel.kt`, `OfflineFirstEncyclopediaRepository.kt`, `ArchiveSyncRepositoryImpl.kt`. |
-| **`FUT-006`** | Implementação funcional da interface de Favoritos na listagem de verbetes e em rota dedicada. | **`PENDENTE`** | Decisão de design/UX pós-v1.0 para reabilitação da rota `AppDestination.Favorites` e ação nos cards. | Controle acessível de favoritar/desfavoritar integrado aos cards de `DictionaryScreen` usando `ToggleFavoriteEntryUseCase`, tela real substituindo `ProvisionalDestinationScreen` em `Favorites` e testes Compose aprovados. | `DictionaryDao.kt` (`toggleFavorite`), `ArchiveUseCases.kt`, `ParintintinNavHost.kt` (linhas 76–84). |
-| **`FUT-007`** | Implementação da tela e rota de detalhes completos dos verbetes do dicionário. | **`PENDENTE`** | Definição de layout pós-v1.0; exibição de conteúdo real depende complementarmente de `FUT-001`. | Tela Compose e rota tipada integradas ao `ParintintinNavHost` consumindo `ObserveDictionaryEntryByIdUseCase` para exibir fonética IPA, exemplos bilíngues e notas completas, com testes de navegação e UI aprovados. | `ArchiveUseCases.kt` (`ObserveDictionaryEntryByIdUseCase`), `DictionaryEntry.kt`, `ParintintinNavHost.kt`. |
-| **`FUT-008`** | Implementação da reprodução de áudio de pronúncia nos verbetes. | **`BLOQUEADA`** | `FUT-001` (gravações autênticas autorizadas), definição de formato/hospedagem/cache offline de `audio_url` e `FUT-007` (ou integração equivalente em card). | Contrato de mídia definido, player integrado ao aplicativo (com tratamento de estados de carregamento/erro/offline e acessibilidade) e testes cobrindo reprodução sem URL nula ou falhas silenciosas. | `DictionaryEntry.kt` (`audioUrl: String?`), `HomeScreen.kt` (card `"Planejado"`), `docs/api-v1-contract.md` (Seção 7.5). |
-| **`FUT-009`** | Integração de conteúdo cultural autêntico e autorizado para a Enciclopédia Cultural. | **`BLOQUEADA`** | Curadoria cultural especializada, autorização formal de publicação e `FUT-002` (ou seed cultural oficial validado). | Conjunto de artigos culturais revisados e autorizados disponível via API (`/v1/articles.json`) ou carga controlada, preservando referências de fonte (`source_reference`) e integridade no Room. | `CulturalArticle.kt`, `CulturalArticleDto`, `docs/api-v1-contract.md` (Seção 2.3). |
+| **`TER-001`** | **Etapa 1:** Cliente Retrofit/Moshi para API ArcGIS REST IBAMA / SIGAGEO Camada 25 (`GET query`, timeouts `15s`/`30s`, `IndigenousLandAttributesJsonAdapter`, `RemoteTerritoriesDataSource`, `ArcGisTerritoriesMapper`). | **`CONCLUÍDA`** | Infraestrutura HTTP (`NetworkModule`). | Contratos, paginação, tratamento de erros HTTP/ArcGIS e mapeamento de nulos/listas validados com `MockWebServer`. | `ArcGisTerritoriesQuerySpec.kt`, `IbamaTerritoriesApiService.kt`, `IbamaTerritoriesApiContractTest.kt` (13), `RemoteTerritoriesDataSourceTest.kt` (4), `ArcGisTerritoriesMapperTest.kt` (5) |
+| **`TER-002`** | **Etapa 2:** Evolução do banco Room para Schema v4 (`IndigenousLandEntity`, `MIGRATION_3_4`, índice único `terrai_cod`, `IndigenousLandDao` e `IndigenousLandQueryBuilder` com CTEs sem overflow). | **`CONCLUÍDA`** | `TER-001`, Room v3. | Schema `4.json` exportado; migração `3->4`, busca sem acentos, curingas `LIKE`, filtros combinados e ordenação validados em SQLite via Robolectric. | `ParintintinDatabase.kt`, `ParintintinMigrations.kt`, `IndigenousLandQueryBuilder.kt`, `ParintintinDatabaseMigrationTest.kt` (7), `IndigenousLandQueryBuilderTest.kt` (7) |
+| **`TER-003`** | **Etapas 3 e 4:** Repositório `RoomIndigenousLandRepository` (paginação completa com `visitedOffsets`, deduplicação e `withTransaction`), `TerritoriesUseCases`, integração com `ArchiveSyncRepositoryImpl` e atualização da Home. | **`CONCLUÍDA`** | `TER-001`, `TER-002`. | Sincronização paginada integrada ao `ArchiveSyncCoordinatorImpl`; preservação local diante de falhas ou retorno vazio; remoção dos clientes obsoletos `archive.parintintin.org`. | `RoomIndigenousLandRepository.kt`, `ArchiveSyncRepositoryImpl.kt`, `TerritoriesUseCases.kt`, `RoomIndigenousLandRepositoryTest.kt` (10), `TerritoriesSyncIntegrationTest.kt` (2) |
+| **`TER-004`** | **Etapas 5.1 e 5.2:** `TerritoriesViewModel` completo + revisão corretiva de ordenação `DESC` mantendo nulos/vazios/espaços sempre ao final e tratamento seguro de exceções em `syncManually()` + testes SQLite em `IndigenousLandDaoTest`. | **`CONCLUÍDA`** | `TER-002`, `TER-003`. | Busca com *debounce* `150 ms`, 4 critérios de ordenação com `null`/`""`/`"   "` sempre no final em ASC/DESC e desempate por `id ASC`, `manualSyncErrorMessage` dispensável, proteção contra chamadas simultâneas e `CancellationException`. | `TerritoriesViewModel.kt`, `TerritoriesViewModelTest.kt` (14), `IndigenousLandDaoTest.kt` (11) |
+| **`TER-005`** | **Etapa 5.3:** Interface `TerritoriesScreen`, `TerritoryCard`, `TerritoryControlsSection`, `TerritoriesSyncStatusBar` e `CatalogSharedComponents`. | **`CONCLUÍDA`** | `TER-004`. | Tela responsiva (1/2 colunas, `840.dp`), estados `Loading`/`Empty`/`Success`/`Error`, filtros de UF/fase/modalidade, ordenação, sync manual, acessibilidade e semântica testados via Compose/Robolectric. | `TerritoriesScreen.kt`, `TerritoryCard.kt`, `TerritoryControlsSection.kt`, `TerritoriesSyncStatusBar.kt`, `CatalogSharedComponents.kt`, `TerritoriesScreenTest.kt` (10) |
+| **`TER-006`** | **Etapa 5.4:** Integração de `AppDestination.Territories` à navegação principal em 3 abas (`Início`, `Dicionário`, `Territórios`). | **`CONCLUÍDA`** | `TER-005`. | Barra inferior exibindo exatamente 3 destinos com ícone `Public`, preservação de estado ao alternar abas, seleção visual e retorno para `Home`. | `AppDestination.kt`, `ParintintinBottomBar.kt`, `ParintintinNavHost.kt`, `ParintintinNavHostTest.kt` (4) |
 
 ---
 
-## 7. Dependências e Ordem Recomendada
+## 7. Funcionalidades Futuras (`FUT`)
 
-### 7.1 Dependências Obrigatórias (Bloqueantes)
-1. **Cadeia documental base:** `DOC-001` (`SPECIFICATION.md`) → `DOC-002` (`PLANNING.md`) → `DOC-003` (`TASKS.md`).
-2. **Consolidação formal de testes:** conclusão de `DOC-003`, `VAL-001`, `VAL-002` e `VAL-005` (além do registro de situação de `VAL-003`, `VAL-004` e `VAL-006`) → `DOC-004` (`TEST_RESULTS.md`).
-3. **Execução instrumentada em runtime real:** disponibilidade externa de dispositivo Android ou emulador com ADB + `VAL-002` → `VAL-003` (`:app:connectedDebugAndroidTest`).
-4. **Empacotamento Release assinado:** fornecimento externo de keystore dedicada e variáveis seguras → `VAL-006`.
-5. **Ativação segura da Enciclopédia:** `TEC-001` *(concluída)* + `FUT-002` + `FUT-009` → `FUT-005`.
-6. **Manifesto e exclusão remota:** `FUT-002` → `FUT-003` e `FUT-004`.
-7. **Áudio autêntico:** `FUT-001` + definição contratual de mídia → `FUT-008`.
-
-### 7.2 Ordem Recomendada de Execução (Sem Prazos Inventados)
-1. **Cadeia documental base concluída (`DOC-001`–`DOC-007`):** `SPECIFICATION.md`, `PLANNING.md`, `TASKS.md`, `TEST_RESULTS.md`, `AI_USAGE.md`, `README.md` e `docs/api-v1-contract.md` alinhados ao estado final do código.
-2. **Saneamento técnico e integração de manifesto no cliente concluídos (`TEC-001`–`TEC-004` e `FUT-003`):**
-   - `TEC-001`: proteção contra `CancellationException` em `EncyclopediaViewModel.kt`.
-   - `TEC-002`: `@ApplicationScope` movido para `core.common` eliminando dependência `data -> di`.
-   - `TEC-003`: `.gitignore` atualizado, `gradlew` com permissão `+x` e entrega única em `Voz-Ancestral-debug.apk`.
-   - `TEC-004`: exibição de contagem de verbetes sincronizados na v1.0 (`home_sync_synced_entries_only`).
-   - `FUT-003` *(cliente)*: integração e validação de `GET /v1/manifest.json` em `RemoteArchiveDataSource` e `ArchiveSyncRepositoryImpl`.
-3. **Validação externa da v1.0 (quando houver ambiente físico/emulador e credenciais):** executar `VAL-003` (`:app:connectedDebugAndroidTest`), `VAL-004` (validação manual segundo checklist externo em `TEST_RESULTS.md`) e, se aplicável à distribuição final, `VAL-006` (assinatura Release).
-4. **Ciclo pós-v1.0 (somente após autorizações e infraestrutura):** desbloquear `FUT-001`, `FUT-009` e `FUT-002`, seguidos por `FUT-004`, `FUT-005`, `FUT-006`, `FUT-007` e `FUT-008`.
+| ID | Descrição | Status Atual | Dependências | Critério Objetivo de Conclusão | Evidência / Referência |
+|---|---|---|---|---|---|
+| **`FUT-001`** | Obtenção e validação de vocabulário autêntico da língua Parintintin para substituir `DEMO-001`..`DEMO-020`. | **`BLOQUEADA`** | Curadoria linguística e autorização formal externa. | Conjunto validado de verbetes autênticos pronto para consumo autorizado. | `SPECIFICATION.md`, `strings.xml` |
+| **`FUT-002`** | Disponibilização de backend oficial específico para acervo linguístico/cultural (`/v1/dictionary.json`, `/v1/articles.json`). | **`BLOQUEADA`** | Infraestrutura externa e revisão contratual. | API HTTPS específica de acervo linguístico operacional e homologada. | `docs/api-v1-contract.md` *(legado)* |
+| **`FUT-003`** | Reavaliação de manifesto versionado e cache/skip para futura API linguística *(antigo cliente `/v1/manifest.json` removido na transição para ArcGIS IBAMA)*. | **`PENDENTE`** | `FUT-002`. | Política de versionamento/ETag definida e implementada caso seja adicionada API linguística. | `ArchiveSyncRepositoryImpl.kt`, `NetworkModule.kt` |
+| **`FUT-004`** | Definição e implementação de política de exclusão/reconciliação remota para Terras Indígenas e futuros acervos (`upsertAll` atual não remove registros ausentes na resposta remota). | **`PENDENTE`** | Definição funcional sobre remoção ou arquivamento local. | Reconciliação segura em transação Room preservando integridade offline. | `RoomIndigenousLandRepository.kt`, `OfflineFirstDictionaryRepository.kt` |
+| **`FUT-005`** | Integração de sincronização e exposição da Enciclopédia Cultural na navegação principal. | **`BLOQUEADA`** | `TEC-001` *(concluída)*, `FUT-002`, `FUT-009`. | Enciclopédia sincronizada, populada com conteúdo autorizado e acessível na navegação. | `EncyclopediaScreen.kt`, `OfflineFirstEncyclopediaRepository.kt` |
+| **`FUT-006`** | Interface funcional de Favoritos no Dicionário e/ou Territórios substituindo `ProvisionalDestinationScreen`. | **`PENDENTE`** | Decisão de design/UX pós-Etapa 5.4. | Controle de favoritos na UI e rota funcional dedicada testada. | `ParintintinNavHost.kt`, `DictionaryDao.kt` |
+| **`FUT-007`** | Tela de detalhes completos para Terras Indígenas (`ObserveIndigenousLandByIdUseCase`) e/ou verbetes (`ObserveDictionaryEntryByIdUseCase`). | **`PENDENTE`** | Definição de layout e navegação de detalhe. | Rota tipada e tela de detalhe conectadas aos casos de uso existentes. | `TerritoriesUseCases.kt`, `ArchiveUseCases.kt` |
+| **`FUT-008`** | Reprodução de áudio de pronúncia nos verbetes (`audioUrl`). | **`BLOQUEADA`** | `FUT-001` e contrato de mídia. | Player integrado com suporte offline e acessibilidade. | `DictionaryEntry.kt`, `HomeScreen.kt` |
+| **`FUT-009`** | Conteúdo cultural autêntico e autorizado para a Enciclopédia Cultural. | **`BLOQUEADA`** | Curadoria cultural e autorização formal. | Artigos culturais validados disponíveis no Room. | `CulturalArticle.kt` |
+| **`FUT-010`** | Alinhamento de strings em runtime, metadados e documentos auxiliares (`strings.xml`, `HomeScreen`, `settings.gradle.kts`, `metadata.json`, `docs/api-v1-contract.md`, `.gitignore` para `*.apk`) à nova identidade do projeto. | **`PENDENTE`** | Aprovação do responsável para alterações de código/recursos. | Nome exibido no launcher, Home e docs auxiliares totalmente alinhados a **Voz Ancestral — Catálogo Digital de Terras e Povos Indígenas do Brasil**. | `strings.xml`, `settings.gradle.kts`, `metadata.json`, `HomeScreen.kt`, `docs/` |
 
 ---
 
 ## 8. Resumo de Situação
 
-Os totais abaixo foram calculados exclusivamente a partir das **26 tarefas** efetivamente registradas nas Seções 3, 4, 5 e 6 deste documento:
+Os totais abaixo correspondem exatamente às **35 tarefas** registradas nas Seções 3, 4, 5, 6 e 7:
 
 ### 8.1 Quantitativo por Categoria e Status
 | Categoria | Prefixo | `CONCLUÍDA` | `PARCIAL` | `PENDENTE` | `BLOQUEADA` | `NÃO APLICÁVEL` | Total |
 |---|---|---|---|---|---|---|---|
-| **Documentação** | `DOC` | 7 | 0 | 0 | 0 | 0 | **7** |
-| **Validação e Testes** | `VAL` | 3 | 0 | 1 | 2 | 0 | **6** |
-| **Saneamento Técnico** | `TEC` | 4 | 0 | 0 | 0 | 0 | **4** |
-| **Funcionalidades Futuras (Pós-v1.0)** | `FUT` | 1 | 0 | 2 | 6 | 0 | **9** |
-| **Total Geral** | — | **15** | **0** | **3** | **8** | **0** | **26** |
+| **Documentação** | `DOC` | 8 | 0 | 0 | 0 | 0 | **8** |
+| **Validação e Testes** | `VAL` | 2 | 2 | 1 | 2 | 0 | **7** |
+| **Saneamento Técnico (Base v1.0)** | `TEC` | 4 | 0 | 0 | 0 | 0 | **4** |
+| **Catálogo Territorial (Etapas 1–5.4)** | `TER` | 6 | 0 | 0 | 0 | 0 | **6** |
+| **Funcionalidades Futuras** | `FUT` | 0 | 0 | 5 | 5 | 0 | **10** |
+| **Total Geral** | — | **20** | **2** | **6** | **7** | **0** | **35** |
 
-### 8.2 Síntese Objetiva da Versão 1.0 vs. Pós-v1.0
-- **Regularização documental, validação e saneamento técnico (`DOC` + `VAL` + `TEC` = 17 tarefas):** `14` concluídas (`DOC-001`–`DOC-007`, `VAL-001`, `VAL-002`, `VAL-005`, `TEC-001`–`TEC-004`), `0` parciais, `1` pendente (`VAL-004`) e `2` bloqueadas por recursos externos ao ambiente (`VAL-003` e `VAL-006`).
-- **Escopo Pós-v1.0 (`FUT` = 9 tarefas):** `1` concluída no cliente (`FUT-003`, aguardando apenas servidor real em `FUT-002`), `2` pendentes (`FUT-006`, `FUT-007`) e `6` bloqueadas por conteúdo/servidor/contrato (`FUT-001`, `FUT-002`, `FUT-004`, `FUT-005`, `FUT-008`, `FUT-009`).
-
----
-
-## 9. Histórico e Limitações
-
-- **Versão do documento:** `1.1` (Alinhado ao fechamento técnico da Versão 1.0 Demonstrativa com `252` testes em `27` suítes JVM e `Voz-Ancestral-debug.apk` único na raiz).
-- **Natureza da reconstrução:** Este documento reflete exclusivamente evidências verificáveis no código-fonte, suítes de testes, relatórios XML do Gradle, APK Debug verificado e documentação do repositório.
-- **Limitações registradas:**
-  - Não foram inventados históricos prévios, prazos acadêmicos ou aprovações formais inexistentes.
-  - Operações de publicação em dispositivos físicos (`VAL-003`, `VAL-004`), homologação de servidor externo (`FUT-002`) e assinatura Release (`VAL-006`) dependem de ambiente externo ao container.
+### 8.2 Síntese Objetiva
+- **Entregas Técnicas, Documentais e de Validação Local (`DOC` + `VAL` + `TEC` + `TER` = 25 tarefas):** `20` concluídas (`DOC-001`–`DOC-008`, `VAL-001`, `VAL-002`, `TEC-001`–`TEC-004`, `TER-001`–`TER-006`), `2` parciais (`VAL-005` e `VAL-007`), `1` pendente (`VAL-004`) e `2` bloqueadas por recursos externos (`VAL-003` e `VAL-006`).
+- **Evoluções Futuras (`FUT` = 10 tarefas):** `5` pendentes (`FUT-003`, `FUT-004`, `FUT-006`, `FUT-007`, `FUT-010`) e `5` bloqueadas por conteúdo autêntico, curadoria ou backend linguístico (`FUT-001`, `FUT-002`, `FUT-005`, `FUT-008`, `FUT-009`).

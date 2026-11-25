@@ -1,116 +1,114 @@
-# Voz Ancestral — Acervo Provisório (v1.0 Demonstrativa)
+# Voz Ancestral — Catálogo Digital de Terras e Povos Indígenas do Brasil
 
-Aplicativo Android desenvolvido no âmbito do projeto acadêmico **Voz Ancestral**, voltado à organização, preservação digital e consulta *offline-first* de registros linguísticos e culturais relacionados à língua **Parintintin**.
+Aplicativo Android desenvolvido em arquitetura *Offline-First* no âmbito do projeto **Voz Ancestral**, atualmente estruturado como **Catálogo Digital de Terras e Povos Indígenas do Brasil**. O sistema evoluiu a partir da base técnica do antigo protótipo **Acervo Provisório**, reaproveitando a arquitetura Clean Architecture + MVVM, a persistência em Room e a infraestrutura de conectividade/sincronização para integrar dados territoriais oficiais da **API ArcGIS REST do IBAMA / SIGAGEO (Camada 25)**, mantendo também as telas **Início** e **Dicionário** (com 20 verbetes demonstrativos em português).
 
-> **Aviso de Escopo (Versão 1.0 Demonstrativa):** Esta versão possui caráter **acadêmico e estritamente demonstrativo**. A interface visível ao usuário está concentrada nas telas **Início** e **Dicionário**, utilizando **20 registros fictícios em português** (`DEMO-001` a `DEMO-020`) para validação técnica da arquitetura, da persistência local e do comportamento de sincronização. **Nenhum registro desta versão representa vocabulário autêntico da língua Parintintin.**
+> **Aviso de Precisão e Escopo dos Dados:**
+> 1. **Terras Indígenas (API IBAMA / SIGAGEO, Camada 25):** a API fornece informações territoriais oficiais (nome da Terra Indígena, código `terrai_cod`, UF, municípios, superfície em hectares, fase do processo, modalidade, data de atualização) e as **etnias associadas aos territórios** (`etnia_nome` / `ethnicities`). **Ela não representa uma base completa de perfis culturais, históricos ou linguísticos dos povos indígenas.**
+> 2. **Dicionário (Escopo Demonstrativo Preservado):** a aba **Dicionário** mantém os **20 registros demonstrativos fictícios em português** (`DEMO-001` a `DEMO-020`) para preservação da funcionalidade anterior; **nenhum verbete dessa aba representa vocabulário autêntico de línguas indígenas**.
+> 3. **Identificadores Residuais de Configuração:** embora a identidade do projeto tenha evoluído para **Voz Ancestral: Catálogo Digital de Terras e Povos Indígenas do Brasil**, o manifesto de strings (`app_name = "Acervo Provisório"`), `settings.gradle.kts` (`rootProject.name = "AcervoProvisorio"`), `applicationId` (`com.aistudio.parintintin.kagwah`), `versionName = "1.0"` e os textos iniciais da tela **Início** ainda preservam os identificadores originais da v1.0.
 
 ---
 
 ## 1. Identificação do Projeto
 
-| Atributo | Informação Verificada |
-|---|---|
-| **Projeto Acadêmico** | **Voz Ancestral** |
-| **Nome do Aplicativo** | **Acervo Provisório** (`AcervoProvisorio` no Gradle) |
-| **Versão Atual** | **1.0 Demonstrativa** (`versionCode = 1`, `versionName = "1.0"`) |
-| **Identificador Android (`applicationId`)** | `com.aistudio.parintintin.kagwah` |
-| **Namespace Kotlin/Android** | `com.example` |
-| **Natureza do Artefato** | Protótipo funcional acadêmico e demonstrativo (*Offline-First*), não publicado em loja oficial |
+| Atributo | Informação Verificada no Repositório | Observação |
+|---|---|---|
+| **Identidade Atual do Projeto** | **Voz Ancestral: Catálogo Digital de Terras e Povos Indígenas do Brasil** | Evolução do projeto a partir do protótipo *Acervo Provisório* |
+| **Nome Configurado no Android/Gradle** | `app_name = "Acervo Provisório"` \| `rootProject.name = "AcervoProvisorio"` | Identificador residual em `strings.xml` e `settings.gradle.kts` |
+| **Metadado no AI Studio (`metadata.json`)** | `"Voz Ancestral"` | Descrição ainda refere-se apenas à língua Parintintin |
+| **Versão no Gradle** | `versionCode = 1`, `versionName = "1.0"` | `app/build.gradle.kts` |
+| **Identificador Android (`applicationId`)** | `com.aistudio.parintintin.kagwah` (`namespace = "com.example"`) | `app/build.gradle.kts` |
+| **Fonte Remota Territorial** | API ArcGIS REST — IBAMA / SIGAGEO (`MapServer/25/query`) | `ArcGisTerritoriesQuerySpec.kt`, `NetworkModule.kt` |
+| **Destinos Principais de Navegação** | **Início**, **Dicionário** e **Territórios** | `AppDestination.primaryDestinations` (Etapa 5.4) |
 
 ---
 
-## 2. Apresentação
+## 2. Evolução e Apresentação
 
-Iniciativas de documentação e preservação digital de línguas indígenas enfrentam desafios recorrentes de acesso contínuo ao conteúdo em regiões com conectividade limitada ou intermitente, além da exigência ética e técnica de validação especializada e autorização formal antes da publicação de dados linguísticos e culturais autênticos.
+O projeto **Voz Ancestral** nasceu com foco na preservação digital *offline-first* da língua Parintintin (protótipo **Acervo Provisório** v1.0) e evoluiu de maneira incremental — ao longo das **Etapas 1 a 5.4** — para um **Catálogo Digital de Terras e Povos Indígenas do Brasil**, aproveitando toda a base arquitetural já validada:
 
-Nesse contexto, o projeto **Voz Ancestral** propõe o aplicativo **Acervo Provisório** como base tecnológica Android projetada segundo a estratégia **Offline-First**. Na **Versão 1.0 Demonstrativa**, o aplicativo consolida a infraestrutura local em banco SQLite/Room, a carga controlada de dados demonstrativos versionados, os mecanismos de pesquisa e filtragem e o monitoramento reativo de conectividade e sincronização remota, sem depender de servidor ativo para consulta e sem expor vocabulário não autorizado.
+- **Reaproveitamento arquitetural:** manutenção integral da separação em camadas (**Clean Architecture + MVVM**), da injeção de dependências com **Dagger Hilt**, do monitoramento de conectividade via `ConnectivityManager` e da coordenação reativa de sincronização (`ArchiveSyncCoordinatorImpl`).
+- **Evolução do banco Room (Schema v3 → v4):** adição da tabela `indigenous_lands` (`IndigenousLandEntity`), índices dedicados e migração explícita `MIGRATION_3_4`, com suporte a consultas SQL avançadas via CTEs (`IndigenousLandQueryBuilder`) para busca com remoção de acentos, filtros combináveis e ordenação determinística com valores nulos, vazios e somente espaços mantidos sempre ao final.
+- **Integração territorial oficial (IBAMA / SIGAGEO, Camada 25):** substituição do antigo cliente provisório (`archive.parintintin.org`) pela integração paginada com o serviço público ArcGIS REST do IBAMA (`https://pamgia.ibama.gov.br/server/rest/services/SIGAGEO/bases/MapServer/25/`), mantendo consulta local exclusiva ao Room na interface de usuário.
 
 ---
 
 ## 3. Funcionalidades Disponíveis
 
-A navegação principal da Versão 1.0 Demonstrativa disponibiliza exclusivamente dois destinos na barra inferior (**Início** e **Dicionário**):
+A barra de navegação inferior (`ParintintinBottomBar`) expõe exatamente **três destinos principais** (`AppDestination.primaryDestinations`): **Início**, **Dicionário** e **Territórios**.
 
-- **Tela Home (`Início`):**
-  - Exibe o banner de identificação `"VERSÃO 1.0 • DEMONSTRATIVA"` e o aviso permanente `"MODO DEMONSTRATIVO"`.
-  - Apresenta esclarecimento sobre o acervo em construção e ausência de vocabulário autêntico nesta etapa.
-  - Exibe o card **Armazenamento Local (Offline-First)** (`OfflineArchiveStatusCard`), com contagem de verbetes e artigos no banco local, status atual da sincronização, histórico de última tentativa/última sincronização oficial e botão manual de sincronização.
-  - Lista módulos futuros de forma puramente informativa com o selo `"Planejado"` (sem navegação) e oferece cartão expansível com detalhes técnicos da etapa inicial.
-- **Dicionário Demonstrativo (`Dicionário`):**
-  - Lista em ordem alfabética (`COLLATE NOCASE ASC`) os 20 verbetes locais (`DEMO-001` a `DEMO-020`), exibindo contagem total e selo de consulta offline via Room.
-  - Mantém cabeçalho fixo (`stickyHeader`) `"MODO DEMONSTRATIVO"` e identifica os itens com os selos `"Termo demonstrativo"` e `"Nota demonstrativa"`.
-- **Pesquisa Textual:**
-  - Busca reativa em tempo real com *debounce* de `150 ms` sobre termo, tradução em português e nota cultural via consulta SQL `LIKE`, acompanhada de botão para limpeza rápida da busca.
-- **Filtros por Categoria Semântica e Classe Gramatical:**
-  - Seleção combinável por chips horizontais para **6 categorias semânticas** (`SemanticCategory`) e **7 classes gramaticais** (`GrammaticalClass`), integrados à pesquisa textual e com opção de limpeza global de filtros.
-  - Exibição explícita de estados visuais de carregamento, lista vazia (geral ou por filtro ativo) e erro de consulta com ação de nova tentativa.
-- **Persistência Local com Room (Schema v3):**
-  - Banco `parintintin_archive.db` com migrações explícitas (`1 -> 2` e `2 -> 3`), exportação de schemas JSON (`2.json`, `3.json`) e inicialização/atualização transacional e idempotente de `app/src/main/assets/dictionary_seed.json` controlada por versão e hash **SHA-256**.
-- **Funcionamento *Offline-First*:**
-  - A interface observa exclusivamente fluxos (`Flow`) do Room; falhas de rede ou respostas remotas vazias (`HTTP 200 []`) não bloqueiam a consulta nem apagam registros locais, favoritos ou o histórico de sincronização oficial prévia.
-  - Caso já exista sincronização oficial registrada (`lastSuccessfulSyncEpochMillis != null`), novas atualizações do seed demonstrativo são bloqueadas (`BLOCKED_BY_OFFICIAL_SYNC`).
-- **Estados de Conectividade e Sincronização:**
-  - Observação contínua da rede via `ConnectivityManager.NetworkCallback` (`AndroidNetworkConnectivityObserver`) e coordenação com deduplicação em `@ApplicationScope` (`ArchiveSyncCoordinatorImpl`).
-  - Consumo prévio do manifesto remoto (`GET /v1/manifest.json` via `RemoteArchiveDataSource.fetchArchiveManifest()`) antes de `GET /v1/dictionary.json`, persistindo `lastSuccessfulRemoteVersion` em `SyncMetadataEntity`.
-  - Transições tipadas de `SyncState` (`Loading`, `Idle`, `Syncing`, `Synced`, `RemoteEmpty` e `OfflineFallback`), exibição de verbetes sincronizados na UI (`home_sync_synced_entries_only`) e classificação de falhas entre `NO_INTERNET`, `UNVALIDATED_NETWORK` e `SERVER_UNAVAILABLE`.
+### 3.1. Territórios (`Territórios` — Etapas 1 a 5.4)
+- **Consulta 100% offline via Room:** `TerritoriesScreen` e `TerritoriesViewModel` observam exclusivamente fluxos locais (`ObserveIndigenousLandsUseCase`, `ObserveIndigenousLandFilterOptionsUseCase`, `ObserveIndigenousLandsCountUseCase`), exibindo o catálogo independentemente de conexão ativa.
+- **Cards informativos (`TerritoryCard`):** apresentam, conforme disponibilidade dos dados na origem sem preencher valores inventados: nome da Terra Indígena (ou fallback legível quando ausente), código (`terrai_cod`), **UF**, **fase do processo** (`fase_ti`), **modalidade**, **etnias associadas** (`ethnicities` / `etnia_nome`), municípios, superfície em hectares (`pt-BR`) e data de atualização bruta (`data_atual`).
+- **Pesquisa textual reativa:** campo de busca com *debounce* de `150 ms`, botão de limpeza rápida e correspondência SQL com normalização de acentos e *escape* de curingas `LIKE` sobre nome, etnias associadas (bruto e JSON), municípios (bruto e JSON) e código do território.
+- **Filtros combináveis dinâmicos:** chips horizontais extraídos dinamicamente dos registros locais para **UF**, **Fase do processo** e **Modalidade**, combináveis entre si e com a pesquisa textual, além de limpeza global (`Limpar filtros`).
+- **Ordenação pelos quatro critérios com nulos/vazios ao final:** alternância entre **Nome**, **Código**, **Superfície** e **Atualização**, em ordem crescente ou decrescente, garantindo em SQLite e na camada de apresentação que valores `null`, vazios (`""`) ou com apenas espaços (`"   "`) permaneçam sempre ao final, com desempate determinístico até `id ASC`.
+- **Estados completos de interface e sincronização manual:** exibição de estados `Loading`, `Empty` (diferenciando base vazia de busca/filtro sem resultados), `Success` (1 coluna em telas compactas e 2 colunas a partir de `600.dp`) e `Error` com `Tentar novamente`, além de barra de status (`TerritoriesSyncStatusBar`) com botão de sincronização manual protegido contra chamadas simultâneas e banner dispensável em caso de erro inesperado.
+
+### 3.2. Início (`Home`)
+- Exibe o banner inicial da v1.0, o aviso permanente `MODO DEMONSTRATIVO`, explicação introdutória e o cartão **Armazenamento Local (Offline-First)** (`OfflineArchiveStatusCard`), atualizado para exibir três métricas locais: **Terras Indígenas locais**, **verbetes locais** e **artigos locais**, além da contagem sincronizada de Terras Indígenas (`SyncState.Synced`) e controle de sincronização manual.
+- Mantém o disparo automático único de inicialização por processo (`HomeViewModel.init` → `ArchiveSyncCoordinator.requestAutoSync()`), combinando atualização idempotente do seed demonstrativo e sincronização paginada das Terras Indígenas.
+
+### 3.3. Dicionário (`Dicionário`)
+- Preserva integralmente a experiência de consulta offline dos **20 verbetes demonstrativos em português** (`DEMO-001` a `DEMO-020`), com pesquisa textual (*debounce* de `150 ms`), filtros combináveis por 6 categorias semânticas e 7 classes gramaticais, cabeçalho fixo `MODO DEMONSTRATIVO` e selos identificadores de conteúdo demonstrativo.
+
+### 3.4. Navegação Principal (Etapa 5.4)
+- Navegação tipada com `Navigation Compose` (`@Serializable`) entre **Início**, **Dicionário** e **Territórios**, com `launchSingleTop = true`, `saveState = true` e `restoreState = true` preservando estado de pesquisa/filtros ao alternar abas e retorno padrão via botão voltar para **Início**.
 
 ---
 
-## 4. Limitações da Versão 1.0
+## 4. Limitações e Escopo Atual
 
-- **Registros fictícios em português:** os 20 registros `DEMO-001` a `DEMO-020` presentes em `dictionary_seed.json` são termos e expressões demonstrativos fictícios em português (ex.: *Riolume*, *Folhaverde*, *Brisamata*).
-- **Ausência de vocabulário autêntico:** nenhum dos verbetes desta versão representa vocabulário autêntico da língua Parintintin.
-- **Ausência de áudio e pronúncia autêntica:** todos os registros possuem `phonetic_ipa`, `example_parintintin` e `example_portuguese` vazios e não há arquivos sonoros, URLs de áudio ou reprodutor de mídia implementado.
-- **Sincronização restrita ao dicionário na v1.0:** `ArchiveSyncRepositoryImpl.syncArchive()` consulta `GET /v1/manifest.json` e sincroniza `GET /v1/dictionary.json`; `/v1/articles.json` (Enciclopédia Cultural) permanece fora da sincronização na v1.0, a otimização de cache para pular download quando a versão do manifesto não muda ainda não é aplicada e não há política implementada de exclusão remota de registros. *(O card `OfflineArchiveStatusCard` já exibe corretamente `"Sincronizados: X verbetes."` via `home_sync_synced_entries_only` quando `articlesCount == null`.)*
-- **Disponibilidade do servidor oficial não confirmada:** o cliente Retrofit/OkHttp/Moshi está implementado e aponta para `https://archive.parintintin.org/` (documentado em [`docs/api-v1-contract.md`](docs/api-v1-contract.md)), porém **não há comprovação de requisições executadas em produção, respostas reais recebidas ou sincronização concluída contra o servidor externo**. Os testes HTTP utilizaram exclusivamente `MockWebServer`.
-- **Funcionalidades fora da v1.0:** **Enciclopédia Cultural**, **interface funcional de Favoritos**, **tela de detalhes dos verbetes**, **reprodução de áudio** e **Acervo Oficial** não estão disponíveis ao usuário nesta versão.
-- **Artefato de distribuição e execução em dispositivo:** o APK **Debug** final v1.0 foi consolidado como artefato único na raiz em `Voz-Ancestral-debug.apk` (`22.692.801` bytes, SHA-256 `e633f1c268fada603fb5c9a61d2010887a78fd826c0c9cdf6273708ecf25e36d`, idêntico a `app/build/outputs/apk/debug/app-debug.apk`). Não há assinatura **Release** configurada no ambiente, nem execução comprovada em aparelho Android físico neste container.
+- **Escopo dos dados da API IBAMA / SIGAGEO:** a camada 25 fornece atributos territoriais oficiais e etnias associadas (`etnia_nome`), **não substituindo fontes antropológicas, históricas ou linguísticas completas dos povos indígenas**. Não há sincronização de geometrias/polígonos (`returnGeometry = false`), nem tela dedicada de detalhes individuais de territórios.
+- **Conteúdo linguístico e módulos secundários:** os 20 verbetes do **Dicionário** continuam sendo registros demonstrativos em português (`DEMO-001`..`DEMO-020`), sem vocabulário Parintintin autêntico, IPA ou áudio. As rotas `Encyclopedia`, `Favorites` (`ProvisionalDestinationScreen`) e `Archive` (`ProvisionalDestinationScreen`) permanecem fora da barra inferior.
+- **Identificadores e textos residuais:** `strings.xml` (`app_name`, `home_hero_title`, `home_provisional_badge`), `settings.gradle.kts`, `metadata.json` e `docs/api-v1-contract.md` ainda carregam referências da fase inicial *Acervo Provisório* / *Parintintin* (detalhes em [`TEST_RESULTS.md`](TEST_RESULTS.md) e [`SPECIFICATION.md`](SPECIFICATION.md)).
+- **Execução de rede neste container offline:** no ambiente local de desenvolvimento/auditoria, todas as validações HTTP utilizaram `MockWebServer` (não há saída de rede externa nem emulador/ADB neste container). A sincronização completa de **627 registros territoriais** e a aprovação no **GitHub Actions** foram **confirmadas externamente pelo responsável pelo projeto** (o diretório `.github/` e o histórico `.git` não estão presentes neste container).
+- **Validação em hardware e Release:** testes instrumentados (`app/src/androidTest`) não foram executados por ausência de emulador/ADB, não há auditoria manual com TalkBack em aparelho físico e não há assinatura Release configurada (`my-upload-key.jks` e variáveis de assinatura externos ao repositório).
 
 ---
 
 ## 5. Tecnologias Utilizadas
 
-Todas as versões abaixo foram confirmadas em `gradle/libs.versions.toml`, `app/build.gradle.kts` e `gradle/wrapper/gradle-wrapper.properties`:
+Versões confirmadas em `gradle/libs.versions.toml`, `app/build.gradle.kts` e `gradle/wrapper/gradle-wrapper.properties`:
 
 | Categoria | Tecnologia | Versão Comprovada |
 |---|---|---|
-| **Linguagem** | Kotlin | `2.2.10` |
+| **Linguagem** | Kotlin | `2.2.10` (`JavaVersion.VERSION_11` bytecode) |
 | **Interface Declarativa** | Jetpack Compose + Material 3 (`Navigation Compose`) | Compose BOM `2024.09.00` \| Navigation `2.8.9` |
 | **Arquitetura** | Clean Architecture + MVVM | Pacotes `presentation`, `domain`, `data`, `di`, `core` |
-| **Injeção de Dependências** | Dagger Hilt e `hilt-navigation-compose` | Dagger Hilt: `2.59`; `hilt-navigation-compose`: `1.2.0` |
-| **Persistência Local** | AndroidX Room (`room-runtime`, `room-ktx`) | `2.7.0` (Schema v3) |
+| **Injeção de Dependências** | Dagger Hilt + `hilt-navigation-compose` | Dagger Hilt `2.59` \| `hilt-navigation-compose 1.2.0` |
+| **Persistência Local** | AndroidX Room (`room-runtime`, `room-ktx`) | `2.7.0` (Schema **v4**, migrações `1->2`, `2->3`, `3->4`) |
 | **Concorrência e Fluxos** | Kotlin Coroutines + `Flow` / `StateFlow` | `1.10.2` |
-| **Rede e HTTP** | Retrofit + OkHttp (`logging-interceptor`) | Retrofit `2.12.0` \| OkHttp `4.10.0` |
-| **Serialização** | Moshi (codegen) + Kotlinx Serialization JSON | Moshi `1.15.2` \| Serialization `1.8.0` |
+| **Rede e HTTP** | Retrofit + OkHttp (`logging-interceptor`) | Retrofit `2.12.0` \| OkHttp `4.10.0` (`connect=15s`, `read=30s`) |
+| **Serialização** | Moshi (`IndigenousLandAttributesJsonAdapter` + `KotlinJsonAdapterFactory`) + Kotlinx Serialization JSON | Moshi `1.15.2` \| Serialization `1.8.0` |
 | **Build e Processamento** | Gradle + Android Gradle Plugin (AGP) + KSP | Gradle `9.3.1` \| AGP `9.1.1` \| KSP `2.3.5` |
 | **Testes Automatizados** | JUnit, Coroutines Test, Robolectric, Compose UI Test, MockWebServer, Hilt Testing, Espresso | JUnit `4.13.2`, Robolectric `4.16.1`, MockWebServer `4.10.0`, Hilt Testing `2.59`, Espresso `3.7.0` |
 
-*Nota:* Bibliotecas opcionais presentes apenas como linhas comentadas em `app/build.gradle.kts` (como Firebase, CameraX, Coil, DataStore e Play Services Location) não fazem parte da implementação ativa da v1.0.
+*Nota:* Dependências opcionais comentadas em `app/build.gradle.kts` (Firebase, CameraX, Coil, DataStore, Play Services Location) permanecem inativas.
 
 ---
 
 ## 6. Arquitetura do Projeto
 
-O aplicativo adota **Clean Architecture** combinada ao padrão **MVVM**:
+O projeto segue **Clean Architecture** combinada ao padrão **MVVM**:
 
-- **`presentation` e `ui.theme`:** telas e componentes Jetpack Compose (`HomeScreen`, `DictionaryScreen`, `PreserveComponents`, `ParintintinNavHost`, `ParintintinBottomBar`), tema Material 3 e `@HiltViewModel`s (`HomeViewModel`, `DictionaryViewModel`) expondo estados imutáveis via `StateFlow`. *(Inclui o pacote preparatório `encyclopedia`, não exposto na navegação da v1.0.)*
-- **`domain`:** modelos puros Kotlin (`DictionaryEntry`, `CulturalArticle`, `SyncState`, `DeviceConnectivityState`), contratos de repositório e conectividade, casos de uso (`ArchiveUseCases`), coordenador de sincronização (`ArchiveSyncCoordinator`) e classificador de falhas (`SyncFailureClassifier`), sem dependência de Android SDK, Room ou Retrofit.
-- **`data`:** implementações concretas de persistência local (`ParintintinDatabase`, DAOs, migrações e engine de seed `VersionedDictionarySeedUpdater`), cliente HTTP/Moshi (`ParintintinApiService`, `RemoteArchiveDataSource`), observador `ConnectivityManager` (`AndroidNetworkConnectivityObserver`) e repositórios offline-first (`OfflineFirstDictionaryRepository`, `ArchiveSyncRepositoryImpl`, além do preparatório `OfflineFirstEncyclopediaRepository`). A camada `data` depende apenas de `domain` e `core.common`, sem referências diretas ao pacote `di`.
-- **`di` e `core.common`:** módulos Hilt (`DatabaseModule`, `NetworkModule`, `RepositoryModule`, `SeedModule`, `SyncModule`, `ConnectivityModule`, `CoroutinesModule`) e utilitários/qualificadores compartilhados (`AppResult`, `DispatcherProvider`, `CoroutinesQualifiers` com `@ApplicationScope`).
+- **`presentation` e `ui.theme`:** telas Compose (`HomeScreen`, `DictionaryScreen`, `TerritoriesScreen`, `EncyclopediaScreen` preparatória), componentes compartilhados (`CatalogSharedComponents`, `PreserveComponents`), componentes territoriais (`TerritoryCard`, `TerritoryControlsSection`, `TerritoriesSyncStatusBar`), navegação (`AppDestination`, `ParintintinBottomBar`, `ParintintinNavHost`) e `@HiltViewModel`s (`HomeViewModel`, `DictionaryViewModel`, `TerritoriesViewModel`, `EncyclopediaViewModel`).
+- **`domain`:** modelos puros (`IndigenousLand`, `TerritoryFilter`, `TerritorySortOption`, `TerritoryFilterOptions`, `DictionaryEntry`, `CulturalArticle`, `SyncState`, `RemoteSyncOutcome`, `DeviceConnectivityState`), contratos de repositório (`IndigenousLandRepository`, `DictionaryRepository`, `EncyclopediaRepository`, `SyncStatusRepository`), casos de uso (`TerritoriesUseCases`, `ArchiveUseCases`), coordenação e classificação de falhas (`ArchiveSyncCoordinator`, `SyncFailureClassifier`).
+- **`data`:** banco Room `ParintintinDatabase` v4 (`IndigenousLandDao`, `IndigenousLandQueryBuilder`, `DictionaryDao`, `EncyclopediaDao`, `SyncMetadataDao`, `SeedMetadataDao`), migrações `ParintintinMigrations`, seed `VersionedDictionarySeedUpdater`, cliente ArcGIS (`ArcGisTerritoriesQuerySpec`, `IbamaTerritoriesApiService`, `RemoteTerritoriesDataSource`, `ArcGisTerritoriesDtos`, `ArcGisJsonAdapters`, `ArcGisTerritoriesMapper`), observador de conectividade (`AndroidNetworkConnectivityObserver`) e repositórios (`RoomIndigenousLandRepository`, `ArchiveSyncRepositoryImpl`, `OfflineFirstDictionaryRepository`, `OfflineFirstEncyclopediaRepository`).
+- **`di` e `core.common`:** módulos Hilt (`DatabaseModule`, `NetworkModule`, `RepositoryModule`, `SeedModule`, `SyncModule`, `ConnectivityModule`, `CoroutinesModule`) e utilitários (`AppResult`, `DispatcherProvider`, `CoroutinesQualifiers`).
 
 ### Estrutura Real do Repositório
 
 ```text
 .
-├── .env.example                      # Modelo de variáveis locais (apenas placeholder comentado na v1.0)
-├── .gitignore                        # Regras de exclusão Git (inclui *.apk, *.aab e /.build-outputs/)
+├── .env.example                      # Modelo de variáveis locais (placeholder comentado)
+├── .gitignore                        # Regras de exclusão Git
 ├── AI_USAGE.md                       # Registro transparente do uso de ferramentas de IA
-├── PLANNING.md                       # Planejamento retrospectivo, fases, marcos e riscos
+├── PLANNING.md                       # Planejamento evolutivo, fases, marcos e riscos
 ├── README.md                         # Apresentação geral do repositório (este arquivo)
 ├── SPECIFICATION.md                  # Especificação funcional, não funcional e técnica
-├── TASKS.md                          # Decomposição rastreável de tarefas (DOC/VAL/TEC/FUT)
+├── TASKS.md                          # Decomposição rastreável de tarefas (DOC/VAL/TEC/TER/FUT)
 ├── TEST_RESULTS.md                   # Consolidação auditável de testes, artefatos e checklist externo
-├── Voz-Ancestral-debug.apk           # APK Debug v1.0 instalável único entregue na raiz
 ├── build.gradle.kts                  # Configuração Gradle de nível raiz
 ├── debug.keystore.base64             # Material de keystore Debug do ambiente
 ├── gradle.properties                 # Parâmetros de build JVM/Gradle/Kotlin
@@ -119,18 +117,17 @@ O aplicativo adota **Clean Architecture** combinada ao padrão **MVVM**:
 ├── metadata.json                     # Metadados do projeto no ambiente AI Studio
 ├── settings.gradle.kts               # Definição do projeto AcervoProvisorio (:app)
 ├── docs/
-│   └── api-v1-contract.md            # Proposta de contrato da API REST v1
+│   ├── api-v1-contract.md            # Contrato histórico/legado da antiga API v1 (não usada no cliente atual)
+│   └── arcgis-territories-api.md     # Documentação técnica da Etapa 1 da API ArcGIS REST (IBAMA Camada 25)
 ├── gradle/
 │   ├── libs.versions.toml            # Catálogo central de versões e dependências
-│   └── wrapper/
-│       ├── gradle-wrapper.jar        # Executável JAR do Gradle Wrapper
-│       └── gradle-wrapper.properties # Configuração de distribuição Gradle 9.3.1
+│   └── wrapper/                      # Wrapper configurado para Gradle 9.3.1
 └── app/
     ├── build.gradle.kts              # Configuração do módulo :app (SDK, assinatura, dependências)
     ├── proguard-rules.pro            # Regras ProGuard/R8
     ├── schemas/
     │   └── com.example.data.local.database.ParintintinDatabase/
-    │                                 # Schemas JSON exportados do Room (2.json, 3.json)
+    │                                 # Schemas JSON exportados do Room (2.json, 3.json, 4.json)
     └── src/
         ├── main/
         │   ├── AndroidManifest.xml
@@ -144,67 +141,50 @@ O aplicativo adota **Clean Architecture** combinada ao padrão **MVVM**:
         │   │   │   ├── connectivity/
         │   │   │   ├── local/{dao,database,entity,seed}/
         │   │   │   ├── mapper/
-        │   │   │   ├── remote/
+        │   │   │   ├── remote/{api,datasource,dto,model}/
         │   │   │   ├── repository/
         │   │   │   └── sync/
         │   │   ├── di/
         │   │   ├── domain/{connectivity,model,repository,sync,usecase}/
-        │   │   ├── presentation/{components,dictionary,encyclopedia,home,navigation}/
+        │   │   ├── presentation/{components,dictionary,encyclopedia,home,navigation,territories}/
         │   │   └── ui/theme/
         │   └── res/                  # Drawables, fontes locais, mipmaps, strings e XMLs
         ├── debug/                    # Manifesto e recursos específicos de Debug
-        ├── test/                     # 27 suítes automatizadas executáveis na JVM (252 testes)
-        └── androidTest/              # 5 arquivos Kotlin / 3 @Test (recompilados via :app:assembleDebugAndroidTest, não executados)
+        ├── test/                     # 35 suítes automatizadas executáveis na JVM (303 testes)
+        └── androidTest/              # 5 arquivos Kotlin / 3 @Test (atualizados para ArcGIS /query? e compilados com :app:compileDebugAndroidTestKotlin)
 ```
+
+*(Nota de transparência: o diretório do repositório também contém pacotes de transferência gerados anteriormente — `Voz-Ancestral-debug.zip` e `Voz-Ancestral-Fonte-Etapa-*.zip/.b64` — preservados sem alteração.)*
 
 ---
 
 ## 7. Requisitos para Desenvolvimento
 
-Configurações verificadas no projeto (`app/build.gradle.kts` e `gradle/wrapper/gradle-wrapper.properties`):
-
 - **Android mínimo (`minSdk`):** API `24` (Android 7.0)
-- **`compileSdk`:** `36` (`minorApiLevel = 1`)
-- **`targetSdk`:** `36`
-- **Java Target (`compileOptions`):** `11` (`JavaVersion.VERSION_11`) — configuração do bytecode gerado para o aplicativo (não representa a versão mínima de JDK exigida para executar o Gradle)
-- **Ferramentas necessárias para abrir e compilar:**
-  - **Android Studio** com suporte ao **Android Gradle Plugin `9.1.1`** e **Android SDK Platform `36`** instalados;
-  - **JDK 17 ou superior** para executar o **Gradle `9.3.1`** (distinta da configuração de compilação `Java Target 11` do aplicativo);
-  - **Gradle `9.3.1`** instalado no ambiente caso deseje compilar via linha de comando (ou uso da distribuição configurada pelo Android Studio conforme `gradle/wrapper/gradle-wrapper.properties`).
+- **`compileSdk` / `targetSdk`:** `36` (`minorApiLevel = 1`)
+- **Java Target (`compileOptions`):** `11` (`JavaVersion.VERSION_11`)
+- **Ferramentas necessárias:** Android Studio com suporte a **AGP `9.1.1`**, **Android SDK Platform `36`**, **JDK 17+** para executar o **Gradle `9.3.1`**.
 
 ---
 
 ## 8. Como Executar
 
-### 1. Clonar o repositório
+### 1. Abrir e sincronizar no Android Studio
+1. Abra a pasta raiz do repositório (contendo `settings.gradle.kts`) no **Android Studio**.
+2. Execute **Sync Project with Gradle Files** para resolver dependências e configurar o KSP.
+
+### 2. Compilar e executar o aplicativo (Debug)
 ```bash
-git clone https://github.com/GassaTech/voz-ancestral-.git
-cd voz-ancestral-
+./gradlew :app:assembleDebug
 ```
-*(Observação de auditoria: a URL acima foi mantida a partir do registro anterior do projeto; o diretório `.git` não está presente neste ambiente de execução, não sendo possível confirmar localmente o endereço remoto configurado no GitHub.)*
+*(Ou `gradle :app:assembleDebug`.)* O APK Debug gerado fica em `app/build/outputs/apk/debug/app-debug.apk`.
+- **Assinatura Release:** `:app:assembleRelease` requer keystore própria (`KEYSTORE_PATH` / `my-upload-key.jks`) e variáveis de assinatura (`STORE_PASSWORD`, `KEY_PASSWORD`) externas ao repositório.
 
-### 2. Abrir no Android Studio
-1. Inicie o **Android Studio** e selecione **Open** (*Abrir*).
-2. Aponte para a pasta raiz do repositório (que contém `settings.gradle.kts`).
-
-### 3. Sincronizar o Gradle
-- No Android Studio, execute **Sync Project with Gradle Files** para resolver dependências e configurar o projeto no Gradle (o processamento de anotações via KSP ocorre durante as tarefas de build pertinentes, como compilação e testes).
-- *Gradle Wrapper:* o repositório inclui `gradlew` (com permissão de execução `-rwxr-xr-x`), `gradlew.bat`, `gradle/wrapper/gradle-wrapper.jar` e `gradle/wrapper/gradle-wrapper.properties` (`gradle-9.3.1-bin.zip`). Em sistemas Unix, utilize `./gradlew ...` (ou `gradle ...` diretamente no terminal).
-
-### 4. Compilar e instalar o APK Debug
-- **Via Android Studio:** selecione um emulador ou dispositivo físico conectado via USB/ADB (API `24` ou superior) e clique em **Run (`app`)**.
-- **Via linha de comando (build Debug):**
-  ```bash
-  ./gradlew :app:assembleDebug
-  ```
-  *(ou `gradle :app:assembleDebug`).* O APK Debug gerado ficará disponível em `app/build/outputs/apk/debug/app-debug.apk`. Uma cópia já compilada e verificada deste APK Debug v1.0 está disponível como artefato único na raiz em `Voz-Ancestral-debug.apk` (`22.692.801` bytes).
-- **Assinatura Release:** o build `:app:assembleRelease` requer keystore própria (`KEYSTORE_PATH` / `my-upload-key.jks`) e variáveis de assinatura (`STORE_PASSWORD`, `KEY_PASSWORD`) não incluídas no repositório. *(As configurações `signingConfigs` e `buildTypes` em `app/build.gradle.kts` encontram-se preservadas.)*
-
-### 5. Executar os testes automatizados na JVM e preparar testes instrumentados
+### 3. Executar testes automatizados na JVM e compilar testes instrumentados
 ```bash
-./gradlew :app:testDebugUnitTest
+./gradlew :app:testDebugUnitTest :app:compileDebugAndroidTestKotlin
 ```
-*(Em ambientes headless onde o cache offline do Robolectric esteja armazenado em `/home/appuser/.m2` enquanto o shell executa como `root`, utilize `JAVA_TOOL_OPTIONS="-Duser.home=/home/appuser" gradle :app:testDebugUnitTest`.)*
+*(Em ambientes headless onde o cache offline do Robolectric esteja armazenado em `/home/appuser/.m2` enquanto o shell executa como `root`, utilize `JAVA_TOOL_OPTIONS="-Duser.home=/home/appuser" gradle :app:testDebugUnitTest :app:compileDebugAndroidTestKotlin`.)*
 
 Para executar a suíte instrumentada em um emulador ou aparelho Android conectado via ADB:
 ```bash
@@ -215,15 +195,16 @@ Para executar a suíte instrumentada em um emulador ou aparelho Android conectad
 
 ## 9. Testes e Validação
 
-Os resultados detalhados de verificação e o **checklist completo de testes manuais em dispositivo físico** estão documentados em [`TEST_RESULTS.md`](TEST_RESULTS.md):
+Os resultados detalhados de verificação estão consolidados em [`TEST_RESULTS.md`](TEST_RESULTS.md):
 
-- **Testes automatizados na JVM (`gradle :app:testDebugUnitTest`) — APROVADOS:**
-  - **252 testes aprovados em 27 suítes** (`0` falhas, `0` erros e `0` ignorados), executados com `JAVA_TOOL_OPTIONS="-Duser.home=/home/appuser"`. *(Evolução auditada: `233/24` → `238/25` → `252/27`.)*
-  - Abrangem lógica pura de domínio, mappers, casos de uso, validação e hash SHA-256 do seed, migrações e persistência SQLite/Room, desserialização e contratos HTTP (`/v1/manifest.json` e `/v1/dictionary.json`) com `MockWebServer`, observação de conectividade, coordenação de sincronização, ViewModels, navegação e UI Compose via Robolectric (`sdk = 36`).
-- **Testes instrumentados Android (`app/src/androidTest`) — RECOMPILADOS, NÃO EXECUTADOS:**
-  - Os 5 arquivos em `app/src/androidTest` (`StartupSeedHiltInstrumentedTest` com `2` `@Test`, `ExampleInstrumentedTest` com `1` `@Test`, além de `HiltTestRunner`, `TestDatabaseModule` e `TestNetworkModule` — totalizando `3` métodos `@Test`) foram atualizados e recompilados via `:app:assembleDebugAndroidTest` (`app-debug-androidTest.apk`, `1.056.983` bytes), mas **não foram executados** em emulador ou dispositivo físico neste container devido à ausência de emulador e de acesso ADB.
-- **Pendências externas de validação (a executar manualmente pelo avaliador/usuário):**
-  - Instalação de `Voz-Ancestral-debug.apk` em aparelho Android ou emulador, execução de `:app:connectedDebugAndroidTest`, testes de uso real offline/modo avião/sincronização manual, rotação/fontes grandes, auditoria prática com TalkBack e verificação contra servidor oficial quando disponível (roteiro passo a passo em [`TEST_RESULTS.md`](TEST_RESULTS.md), Seção 12).
+- **Testes automatizados na JVM (`:app:testDebugUnitTest`) — APROVADOS:**
+  - **303 testes aprovados em 35 suítes** (`0` falhas, `0` erros, `0` ignorados), executados neste ambiente com `JAVA_TOOL_OPTIONS="-Duser.home=/home/appuser" gradle :app:testDebugUnitTest :app:compileDebugAndroidTestKotlin`.
+  - Cobrem domínio, mappers, casos de uso, validação/hash SHA-256 do seed, migrações Room (`1->3`, `2->3`, `3->4`), `IndigenousLandDao` e `IndigenousLandQueryBuilder` em SQLite real via Robolectric (incluindo acentuação, curingas `LIKE`, filtros combináveis e ordenação com nulos/vazios/espaços sempre ao final), contratos HTTP ArcGIS com `MockWebServer`, paginação/deduplicação/fallback, ViewModels, `TerritoriesScreen` e navegação de 3 abas em `ParintintinNavHostTest`.
+- **Compilação de testes instrumentados (`:app:compileDebugAndroidTestKotlin`) — APROVADA (NÃO EXECUTADA EM DISPOSITIVO):**
+  - `StartupSeedHiltInstrumentedTest` e `ExampleInstrumentedTest` foram compilados com sucesso após atualização de `TestNetworkModule` e dos testes para o endpoint ArcGIS `/query?`, porém **não executados** neste container por falta de emulador e ADB.
+- **Confirmações externas reportadas pelo responsável (não reproduzíveis localmente neste container offline):**
+  - Sincronização e validação de **627 registros territoriais** contra a API ArcGIS REST do IBAMA/SIGAGEO.
+  - Execução e aprovação do pipeline no **GitHub Actions** (não verificável diretamente no container por ausência de `.git` e `.github/workflows/`).
 
 ---
 
@@ -231,27 +212,10 @@ Os resultados detalhados de verificação e o **checklist completo de testes man
 
 | Documento | Finalidade |
 |---|---|
-| [`SPECIFICATION.md`](SPECIFICATION.md) | Especificação funcional, requisitos (`RF`, `RNF`), regras de negócio (`RN`), arquitetura e limitações da v1.0. |
-| [`PLANNING.md`](PLANNING.md) | Planejamento retrospectivo, metodologia SDD, 11 fases, 10 marcos (`M1`–`M10`), riscos e prioridades. |
-| [`TASKS.md`](TASKS.md) | Decomposição rastreável das 26 tarefas entre documentação (`DOC`), validação (`VAL`), saneamento técnico (`TEC`) e evolução futura (`FUT`). |
-| [`TEST_RESULTS.md`](TEST_RESULTS.md) | Registro auditável das 27 suítes JVM (252 testes, preservando os marcos anteriores de 233/24 e 238/25), recompilação de `androidTest`, verificação do APK Debug único e checklist externo de testes em dispositivo. |
-| [`AI_USAGE.md`](AI_USAGE.md) | Registro transparente do uso de ferramentas de Inteligência Artificial, responsabilidades humanas e limites acadêmicos. |
-| [`docs/api-v1-contract.md`](docs/api-v1-contract.md) | Proposta de contrato JSON/HTTP da API v1 alinhada ao consumo de `/v1/manifest.json` e `/v1/dictionary.json` no cliente. |
-
----
-
-## 11. Estado Atual e Trabalhos Futuros
-
-| Situação | Itens Abrangidos |
-|---|---|
-| **Implementado (v1.0 Demonstrativa)** | Telas **Início** e **Dicionário**, busca textual com *debounce*, filtros por categoria semântica e classe gramatical, banco Room v3 com migrações, seed demonstrativo versionado por SHA-256 (`DEMO-001`..`DEMO-020`), observação de conectividade, consumo cliente de `/v1/manifest.json` + `/v1/dictionary.json`, coordenação offline-first desacoplada de `di`, exibição de verbetes sincronizados na Home e **252 testes aprovados em 27 suítes JVM**. |
-| **Parcialmente Implementado / Estruturas Preparatórias** | Módulo `Encyclopedia` presente no código sem exposição na barra inferior nem sincronização (`TEC-001` concluído e validado); campos/use cases de favoritos e detalhes sem UI na v1.0; suíte `androidTest` recompilada (`app-debug-androidTest.apk`) aguardando dispositivo/emulador para execução. |
-| **Planejado (Pós-v1.0)** | Obtenção de conteúdo linguístico e cultural autêntico devidamente validado e autorizado; disponibilização operacional de backend HTTPS oficial; otimização de cache por versão de manifesto e política de exclusão remota; ativação da Enciclopédia Cultural, interface de Favoritos, tela de Detalhes e reprodução de áudio; execução em dispositivo físico e empacotamento Release assinado. |
-
----
-
-## 12. Considerações Finais
-
-A **Versão 1.0 Demonstrativa** do aplicativo **Acervo Provisório** (*projeto Voz Ancestral*) cumpre o papel de prova técnica e arquitetural em modo *offline-first*, demonstrando a viabilidade do armazenamento local versionado, da filtragem offline e da sinalização clara de conectividade e sincronização.
-
-Reitera-se que o conteúdo presente nesta entrega é **exclusivamente demonstrativo e fictício em português**. A futura incorporação de vocabulário, transcrições fonéticas, exemplos bilíngues, áudios e artigos culturais autênticos da língua **Parintintin** dependerá obrigatoriamente de curadoria linguística especializada, validação técnica e autorização formal comunitária e institucional adequadas.
+| [`SPECIFICATION.md`](SPECIFICATION.md) | Especificação funcional, não funcional, regras de negócio (`RN-01`–`RN-14`), arquitetura, escopo do catálogo territorial e limitações. |
+| [`PLANNING.md`](PLANNING.md) | Planejamento retrospectivo e evolutivo (Fases 1–17, Marcos `M1`–`M16`), metodologia SDD, dependências e riscos. |
+| [`TASKS.md`](TASKS.md) | Inventário rastreável das **35 tarefas** entre documentação (`DOC`), validação (`VAL`), saneamento técnico (`TEC`), catálogo territorial (`TER`) e evoluções futuras (`FUT`). |
+| [`TEST_RESULTS.md`](TEST_RESULTS.md) | Consolidação auditável das **35 suítes JVM (303 testes)**, compilação de `androidTest`, artefatos de build e pendências externas. |
+| [`AI_USAGE.md`](AI_USAGE.md) | Registro transparente do uso de ferramentas de IA, responsabilidades humanas e limites acadêmicos. |
+| [`docs/arcgis-territories-api.md`](docs/arcgis-territories-api.md) | Especificação técnica inicial (Etapa 1) da consulta paginada à camada 25 do Geoportal IBAMA / SIGAGEO. |
+| [`docs/api-v1-contract.md`](docs/api-v1-contract.md) | Especificação histórica/legada da antiga API v1 de acervo linguístico (desativada no cliente atual). |
