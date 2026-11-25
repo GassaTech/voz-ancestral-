@@ -490,6 +490,141 @@ class IndigenousLandDaoTest {
     }
 
     @Test
+    fun `ordenacao mantem valores vazios e apenas espacos no final em ASC e DESC com desempate por id`() = runBlocking {
+        // Inseridos propositalmente fora de ordem de id e respeitando o índice único de terrai_cod
+        // (múltiplos nulos são permitidos; "" e "   " são distintos entre si).
+        dao.upsertAll(
+            listOf(
+                sampleEntity(
+                    id = "ti:tail_5_null_tie",
+                    territoryCode = null,
+                    name = null,
+                    updatedAtRaw = null
+                ),
+                sampleEntity(
+                    id = "ti:tail_4_empty_tie",
+                    territoryCode = null,
+                    name = "",
+                    updatedAtRaw = ""
+                ),
+                sampleEntity(
+                    id = "ti:valid_2",
+                    territoryCode = "20",
+                    name = "Parintintin",
+                    updatedAtRaw = "2025-02-15"
+                ),
+                sampleEntity(
+                    id = "ti:tail_3_null",
+                    territoryCode = null,
+                    name = null,
+                    updatedAtRaw = null
+                ),
+                sampleEntity(
+                    id = "ti:tail_2_spaces",
+                    territoryCode = "   ",
+                    name = "   ",
+                    updatedAtRaw = "   "
+                ),
+                sampleEntity(
+                    id = "ti:valid_1",
+                    territoryCode = "10",
+                    name = "Água Branca",
+                    updatedAtRaw = "2024-03-10"
+                ),
+                sampleEntity(
+                    id = "ti:tail_1_empty",
+                    territoryCode = "",
+                    name = "",
+                    updatedAtRaw = ""
+                )
+            )
+        )
+
+        val tailIds = setOf(
+            "ti:tail_1_empty",
+            "ti:tail_2_spaces",
+            "ti:tail_3_null",
+            "ti:tail_4_empty_tie",
+            "ti:tail_5_null_tie"
+        )
+
+        // 1. NAME ASC e DESC: válidos primeiro; vazios, espaços e nulos ao final com desempate determinístico por id ASC
+        val nameAsc = dao.observeTerritories(
+            sortOption = TerritorySortOption(TerritorySortField.NAME, TerritorySortDirection.ASCENDING)
+        ).first().map { it.id }
+        assertEquals(listOf("ti:valid_1", "ti:valid_2"), nameAsc.take(2))
+        assertEquals(tailIds, nameAsc.drop(2).toSet())
+        assertEquals(
+            listOf("ti:tail_1_empty", "ti:tail_3_null", "ti:tail_4_empty_tie", "ti:tail_5_null_tie", "ti:tail_2_spaces"),
+            nameAsc.drop(2)
+        )
+
+        val nameDesc = dao.observeTerritories(
+            sortOption = TerritorySortOption(TerritorySortField.NAME, TerritorySortDirection.DESCENDING)
+        ).first().map { it.id }
+        assertEquals(listOf("ti:valid_2", "ti:valid_1"), nameDesc.take(2))
+        assertEquals(tailIds, nameDesc.drop(2).toSet())
+        assertEquals(
+            listOf("ti:tail_2_spaces", "ti:tail_1_empty", "ti:tail_3_null", "ti:tail_4_empty_tie", "ti:tail_5_null_tie"),
+            nameDesc.drop(2)
+        )
+
+        // 2. TERRITORY_CODE ASC e DESC: válidos primeiro; vazios, espaços e nulos ao final em ordem determinística (desempate por nome/id ASC)
+        val codeAsc = dao.observeTerritories(
+            sortOption = TerritorySortOption(TerritorySortField.TERRITORY_CODE, TerritorySortDirection.ASCENDING)
+        ).first().map { it.id }
+        assertEquals(
+            listOf(
+                "ti:valid_1",
+                "ti:valid_2",
+                "ti:tail_1_empty",
+                "ti:tail_3_null",
+                "ti:tail_4_empty_tie",
+                "ti:tail_5_null_tie",
+                "ti:tail_2_spaces"
+            ),
+            codeAsc
+        )
+
+        val codeDesc = dao.observeTerritories(
+            sortOption = TerritorySortOption(TerritorySortField.TERRITORY_CODE, TerritorySortDirection.DESCENDING)
+        ).first().map { it.id }
+        assertEquals(
+            listOf(
+                "ti:valid_2",
+                "ti:valid_1",
+                "ti:tail_1_empty",
+                "ti:tail_3_null",
+                "ti:tail_4_empty_tie",
+                "ti:tail_5_null_tie",
+                "ti:tail_2_spaces"
+            ),
+            codeDesc
+        )
+
+        // 3. UPDATED_AT ASC e DESC: válidos primeiro; vazios, espaços e nulos ao final em ordem determinística por id ASC
+        val updatedAsc = dao.observeTerritories(
+            sortOption = TerritorySortOption(TerritorySortField.UPDATED_AT, TerritorySortDirection.ASCENDING)
+        ).first().map { it.id }
+        assertEquals(listOf("ti:valid_1", "ti:valid_2"), updatedAsc.take(2))
+        assertEquals(tailIds, updatedAsc.drop(2).toSet())
+        assertEquals(
+            listOf("ti:tail_1_empty", "ti:tail_3_null", "ti:tail_4_empty_tie", "ti:tail_5_null_tie", "ti:tail_2_spaces"),
+            updatedAsc.drop(2)
+        )
+
+        val updatedDesc = dao.observeTerritories(
+            sortOption = TerritorySortOption(TerritorySortField.UPDATED_AT, TerritorySortDirection.DESCENDING)
+        ).first().map { it.id }
+        assertEquals(listOf("ti:valid_2", "ti:valid_1"), updatedDesc.take(2))
+        assertEquals(tailIds, updatedDesc.drop(2).toSet())
+        assertEquals(
+            listOf("ti:tail_1_empty", "ti:tail_3_null", "ti:tail_4_empty_tie", "ti:tail_5_null_tie", "ti:tail_2_spaces"),
+            updatedDesc.drop(2)
+        )
+    }
+
+    @Test
     fun `consultas de opcoes distintas ignoram nulos e vazios`() = runBlocking {
         dao.upsertAll(
             listOf(

@@ -5,11 +5,13 @@ import androidx.compose.material.icons.outlined.AutoStories
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.MenuBook
+import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.rounded.AutoStories
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.MenuBook
+import androidx.compose.material.icons.rounded.Public
 import androidx.compose.material.icons.rounded.Storage
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -59,6 +61,13 @@ private val bottomNavItems: List<BottomNavItem> = AppDestination.primaryDestinat
             selectedIcon = Icons.Rounded.MenuBook,
             unselectedIcon = Icons.Outlined.MenuBook,
             testTag = "bottom_nav_dictionary"
+        )
+        AppDestination.Territories -> BottomNavItem(
+            destination = destination,
+            labelRes = R.string.nav_territories,
+            selectedIcon = Icons.Rounded.Public,
+            unselectedIcon = Icons.Outlined.Public,
+            testTag = "bottom_nav_territories"
         )
         AppDestination.Favorites -> BottomNavItem(
             destination = destination,

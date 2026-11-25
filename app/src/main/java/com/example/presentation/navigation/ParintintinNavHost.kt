@@ -23,6 +23,7 @@ import com.example.presentation.components.ProvisionalDestinationScreen
 import com.example.presentation.dictionary.DictionaryScreen
 import com.example.presentation.encyclopedia.EncyclopediaScreen
 import com.example.presentation.home.HomeScreen
+import com.example.presentation.territories.TerritoriesScreen
 
 @Composable
 fun ParintintinAppShell(modifier: Modifier = Modifier) {
@@ -72,6 +73,9 @@ fun ParintintinNavHost(
         }
         composable<AppDestination.Dictionary> {
             DictionaryScreen()
+        }
+        composable<AppDestination.Territories> {
+            TerritoriesScreen()
         }
         composable<AppDestination.Favorites> {
             ProvisionalDestinationScreen(

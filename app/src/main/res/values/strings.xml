@@ -83,6 +83,7 @@
     <string name="nav_home">Início</string>
     <string name="nav_encyclopedia">Enciclopédia</string>
     <string name="nav_dictionary">Dicionário</string>
+    <string name="nav_territories">Territórios</string>
     <string name="nav_favorites">Favoritos</string>
     <string name="nav_archive">Acervo</string>
 
@@ -145,4 +146,54 @@
     <string name="dictionary_demo_entry_badge">Termo demonstrativo</string>
     <string name="dictionary_demo_note_label">Nota demonstrativa</string>
     <string name="dictionary_cultural_note_label">Nota cultural</string>
+
+    <!-- Catálogo de Terras Indígenas (Etapa 5.3) -->
+    <string name="territories_title">Terras Indígenas</string>
+    <string name="territories_subtitle">Catálogo territorial de povos e terras indígenas disponível para consulta offline no dispositivo.</string>
+    <string name="territories_offline_badge">Consulta offline via Room</string>
+    <string name="territories_search_label">Pesquisar territórios</string>
+    <string name="territories_search_hint">Pesquisar por nome, código, etnia, município ou UF…</string>
+    <string name="territories_clear_search">Limpar pesquisa</string>
+    <string name="territories_uf_filter_label">Unidade Federativa (UF)</string>
+    <string name="territories_phase_filter_label">Fase do processo</string>
+    <string name="territories_modality_filter_label">Modalidade</string>
+    <string name="territories_filter_all">Todas</string>
+    <string name="territories_sort_label">Ordenar por</string>
+    <string name="territories_sort_field_name">Nome</string>
+    <string name="territories_sort_field_code">Código</string>
+    <string name="territories_sort_field_area">Superfície</string>
+    <string name="territories_sort_field_updated">Atualização</string>
+    <string name="territories_sort_direction_asc">Crescente</string>
+    <string name="territories_sort_direction_desc">Decrescente</string>
+    <string name="cd_territories_sort_direction_asc">Ordem crescente. Toque para alternar para decrescente</string>
+    <string name="cd_territories_sort_direction_desc">Ordem decrescente. Toque para alternar para crescente</string>
+    <string name="cd_territories_uf_chip">UF: %1$s</string>
+    <string name="cd_territories_phase_chip">Fase do processo: %1$s</string>
+    <string name="cd_territories_modality_chip">Modalidade: %1$s</string>
+    <string name="cd_territories_sort_chip">Ordenar por %1$s</string>
+    <string name="territories_results_section_title">Terras Indígenas disponíveis</string>
+    <string name="territories_filtered_results_singular">1 encontrada</string>
+    <string name="territories_filtered_results_count">%1$d encontradas</string>
+    <string name="territories_local_results_singular">1 local</string>
+    <string name="territories_local_results_count">%1$d locais</string>
+    <string name="territories_clear_filters">Limpar filtros</string>
+    <string name="territories_loading">Consultando Terras Indígenas locais…</string>
+    <string name="cd_territories_loading">Carregando Terras Indígenas do banco local</string>
+    <string name="territories_empty_title">Nenhuma Terra Indígena cadastrada ainda</string>
+    <string name="territories_empty_subtitle">Os territórios sincronizados serão exibidos aqui para consulta offline.</string>
+    <string name="territories_empty_filtered_title">Nenhuma Terra Indígena encontrada</string>
+    <string name="territories_empty_filtered_subtitle">Não há territórios que correspondam à pesquisa ou aos filtros selecionados.</string>
+    <string name="territories_error_title">Não foi possível carregar os territórios</string>
+    <string name="territories_retry">Tentar novamente</string>
+    <string name="territories_manual_sync_error_title">Falha na sincronização manual</string>
+    <string name="territories_dismiss_sync_error">Dispensar aviso</string>
+    <string name="cd_territories_dismiss_sync_error">Fechar aviso de erro na sincronização</string>
+    <string name="territories_unnamed_land">Terra Indígena sem nome informado</string>
+    <string name="territories_code_badge">Cód. %1$s</string>
+    <string name="cd_territories_code_badge">Código do território: %1$s</string>
+    <string name="territories_uf_prefix">UF: %1$s</string>
+    <string name="territories_ethnicities_label">Etnias associadas</string>
+    <string name="territories_municipalities_label">Municípios: %1$s</string>
+    <string name="territories_surface_area_ha">Superfície: %1$s ha</string>
+    <string name="territories_updated_at_label">Atualização: %1$s</string>
 </resources>

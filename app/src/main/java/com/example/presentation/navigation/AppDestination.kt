@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 
 /**
  * Definições tipadas das rotas do aplicativo.
- * Na versão 1.0, a navegação principal expõe [Home] e [Dictionary];
+ * A navegação principal expõe [Home], [Dictionary] e [Territories];
  * os demais destinos permanecem preservados para evoluções futuras.
  */
 @Serializable
@@ -20,6 +20,9 @@ sealed interface AppDestination {
     data object Dictionary : AppDestination
 
     @Serializable
+    data object Territories : AppDestination
+
+    @Serializable
     data object Favorites : AppDestination
 
     @Serializable
@@ -28,7 +31,8 @@ sealed interface AppDestination {
     companion object {
         val primaryDestinations: List<AppDestination> = listOf(
             Home,
-            Dictionary
+            Dictionary,
+            Territories
         )
     }
 }
