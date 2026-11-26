@@ -39,6 +39,7 @@ import java.text.NumberFormat
 @Composable
 fun TerritoryCard(
     land: IndigenousLand,
+    onSelectTerritory: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val displayName = remember(land.name) {
@@ -74,6 +75,7 @@ fun TerritoryCard(
     val hasSecondaryMeta = municipalitiesText != null || formattedArea != null || updatedAtText != null
 
     Card(
+        onClick = { onSelectTerritory(land.id) },
         shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),

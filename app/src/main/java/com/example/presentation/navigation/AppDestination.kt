@@ -22,6 +22,9 @@ sealed interface AppDestination {
     @Serializable
     data object Territories : AppDestination
 
+    @Serializable
+    data class TerritoryDetails(val landId: String) : AppDestination
+
     companion object {
         val primaryDestinations: List<AppDestination> = listOf(
             Home,

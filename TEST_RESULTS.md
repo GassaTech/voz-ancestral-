@@ -61,7 +61,7 @@
 
 > **Falhas identificadas:** os quatro testes que falharam pertencem a `ParintintinDatabaseMigrationTest` e apresentam `SQLiteCantOpenDatabaseException` ao abrir o banco temporário. O mesmo comportamento foi reproduzido no projeto original, portanto não há evidência de que tenha sido introduzido pela revisao. A causa ainda não foi isolada.
 >
-> **Compilação e APK:** `:app:compileDebugKotlin`, `:app:compileDebugAndroidTestKotlin` e `:app:assembleDebug` concluídos com `BUILD SUCCESSFUL`. APK Debug gerado em `app/build/outputs/apk/debug/app-debug.apk`, com **22.421.135 bytes** e SHA-256 `DB5D6BDB1C5CF3B697F7231B053EF33272171DC3EF5E0A94BF1E5C7BB56F69D0`. Cópia em Downloads verificada com hash idêntico. A compilação de `androidTest` não equivale à execução dos testes instrumentados.
+> **Compilação e APK:** `:app:compileDebugKotlin`, `:app:compileDebugAndroidTestKotlin` e `:app:assembleDebug` concluídos com `BUILD SUCCESSFUL`. APK Debug gerado em `app/build/outputs/apk/debug/app-debug.apk`, com **22.555.268 bytes** e SHA-256 `ECEC1FC792B5A800C525DA8F324C97DB715DFF731C3CC32127804277C0BCD85C`. Cópia em Downloads verificada com hash idêntico. A compilação de `androidTest` não equivale à execução dos testes instrumentados.
 > **Evolução histórica preservada:** `233 testes / 24 suítes` (marco inicial v1.0) → `238 / 25` (`TEC-001`) → `252 / 27` (fechamento v1.0 com `/v1/manifest.json`) → `272 / 30` (Etapa 1 ArcGIS IBAMA) → **303 testes / 35 suítes** (consolidação atual após Etapas 2 a 5.4).
 
 ### Detalhamento Completo das 35 Suítes Executadas na JVM
@@ -122,7 +122,7 @@
 
 | Artefato / Verificação | Situação Verificada Neste Container | Observações |
 |---|---|---|
-| **APK Debug do App (`app/build/outputs/apk/debug/app-debug.apk`)** | **Ainda nao validado nesta rodada local** | O APK desta revisao sera gerado e verificado apos a integracao no projeto oficial. O tamanho e SHA-256 informados em relatorios anteriores nao foram confirmados nesta maquina. |
+| **APK Debug do App (`app/build/outputs/apk/debug/app-debug.apk`)** | **Gerado e validado em 25/11/2026** | APK DEBUG gerado com :app:assembleDebug. Tamanho: **22.555.268 bytes**. SHA-256: ECEC1FC792B5A800C525DA8F324C97DB715DFF731C3CC32127804277C0BCD85C. Cópia em Downloads conferida com hash idêntico. Instalação e navegação de detalhes territoriais validadas manualmente em aparelho físico. |
 | **APK Único Histórico na Raiz (`Voz-Ancestral-debug.apk`)** | **Não presente na raiz** no estado atual do workspace | O arquivo único da v1.0 documentado anteriormente não existe mais na raiz; existem apenas arquivos de transferência `.zip` e `.b64` de etapas anteriores. |
 | **APK Release Assinado (`:app:assembleRelease`)** | **`NÃO VALIDADO` / `BLOQUEADO`** | Depende de keystore Release (`my-upload-key.jks`) e variáveis de assinatura externas ao container. |
 
@@ -161,5 +161,55 @@ Permanecem dependentes de execução externa em aparelho Android real ou emulado
 | **Testes Automatizados na JVM (`:app:testDebugUnitTest`)** | **35 suites; 303 testes; 299 aprovados; 4 falhas; 0 ignorados** | **`PARCIAL`** |
 | **Compilação de `androidTest` (`:app:compileDebugAndroidTestKotlin`)** | `StartupSeedHiltInstrumentedTest` (`2` `@Test`), `ExampleInstrumentedTest` (`1` `@Test`), `TestNetworkModule` atualizados para ArcGIS `/query?` | **`COMPILADO, NÃO EXECUTADO`** |
 | **Carga de 627 registros IBAMA e Pipeline GitHub Actions** | Reportados pelo responsável; ambiente local sem acesso externo, `.git` ou `.github/workflows/` | **`CONFIRMADO EXTERNAMENTE`** *(não reproduzido offline)* |
-| **APK Debug (`:app:assembleDebug`)** | **Gerado e verificado; 22.421.135 bytes; SHA-256 `DB5D6BDB1C5CF3B697F7231B053EF33272171DC3EF5E0A94BF1E5C7BB56F69D0`**; cópia em Downloads conferida | **`CONCLUÍDO`** *(geração e integridade; teste físico pendente)* |
-| **Execução `:app:connectedDebugAndroidTest`, TalkBack em hardware, *profiling* e APK Release** | Sem emulador/ADB, aparelho físico, JaCoCo ou keystore Release no container | **`PENDENTE` / `NÃO VALIDADO`** |
+| **APK Debug (`:app:assembleDebug`)** | **Gerado e verificado; 22.555.268 bytes; SHA-256 `ECEC1FC792B5A800C525DA8F324C97DB715DFF731C3CC32127804277C0BCD85C`**; cópia em Downloads conferida | **`CONCLUÍDO`** *(geração e integridade; navegação territorial validada manualmente em aparelho físico)* |
+| **Execução `:app:connectedDebugAndroidTest`, TalkBack em hardware, *profiling* e APK Release** | Testes instrumentados ainda não executados; TalkBack, rotação, fontes grandes e Release permanecem pendentes | **`PENDENTE` / `NÃO VALIDADO`** |
+
+## 11. Validação complementar da navegação territorial e APK DEBUG (25/11/2026)
+
+### Compilações realizadas
+
+| Comando | Resultado |
+|---|---|
+| `:app:compileDebugKotlin` | `BUILD SUCCESSFUL` |
+| `:app:compileDebugAndroidTestKotlin` | `BUILD SUCCESSFUL` |
+| Teste isolado de clique em território | `BUILD SUCCESSFUL` |
+| `:app:assembleDebug` | `BUILD SUCCESSFUL` |
+
+### Teste automatizado de navegação
+
+Foi adicionado o teste `clicar em um territorio encaminha seu ID para selecao` em `TerritoriesScreenTest.kt`.
+
+O teste verifica que tocar no cartão `territory_card_ti_tenharim_001` encaminha o identificador `ti_tenharim_001` ao callback de seleção.
+
+Resultado: teste isolado aprovado. Esta execução não representa uma nova execução completa das 303 verificações JVM. As quatro falhas preexistentes de `ParintintinDatabaseMigrationTest` continuam registradas na Seção 5.
+
+### Teste manual em aparelho físico
+
+Após instalar o APK DEBUG atualizado, foram confirmados pelo responsável pelo projeto:
+
+- Abertura da aba Territórios.
+- Toque em um cartão territorial.
+- Abertura da tela de detalhes.
+- Exibição das informações territoriais.
+- Ocultação da barra inferior na tela de detalhes.
+- Retorno à listagem pelo botão de voltar.
+
+Resultado: fluxo manual de navegação aprovado.
+
+### Artefato final DEBUG
+
+| Propriedade | Resultado |
+|---|---|
+| Arquivo | `Voz-Ancestral-debug.apk` |
+| Tamanho | 22.555.268 bytes |
+| SHA-256 | `ECEC1FC792B5A800C525DA8F324C97DB715DFF731C3CC32127804277C0BCD85C` |
+| Cópia em Downloads | Hash idêntico ao APK gerado |
+| Instalação em aparelho físico | Confirmada |
+| Navegação de detalhes | Aprovada manualmente |
+
+### Limitações ainda existentes
+
+- A suíte JVM completa não foi reexecutada após a inclusão do novo teste isolado.
+- Os testes instrumentados foram compilados, mas `:app:connectedDebugAndroidTest` ainda não foi executado.
+- Sincronização real, modo offline, rotação, fontes ampliadas e auditoria TalkBack ainda precisam de validação específica.
+- APK Release não foi gerado; o artefato entregue é exclusivamente DEBUG.

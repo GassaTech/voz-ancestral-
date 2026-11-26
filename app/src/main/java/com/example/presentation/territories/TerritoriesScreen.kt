@@ -40,6 +40,7 @@ import com.example.presentation.components.CatalogLoadingCard
 
 @Composable
 fun TerritoriesScreen(
+    onSelectTerritory: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: TerritoriesViewModel = hiltViewModel()
 ) {
@@ -57,6 +58,7 @@ fun TerritoriesScreen(
         onRetry = viewModel::onRetry,
         onManualSync = viewModel::syncManually,
         onDismissManualSyncError = viewModel::onDismissManualSyncError,
+        onSelectTerritory = onSelectTerritory,
         modifier = modifier
     )
 }
@@ -75,7 +77,8 @@ fun TerritoriesContent(
     onRetry: () -> Unit,
     onManualSync: () -> Unit,
     onDismissManualSyncError: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onSelectTerritory: (String) -> Unit = {}
 ) {
     val hasActiveFilter = uiState.hasActiveFilter
     val showUfFilters = uiState.filterOptions.statesUf.isNotEmpty() || uiState.selectedStateUf != null
@@ -301,6 +304,7 @@ fun TerritoriesContent(
                                 rowItems.forEach { land ->
                                     TerritoryCard(
                                         land = land,
+                                        onSelectTerritory = onSelectTerritory,
                                         modifier = Modifier.weight(1f)
                                     )
                                 }
@@ -314,7 +318,10 @@ fun TerritoriesContent(
                             items = content.territories,
                             key = { it.id }
                         ) { land ->
-                            TerritoryCard(land = land)
+                            TerritoryCard(
+                                land = land,
+                                onSelectTerritory = onSelectTerritory
+                            )
                         }
                     }
                 }

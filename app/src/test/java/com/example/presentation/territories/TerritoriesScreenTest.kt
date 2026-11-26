@@ -596,6 +596,49 @@ class TerritoriesScreenTest {
         )
     }
 
+    @Test
+    fun `clicar em um territorio encaminha seu ID para selecao`() {
+        val selectedIds = mutableListOf<String>()
+
+        val land = IndigenousLand(
+            id = "ti_tenharim_001",
+            territoryCode = "12345",
+            name = "Tenharim Marmelos",
+            statesUf = listOf("AM")
+        )
+
+        composeTestRule.setContent {
+            ParintintinTheme {
+                TerritoriesContent(
+                    uiState = TerritoriesUiState(
+                        totalLocalTerritoriesCount = 1,
+                        syncState = SyncState.Idle,
+                        contentState = TerritoriesContentState.Success(listOf(land))
+                    ),
+                    onQueryChange = {},
+                    onSelectStateUf = {},
+                    onSelectPhase = {},
+                    onSelectModality = {},
+                    onSelectSortField = {},
+                    onToggleSortDirection = {},
+                    onClearFilters = {},
+                    onRetry = {},
+                    onManualSync = {},
+                    onDismissManualSyncError = {},
+                    onSelectTerritory = { selectedIds += it }
+                )
+            }
+        }
+
+        composeTestRule.waitForIdle()
+        scrollListToTag("territory_card_ti_tenharim_001")
+
+        composeTestRule.onNodeWithTag("territory_card_ti_tenharim_001")
+            .assertIsDisplayed()
+            .performClick()
+
+        assertEquals(listOf("ti_tenharim_001"), selectedIds)
+    }
     private fun scrollListToTag(tag: String) {
         composeTestRule.onNodeWithTag("territories_list")
             .performScrollToNode(hasTestTag(tag))

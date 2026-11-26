@@ -65,6 +65,8 @@ private val bottomNavItems: List<BottomNavItem> = AppDestination.primaryDestinat
             unselectedIcon = Icons.Outlined.Public,
             testTag = "bottom_nav_territories"
         )
+        is AppDestination.TerritoryDetails ->
+            error("A rota de detalhes não deve aparecer na barra inferior.")
     }
 }
 

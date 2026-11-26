@@ -8,16 +8,20 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import com.example.presentation.dictionary.DictionaryScreen
 import com.example.presentation.encyclopedia.EncyclopediaScreen
 import com.example.presentation.home.HomeScreen
 import com.example.presentation.territories.TerritoriesScreen
+import com.example.presentation.territories.TerritoryDetailsScreen
 
 @Composable
 fun ParintintinAppShell(modifier: Modifier = Modifier) {
@@ -29,10 +33,16 @@ fun ParintintinAppShell(modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxSize(),
         contentWindowInsets = WindowInsets.safeDrawing,
         bottomBar = {
-            ParintintinBottomBar(
-                currentDestination = currentDestination,
-                onNavigate = navController::navigateSingleTopTo
-            )
+            val isDetailsScreen = currentDestination?.hierarchy?.any {
+                it.hasRoute(AppDestination.TerritoryDetails::class)
+            } == true
+
+            if (!isDetailsScreen) {
+                ParintintinBottomBar(
+                    currentDestination = currentDestination,
+                    onNavigate = navController::navigateSingleTopTo
+                )
+            }
         }
     ) { innerPadding ->
         ParintintinNavHost(
@@ -65,7 +75,21 @@ fun ParintintinNavHost(
             DictionaryScreen()
         }
         composable<AppDestination.Territories> {
-            TerritoriesScreen()
+            TerritoriesScreen(
+                onSelectTerritory = { landId ->
+                    navController.navigate(
+                        AppDestination.TerritoryDetails(landId = landId)
+                    )
+                }
+            )
+        }
+
+        composable<AppDestination.TerritoryDetails> { backStackEntry ->
+            backStackEntry.toRoute<AppDestination.TerritoryDetails>()
+
+            TerritoryDetailsScreen(
+                onBack = { navController.popBackStack() }
+            )
         }
     }
 }
